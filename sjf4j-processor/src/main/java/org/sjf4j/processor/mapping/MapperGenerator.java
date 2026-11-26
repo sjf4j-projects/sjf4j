@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapping;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -21,10 +21,10 @@ import java.util.List;
  */
 public final class MapperGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final MapperMethodGenerator methodGenerator;
 
-    public MapperGenerator(ProcessorContext context) {
+    public MapperGenerator(CompilationContext context) {
         this.context = context;
         this.methodGenerator = new MapperMethodGenerator(context);
     }
@@ -49,7 +49,7 @@ public final class MapperGenerator {
 
         if (!generated.isValid()) return;
 
-        CompiledMetadata metadata = context.metadata(type);
+        CompiledMetadata metadata = context.metadata;
 
         /*
          * --------------------------------------------------------------

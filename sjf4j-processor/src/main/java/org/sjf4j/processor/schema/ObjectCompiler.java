@@ -8,7 +8,7 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.property.Property;
@@ -33,10 +33,10 @@ import java.util.Map;
  * object nodes, retaining full-scope fallback for unsupported root keywords.
  */
 final class ObjectCompiler {
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final SchemaCompiler schemaCompiler;
 
-    ObjectCompiler(ProcessorContext context, SchemaCompiler schemaCompiler) {
+    ObjectCompiler(CompilationContext context, SchemaCompiler schemaCompiler) {
         this.context = context;
         this.schemaCompiler = schemaCompiler;
     }

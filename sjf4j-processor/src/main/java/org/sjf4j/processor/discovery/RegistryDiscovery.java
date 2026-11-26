@@ -94,13 +94,13 @@ public final class RegistryDiscovery {
      * External root types visible to one compiled interface. Only the generic
      * declarations are read; registry fields are never executed.
      */
-    public List<TypeMirror> externalTypes(TypeElement owner) {
+    public List<TypeMirror> externalTypes(List<TypeElement> registries) {
         TypeElement externalNode = context.elements.getTypeElement(ExternalNode.class.getName());
         if (externalNode == null) return Collections.emptyList();
         TypeMirror adapterType = context.typeUtils.erasure(externalNode.asType());
         Map<String, TypeMirror> types = new LinkedHashMap<>();
 
-        for (TypeElement registry : registries(owner)) {
+        for (TypeElement registry : registries) {
             if (registry.getAnnotation(NodeRegistry.class) == null) continue;
             for (Element member : registry.getEnclosedElements()) {
                 TypeMirror declaration;

@@ -24,6 +24,7 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -61,9 +62,10 @@ public final class TypeSystem {
     private final TypeMirror jackson3NodeType;
     private final TypeMirror gsonNodeType;
     private final TypeMirror jsonpNodeType;
-    private List<? extends TypeMirror> registeredExternalRoots = Collections.emptyList();
+    private final List<? extends TypeMirror> registeredExternalRoots;
 
-    public TypeSystem(Types typeUtils, Elements elements) {
+    public TypeSystem(Types typeUtils, Elements elements, List<? extends TypeMirror> registeredExternalRoots) {
+        this.registeredExternalRoots = Collections.unmodifiableList(new ArrayList<>(registeredExternalRoots));
 
         this.typeUtils = Asserts.notNull(typeUtils, "typeUtils");
         this.elements = Asserts.notNull(elements, "elements");
@@ -254,14 +256,6 @@ public final class TypeSystem {
      * <p>This answers representation capability, not shape. For example, a
      * JsonNode may have any shape even though its precise NodeKind is unknown.</p>
      */
-    /**
-     * Limits additional external root types to the interface currently being
-     * generated. The processor clears this scope after each interface.
-     */
-    public void setRegisteredExternalRoots(List<? extends TypeMirror> roots) {
-        registeredExternalRoots = roots == null ? Collections.emptyList() : roots;
-    }
-
     public boolean isExternalNode(TypeMirror type) {
         if (isAssignableErasure(type, jackson3NodeType)
                 || isAssignableErasure(type, jackson2NodeType)

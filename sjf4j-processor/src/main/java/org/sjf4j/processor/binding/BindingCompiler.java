@@ -9,7 +9,7 @@ import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -47,7 +47,7 @@ import java.util.Set;
  */
 final class BindingCompiler {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final GeneratedNames names;
     private final CompiledMetadata metadata;
     private final Backend backend;
@@ -65,7 +65,7 @@ final class BindingCompiler {
     // constant; no field access is emitted for that special case.
     private final Set<String> inlineOneOfSubtypes = new HashSet<>();
 
-    BindingCompiler(ProcessorContext context, GeneratedNames names,
+    BindingCompiler(CompilationContext context, GeneratedNames names,
                     CompiledMetadata metadata, Backend backend) {
         this.context = context;
         this.names = names;

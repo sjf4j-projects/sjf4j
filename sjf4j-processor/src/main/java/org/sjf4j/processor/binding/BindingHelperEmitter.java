@@ -1,6 +1,6 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 
@@ -10,12 +10,12 @@ import org.sjf4j.processor.code.JavaWriter;
  */
 final class BindingHelperEmitter {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final ReadEmitter reads;
     private final WriteEmitter writes;
     private final BindingNames names;
 
-    BindingHelperEmitter(ProcessorContext context, ReadEmitter reads, WriteEmitter writes, BindingNames names) {
+    BindingHelperEmitter(CompilationContext context, ReadEmitter reads, WriteEmitter writes, BindingNames names) {
         this.context = context;
         this.reads = reads;
         this.writes = writes;

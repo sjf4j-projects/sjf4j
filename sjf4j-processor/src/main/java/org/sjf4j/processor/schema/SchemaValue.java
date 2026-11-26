@@ -1,7 +1,7 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.NodeKind;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.element.ElementKind;
@@ -40,7 +40,7 @@ final class SchemaValue {
         this.nullable = nullable;
     }
 
-    static SchemaValue of(ProcessorContext context, TypeMirror type, CompiledMetadata metadata) {
+    static SchemaValue of(CompilationContext context, TypeMirror type, CompiledMetadata metadata) {
         if (type == null || "java.lang.Object".equals(type.toString())) {
             return new SchemaValue(type, Shape.DYNAMIC, false);
         }

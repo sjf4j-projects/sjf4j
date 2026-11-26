@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
@@ -17,7 +17,7 @@ final class ReadEmitter {
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
     private static final String NAME_MATCHER = "org.sjf4j.binding.NameMatcher";
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final BackendSpec backend;
     private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
@@ -26,7 +26,7 @@ final class ReadEmitter {
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
 
-    ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
+    ReadEmitter(CompilationContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
         this.backend = backend;
         this.names = names;

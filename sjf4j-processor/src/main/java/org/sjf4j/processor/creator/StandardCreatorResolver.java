@@ -1,7 +1,7 @@
 package org.sjf4j.processor.creator;
 
 import org.sjf4j.annotation.node.NodeCreator;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.Element;
@@ -29,10 +29,10 @@ import java.util.function.Consumer;
  */
 public final class StandardCreatorResolver {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
-    public StandardCreatorResolver(ProcessorContext context) {
+    public StandardCreatorResolver(CompilationContext context) {
         this.context = context;
         this.types = context.types;
     }

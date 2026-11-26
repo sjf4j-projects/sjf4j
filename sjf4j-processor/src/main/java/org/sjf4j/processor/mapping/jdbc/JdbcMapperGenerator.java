@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapping.jdbc;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
@@ -15,10 +15,10 @@ import java.util.List;
  */
 public final class JdbcMapperGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final JdbcMethodGenerator methods;
 
-    public JdbcMapperGenerator(ProcessorContext context) {
+    public JdbcMapperGenerator(CompilationContext context) {
         this.context = context;
         this.methods = new JdbcMethodGenerator(context);
     }

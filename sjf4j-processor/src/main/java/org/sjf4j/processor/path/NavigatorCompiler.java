@@ -1,6 +1,6 @@
 package org.sjf4j.processor.path;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
 /**
@@ -12,7 +12,7 @@ final class NavigatorCompiler {
     private final PathEmitter single;
     private final FindCompiler find;
 
-    NavigatorCompiler(ProcessorContext context) {
+    NavigatorCompiler(CompilationContext context) {
         this.single = new PathEmitter(context);
         this.find = new FindCompiler(context);
     }

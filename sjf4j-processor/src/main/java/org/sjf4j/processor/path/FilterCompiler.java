@@ -2,7 +2,7 @@ package org.sjf4j.processor.path;
 
 import org.sjf4j.path.FilterExpr;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.property.Property;
 
@@ -13,9 +13,9 @@ import java.util.List;
 
 /** Lowers the supported subset of FilterExpr into an immutable generation plan. */
 final class FilterCompiler {
-    private final ProcessorContext context;
+    private final CompilationContext context;
 
-    FilterCompiler(ProcessorContext context) {
+    FilterCompiler(CompilationContext context) {
         this.context = context;
     }
 

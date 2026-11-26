@@ -3,7 +3,7 @@ package org.sjf4j.processor.binding;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.Format;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
 import javax.lang.model.element.Element;
@@ -15,9 +15,9 @@ import javax.lang.model.element.TypeElement;
 /** Resolves the concrete backend used by one compiled binder interface. */
 final class BackendResolver {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
 
-    BackendResolver(ProcessorContext context) {
+    BackendResolver(CompilationContext context) {
         this.context = context;
     }
 

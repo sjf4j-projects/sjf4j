@@ -78,7 +78,7 @@ public class GeneratedNamesTest {
             if (target == null) return false;
 
             GeneratedClass generated = GeneratedClass.forInterface(
-                    new ProcessorContext(processingEnv), target);
+                    new ProcessorContext(processingEnv).forInterface(target, false), target);
             GeneratedNames allocated = generated.names();
             Map<String, String> names = new LinkedHashMap<>();
 

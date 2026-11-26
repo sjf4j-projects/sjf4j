@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
 /** Coordinates source emission for compiled binder methods and helpers. */
@@ -15,7 +15,7 @@ final class BindingEmitter {
     private final BindingNames names;
     private boolean byteOrderFieldEmitted;
 
-    BindingEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
+    BindingEmitter(CompilationContext context, BackendSpec backend, BindingNames names) {
         this.names = names;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2;
         this.reads = new ReadEmitter(context, backend, names);

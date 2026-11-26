@@ -4,7 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -36,7 +36,7 @@ import java.util.Set;
  */
 public final class MappingCompiler {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
     private final TypeElement mapper;
@@ -44,7 +44,7 @@ public final class MappingCompiler {
     private final CreatorResolver creators;
     private final ConverterResolver converters;
 
-    public MappingCompiler(ProcessorContext context, TypeElement mapper,
+    public MappingCompiler(CompilationContext context, TypeElement mapper,
                            List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;

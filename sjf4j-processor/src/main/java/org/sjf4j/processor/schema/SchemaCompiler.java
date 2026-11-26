@@ -11,7 +11,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.type.TypeMirror;
@@ -32,7 +32,7 @@ import java.util.Set;
  * Concrete keyword compilation is delegated to type-focused compilers.
  */
 final class SchemaCompiler {
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final CompiledMetadata metadata;
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
@@ -95,7 +95,7 @@ final class SchemaCompiler {
         if (fallbackReason == null) fallbackReason = reason;
     }
 
-    SchemaCompiler(ProcessorContext context, CompiledMetadata metadata) {
+    SchemaCompiler(CompilationContext context, CompiledMetadata metadata) {
         this.context = context;
         this.metadata = metadata;
         this.objects = new ObjectCompiler(context, this);

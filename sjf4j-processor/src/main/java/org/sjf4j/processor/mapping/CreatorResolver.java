@@ -1,6 +1,6 @@
 package org.sjf4j.processor.mapping;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -37,11 +37,11 @@ public final class CreatorResolver {
     private static final String MAPPING_CREATOR = "org.sjf4j.annotation.mapping.MappingCreator";
     private static final String MAPPING_CREATORS = "org.sjf4j.annotation.mapping.MappingCreators";
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
     private final StandardCreatorResolver standardCreators;
 
-    public CreatorResolver(ProcessorContext context) {
+    public CreatorResolver(CompilationContext context) {
         this.context = context;
         this.types = context.types;
         this.standardCreators = new StandardCreatorResolver(context);

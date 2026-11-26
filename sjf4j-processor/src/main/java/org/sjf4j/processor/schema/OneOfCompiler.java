@@ -6,7 +6,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
@@ -28,10 +28,10 @@ import java.util.Set;
  * Unknown runtime classes retain the generic compiled oneOf branch counting.
  */
 final class OneOfCompiler {
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final SchemaCompiler compiler;
 
-    OneOfCompiler(ProcessorContext context, SchemaCompiler compiler) {
+    OneOfCompiler(CompilationContext context, SchemaCompiler compiler) {
         this.context = context;
         this.compiler = compiler;
     }

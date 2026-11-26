@@ -1,12 +1,6 @@
 package org.sjf4j.processor;
 
-import org.sjf4j.processor.access.NodeAccessResolver;
-import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.discovery.RegistryDiscovery;
-import org.sjf4j.processor.annotation.NodeAnnotations;
-import org.sjf4j.processor.method.InterfaceMethodResolver;
-import org.sjf4j.processor.property.PropertyResolver;
-import org.sjf4j.processor.type.TypeSystem;
 import org.sjf4j.util.Asserts;
 
 import javax.annotation.processing.Filer;
@@ -25,7 +19,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Compiler services and shared metadata resolvers for one processing run.
+ * Javac services, registry discovery and the compiled index for one processing run.
  * Errors are reported against source elements rather than written into
  * generated code.
  */
@@ -37,12 +31,7 @@ public final class ProcessorContext {
     public final Filer filer;
     public final ProcessingEnvironment processingEnvironment;
 
-    public final TypeSystem types;
     public final RegistryDiscovery discovery;
-    public final NodeAnnotations annotations;
-    public final PropertyResolver properties;
-    public final NodeAccessResolver access;
-    public final InterfaceMethodResolver methods;
 
     private final Map<String, TypeElement> compiledInterfaces = new TreeMap<>();
 
@@ -55,12 +44,7 @@ public final class ProcessorContext {
         this.filer = environment.getFiler();
         this.processingEnvironment = environment;
 
-        this.types = new TypeSystem(typeUtils, elements);
         this.discovery = new RegistryDiscovery(this);
-        this.annotations = new NodeAnnotations();
-        this.properties = new PropertyResolver(typeUtils, elements, messager, types, annotations);
-        this.access = new NodeAccessResolver(types, properties);
-        this.methods = new InterfaceMethodResolver(typeUtils, elements, types);
     }
 
     /** Records an implementation only after its source file was emitted successfully. */
@@ -88,9 +72,9 @@ public final class ProcessorContext {
         }
     }
 
-    /** Per-interface, immutable-source metadata view. */
-    public CompiledMetadata metadata(TypeElement owner) {
-        return new CompiledMetadata(this, owner);
+    /** Creates isolated compiler services for one generated interface. */
+    public CompilationContext forInterface(TypeElement owner, boolean useRegistries) {
+        return new CompilationContext(this, owner, useRegistries);
     }
 
     /** Emits a compile-time error at the supplied source element. */

@@ -1,6 +1,6 @@
 package org.sjf4j.processor.path;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -24,7 +24,7 @@ final class FilterEmitter {
     private final TypeSystem types;
     private final NodeReadEmitter reads;
 
-    FilterEmitter(ProcessorContext context) {
+    FilterEmitter(CompilationContext context) {
         this.types = context.types;
         this.reads = new NodeReadEmitter(types);
     }

@@ -1,7 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
@@ -31,10 +31,10 @@ import java.util.Map;
  */
 public final class JdbcEmitter {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
-    public JdbcEmitter(ProcessorContext context) {
+    public JdbcEmitter(CompilationContext context) {
         this.context = context;
         this.types = context.types;
     }

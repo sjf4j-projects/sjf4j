@@ -1,6 +1,6 @@
 package org.sjf4j.processor.discovery;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
@@ -10,8 +10,8 @@ import java.util.List;
 public final class CompiledMetadata {
     private final ValueCodecResolver valueCodecs;
 
-    public CompiledMetadata(ProcessorContext context, TypeElement owner) {
-        this.valueCodecs = new ValueCodecResolver(context, context.discovery.registries(owner));
+    public CompiledMetadata(CompilationContext context, List<TypeElement> registries) {
+        this.valueCodecs = new ValueCodecResolver(context, registries);
     }
 
     public boolean hasValueCodec(TypeMirror type) {
