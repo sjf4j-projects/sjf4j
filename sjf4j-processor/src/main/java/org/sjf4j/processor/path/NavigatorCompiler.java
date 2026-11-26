@@ -5,24 +5,23 @@ import org.sjf4j.processor.code.GeneratedClass;
 
 /**
  * Resolves access semantics for analyzed Navigator plans before any generated
- * Java methods are written. Get/Put reuse the existing PathEmitter access
- * compiler; Find uses composable, statically typed traversal steps.
+ * Java methods are written. Get/Put and Find produce independent typed plans.
  */
 final class NavigatorCompiler {
-    private final PathEmitter single;
+    private final PathCompiler path;
     private final FindCompiler find;
 
     NavigatorCompiler(CompilationContext context) {
-        this.single = new PathEmitter(context);
+        this.path = new PathCompiler(context);
         this.find = new FindCompiler(context);
     }
 
     CompiledMethod compile(NavigatorPlan plan, GeneratedClass generated) {
         switch (plan.kind) {
             case GET:
-                return CompiledMethod.single(single.compileGet(plan.get, generated));
+                return CompiledMethod.path(path.compileGet(plan.get, generated));
             case PUT:
-                return CompiledMethod.single(single.compilePut(plan.put, generated));
+                return CompiledMethod.path(path.compilePut(plan.put, generated));
             case FIND:
                 return CompiledMethod.find(find.compile(plan.method, generated,
                         plan.expression, plan.allowFallback));
@@ -32,16 +31,16 @@ final class NavigatorCompiler {
     }
 
     static final class CompiledMethod {
-        final GeneratedClass.Member single;
+        final PathPlan path;
         final FindPlan find;
 
-        private CompiledMethod(GeneratedClass.Member single, FindPlan find) {
-            this.single = single;
+        private CompiledMethod(PathPlan path, FindPlan find) {
+            this.path = path;
             this.find = find;
         }
 
-        static CompiledMethod single(GeneratedClass.Member member) {
-            return member == null ? null : new CompiledMethod(member, null);
+        static CompiledMethod path(PathPlan plan) {
+            return plan == null ? null : new CompiledMethod(plan, null);
         }
 
         static CompiledMethod find(FindPlan plan) {
