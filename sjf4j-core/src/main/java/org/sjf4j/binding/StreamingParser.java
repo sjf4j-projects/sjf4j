@@ -82,11 +82,6 @@ public abstract class StreamingParser implements Closeable {
         this.exactNumbers = exactNumbers;
     }
 
-    /** Returns the generic numeric read policy of this parser. */
-    public final boolean exactNumbers() {
-        return exactNumbers;
-    }
-
     /**
      * Logical token types exposed by the streaming parser.
      *

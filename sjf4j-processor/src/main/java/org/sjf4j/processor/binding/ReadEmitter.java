@@ -65,7 +65,7 @@ final class ReadEmitter {
         String parser = names.newName("parser");
 
         out.beginBlock("try (" + backend.parserType() + " " + parser
-                + " = this.binder.createParser(" + input + ", false))");
+                + " = this.binder.createParser(" + input + "))");
         emitReadBody(out, plan, value, parser, names);
         out.endBlock();
 

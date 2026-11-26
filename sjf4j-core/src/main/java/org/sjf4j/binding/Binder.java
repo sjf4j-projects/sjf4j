@@ -36,6 +36,13 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         return config;
     }
 
+    /** Copies the node configuration with a different generic number policy. */
+    protected final NodeConfig numberConfig(boolean exactNumbers) {
+        java.util.Map<Class<?>, String> formats = new java.util.LinkedHashMap<>();
+        config.copyValueFormatsTo(formats);
+        return new NodeConfig(formats, config.includeNulls, exactNumbers);
+    }
+
     /*
      * --------------------------------------------------------------
      * Parsing
@@ -72,66 +79,13 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     }
 
     /**
-     * Creates a reader with an explicit generic numeric policy. Backends that
-     * support policy overrides should implement this overload. The default
-     * implementation preserves existing custom binders when the policy agrees
-     * with their configuration, and rejects unsupported policies.
-     */
-    public R createParser(Reader input, boolean exactNumbers) throws IOException {
-        if (exactNumbers != config.exactNumbers) {
-            throw new BindingException("backend does not support overriding exactNumbers");
-        }
-        return _requireNumberPolicy(createParser(input), exactNumbers);
-    }
-
-    /** Creates a streaming parser from InputStream with an explicit numeric policy. */
-    public R createParser(InputStream input, boolean exactNumbers) throws IOException {
-        Asserts.notNull(input, "input");
-        if (exactNumbers == config.exactNumbers) {
-            return _requireNumberPolicy(createParser(input), exactNumbers);
-        }
-        return createParser(new InputStreamReader(input, StandardCharsets.UTF_8), exactNumbers);
-    }
-
-    /** Creates a streaming parser from String with an explicit numeric policy. */
-    public R createParser(String input, boolean exactNumbers) throws IOException {
-        Asserts.notNull(input, "input");
-        if (exactNumbers == config.exactNumbers) {
-            return _requireNumberPolicy(createParser(input), exactNumbers);
-        }
-        return createParser(new FastStringReader(input), exactNumbers);
-    }
-
-    /** Creates a streaming parser from UTF-8 bytes with an explicit numeric policy. */
-    public R createParser(byte[] input, boolean exactNumbers) throws IOException {
-        Asserts.notNull(input, "input");
-        if (exactNumbers == config.exactNumbers) {
-            return _requireNumberPolicy(createParser(input), exactNumbers);
-        }
-        return createParser(new ByteArrayInputStream(input), exactNumbers);
-    }
-
-    private R _requireNumberPolicy(R parser, boolean exactNumbers) throws IOException {
-        if (parser.exactNumbers() != exactNumbers) {
-            BindingException failure = new BindingException("backend does not support requested exactNumbers policy");
-            try {
-                parser.close();
-            } catch (IOException e) {
-                failure.addSuppressed(e);
-            }
-            throw failure;
-        }
-        return parser;
-    }
-
-    /**
      * Reads one node from parser into target type.
      */
     public Object readNode(Reader input, Type type) {
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            try (StreamingParser parser = createParser(input, config.exactNumbers)) {
+            try (StreamingParser parser = createParser(input)) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
@@ -151,7 +105,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            try (StreamingParser parser = createParser(input, config.exactNumbers)) {
+            try (StreamingParser parser = createParser(input)) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
@@ -171,7 +125,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            try (StreamingParser parser = createParser(input, config.exactNumbers)) {
+            try (StreamingParser parser = createParser(input)) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
@@ -191,7 +145,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            try (StreamingParser parser = createParser(input, config.exactNumbers)) {
+            try (StreamingParser parser = createParser(input)) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
