@@ -73,6 +73,26 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
 
+    /**
+     * Selects the native numeric policy for a compiled read operation.
+     * Called only during generated binder construction; never changes an
+     * existing context or the caller's Binder. Other native settings are retained.
+     */
+    public Fastjson2Binder forCompiledRead(boolean exactNumbers) {
+        if (config.exactNumbers == exactNumbers
+                && (exactNumbers || (!readerContext.isEnabled(JSONReader.Feature.UseBigDecimalForDoubles)
+                && !readerContext.isEnabled(JSONReader.Feature.UseBigDecimalForFloats)))) {
+            return this;
+        }
+        Fastjson2Binder binder = new Fastjson2Binder(readerContext, writerContext,
+                exactNumbers ? NodeConfig.EXACT_NUMBERS : NodeConfig.DEFAULT);
+        if (!exactNumbers) {
+            binder.readerContext.config(JSONReader.Feature.UseBigDecimalForDoubles, false);
+            binder.readerContext.config(JSONReader.Feature.UseBigDecimalForFloats, false);
+        }
+        return binder;
+    }
+
     private static JSONReader.Context _copyReadContext(JSONReader.Context source) {
         JSONReader.Context copy = new JSONReader.Context(source.getProvider(), source.getFeatures());
         copy.setMaxLevel(source.getMaxLevel());

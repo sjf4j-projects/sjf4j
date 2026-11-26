@@ -44,6 +44,7 @@ public final class GeneratedClass {
     private final List<Member> constructorInitializers = new ArrayList<>();
 
     private String backendBinderType;
+    private String backendBinderDefaultArguments;
 
     private boolean valid = true;
 
@@ -165,8 +166,9 @@ public final class GeneratedClass {
     }
 
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
-    public void enableBackendBinder(String binderType) {
+    public void enableBackendBinder(String binderType, String defaultArguments) {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
+        this.backendBinderDefaultArguments = Asserts.notNull(defaultArguments, "defaultArguments");
     }
 
     /** Adds an assignment to the generated constructor. */
@@ -280,13 +282,12 @@ public final class GeneratedClass {
         if (backendBinderType == null) {
             for (Member initializer : constructorInitializers) initializer.write(out);
         } else {
-            out.line("this(new " + backendBinderType + "());");
+            out.line("this(new " + backendBinderType + "(" + backendBinderDefaultArguments + "));");
         }
         out.endBlock();
         if (backendBinderType != null) {
             out.blank();
             out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
-            out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
             for (Member initializer : constructorInitializers) initializer.write(out);
             out.endBlock();
         }
