@@ -111,7 +111,7 @@ final class PathEmitter {
             return null;
         }
 
-        ResolvedGet resolved = new ResolvedGet(plan, steps, currentType);
+        ResolvedGet resolved = new ResolvedGet(plan, steps);
         return out -> emitGet(out, resolved);
     }
 
@@ -300,8 +300,7 @@ final class PathEmitter {
             return null;
         }
 
-        ResolvedPut resolved = new ResolvedPut(plan, steps, currentType,
-                target, valueType, oldType);
+        ResolvedPut resolved = new ResolvedPut(plan, steps, target, oldType);
         return out -> emitPut(out, resolved);
     }
 
@@ -2025,16 +2024,13 @@ final class PathEmitter {
 
         final NavigatorPlan.Get plan;
         final List<Step> steps;
-        final TypeMirror resultType;
 
         ResolvedGet(
                 NavigatorPlan.Get plan,
-                List<Step> steps,
-                TypeMirror resultType) {
+                List<Step> steps) {
 
             this.plan = plan;
             this.steps = steps;
-            this.resultType = resultType;
         }
     }
 
@@ -2044,25 +2040,18 @@ final class PathEmitter {
 
         final List<Step> steps;
 
-        final TypeMirror parentType;
         final Step target;
-
-        final TypeMirror valueType;
         final TypeMirror oldType;
 
         ResolvedPut(
                 NavigatorPlan.Put plan,
                 List<Step> steps,
-                TypeMirror parentType,
                 Step target,
-                TypeMirror valueType,
                 TypeMirror oldType) {
 
             this.plan = plan;
             this.steps = steps;
-            this.parentType = parentType;
             this.target = target;
-            this.valueType = valueType;
             this.oldType = oldType;
         }
     }

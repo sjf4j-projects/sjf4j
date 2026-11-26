@@ -293,8 +293,8 @@ final class SchemaResourceResolver {
                     Path sourceSet = directory.getParent();
                     if (sourceSet != null) {
                         Path src = sourceSet.getParent();
-                        if (src != null && src.getFileName() != null
-                                && "src".equals(src.getFileName().toString())) {
+                        Path srcName = src == null ? null : src.getFileName();
+                        if (srcName != null && "src".equals(srcName.toString())) {
                             return sourceSet.resolve("resources").normalize();
                         }
                     }

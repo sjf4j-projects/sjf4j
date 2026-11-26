@@ -154,8 +154,6 @@ final class AnnotationValidator {
             return;
         }
 
-        TypeElement type = (TypeElement) enclosing;
-
     }
 
     /*

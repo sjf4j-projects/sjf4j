@@ -100,8 +100,8 @@ final class SchemaCompiler {
         this.metadata = metadata;
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
-        this.arrays = new ArrayCompiler(context, this);
-        this.oneOf = new OneOfCompiler(context, objects, this);
+        this.arrays = new ArrayCompiler(this);
+        this.oneOf = new OneOfCompiler(context, this);
     }
 
     /** The codec view belongs to the enclosing compiled validator interface. */

@@ -545,9 +545,4 @@ final class FindEmitter {
     private String localType(TypeMirror type) {
         return types.boxed(types.concrete(type)).toString();
     }
-
-    private String convertResult(TypeMirror type, String expression) {
-        if (types.isObject(type)) return expression;
-        return "(" + localType(type) + ") " + expression;
-    }
 }

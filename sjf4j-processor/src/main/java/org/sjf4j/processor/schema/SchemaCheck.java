@@ -258,7 +258,6 @@ abstract class SchemaCheck {
         final Diagnostic minPropertiesDiagnostic;
         final Diagnostic maxPropertiesDiagnostic;
         final Diagnostic requiredDiagnostic;
-        final Diagnostic dependentRequiredDiagnostic;
         final Diagnostic additionalPropertiesDiagnostic;
         final Diagnostic propertyNamesDiagnostic;
         final int staticPropertyCount;
@@ -276,7 +275,7 @@ abstract class SchemaCheck {
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
                     Diagnostic typeDiagnostic, Diagnostic minPropertiesDiagnostic,
                     Diagnostic maxPropertiesDiagnostic, Diagnostic requiredDiagnostic,
-                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic,
+                    Diagnostic additionalPropertiesDiagnostic,
                     Diagnostic propertyNamesDiagnostic) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
@@ -294,7 +293,6 @@ abstract class SchemaCheck {
             this.minPropertiesDiagnostic = minPropertiesDiagnostic;
             this.maxPropertiesDiagnostic = maxPropertiesDiagnostic;
             this.requiredDiagnostic = requiredDiagnostic;
-            this.dependentRequiredDiagnostic = dependentRequiredDiagnostic;
             this.additionalPropertiesDiagnostic = additionalPropertiesDiagnostic;
             this.propertyNamesDiagnostic = propertyNamesDiagnostic;
             this.staticPropertyCount = staticPropertyCount;
@@ -345,11 +343,9 @@ abstract class SchemaCheck {
 
     static final class Required {
         final String name;
-        final String staticAccess;
 
-        Required(String name, String staticAccess) {
+        Required(String name) {
             this.name = name;
-            this.staticAccess = staticAccess;
         }
     }
 

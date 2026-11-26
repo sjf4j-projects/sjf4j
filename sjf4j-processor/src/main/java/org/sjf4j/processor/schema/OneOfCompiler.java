@@ -29,12 +29,10 @@ import java.util.Set;
  */
 final class OneOfCompiler {
     private final ProcessorContext context;
-    private final ObjectCompiler objects;
     private final SchemaCompiler compiler;
 
-    OneOfCompiler(ProcessorContext context, ObjectCompiler objects, SchemaCompiler compiler) {
+    OneOfCompiler(ProcessorContext context, SchemaCompiler compiler) {
         this.context = context;
-        this.objects = objects;
         this.compiler = compiler;
     }
 
