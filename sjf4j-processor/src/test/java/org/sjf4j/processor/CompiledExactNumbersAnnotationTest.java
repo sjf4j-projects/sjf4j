@@ -35,7 +35,7 @@ class CompiledExactNumbersAnnotationTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void annotationControlsAllReadPathsAndInheritedOverrides() throws Exception {
+    void annotationControlsAllReadPathsIncludingInheritedMethods() throws Exception {
         for (String backend : BACKENDS) {
             String format = backend.equals("SNAKE") ? ",format=Format.YAML" : "";
             String annotation = "@CompiledBinder(backend=Backend." + backend + format;
@@ -48,35 +48,29 @@ class CompiledExactNumbersAnnotationTest {
                     + " public double typed; public java.math.BigDecimal decimal; }");
             sources.put("fixture/Base.java",
                     "package fixture; import org.sjf4j.annotation.binding.Read;"
-                    + "public interface Base { @Read Number inherited(String json);"
-                    + " @Read(exactNumbers=false) Number inheritedOrdinary(String json); }");
+                    + "public interface Base { @Read Number inherited(String json); }");
             sources.put("fixture/Binder.java",
                     "package fixture; import java.util.*; import java.io.*; import org.sjf4j.annotation.binding.*;"
                     + annotation + ",exactNumbers=true) public interface Binder extends Base {"
-                    + " @Read Model read(String json); @Read(exactNumbers=false) Model ordinary(String json);"
+                    + " @Read Model read(String json);"
                     + " @Read Model bytes(byte[] json); @Read Model stream(InputStream json);"
                     + " @Read Model reader(Reader json); @Read Object any(String json);"
-                    + " @Read Map<String,Object> map(String json); @Read List<Object> list(String json);"
-                    + " @Read(exactNumbers=false) Object ordinaryAny(String json); }");
+                    + " @Read Map<String,Object> map(String json); @Read List<Object> list(String json); }");
             sources.put("fixture/DefaultBinder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + annotation + ") public interface DefaultBinder {"
-                    + " @Read Number read(String json); @Read(exactNumbers=true) Number exact(String json); }");
-            sources.put("fixture/ExactOnly.java",
-                    "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + annotation + ",exactNumbers=true) public interface ExactOnly { @Read Number read(String json); }");
-            sources.put("fixture/OrdinaryOnly.java",
-                    "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + annotation + ") public interface OrdinaryOnly { @Read Number read(String json); }");
+                    + annotation + ") public interface DefaultBinder extends Binder {}");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("readNumberExact()"), generated);
-            assertTrue(generated.contains("readNumber()"), generated);
+            assertFalse(generated.contains("readNumber()"), generated);
             assertTrue(generated.contains("NodeConfig.EXACT_NUMBERS"), generated);
-            assertTrue(generated.contains("NodeConfig.DEFAULT"), generated);
+            String ordinarySource = compiled.generatedSource("fixture/DefaultBinder_Impl.java");
+            assertTrue(ordinarySource.contains("readNumber()"), ordinarySource);
+            assertFalse(ordinarySource.contains("readNumberExact()"), ordinarySource);
+            assertTrue(ordinarySource.contains("NodeConfig.DEFAULT"), ordinarySource);
             assertEquals(backend.equals("FASTJSON2"), generated.contains(".forCompiledRead("), generated);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class type = loader.loadClass("fixture.Binder");
@@ -84,13 +78,8 @@ class CompiledExactNumbersAnnotationTest {
                 assertEquals(0, Arrays.stream(impl.getDeclaredFields())
                         .filter(f -> f.getType() == NodeConfig.class).count(), backend);
                 Class defaultType = loader.loadClass("fixture.DefaultBinder");
-                Class exactOnly = loader.loadClass("fixture.ExactOnly");
-                Class ordinaryOnly = loader.loadClass("fixture.OrdinaryOnly");
                 if (backend.equals("FASTJSON2")) {
-                    assertEquals(2, Arrays.stream(impl.getDeclaredFields())
-                            .filter(f -> f.getType() == Fastjson2Binder.class).count());
-                    for (String simpleName : new String[]{"ExactOnly", "OrdinaryOnly"}) {
-                        Class<?> single = loader.loadClass("fixture." + simpleName + "_Impl");
+                    for (Class<?> single : new Class<?>[]{impl, loader.loadClass("fixture.DefaultBinder_Impl")}) {
                         assertEquals(1, Arrays.stream(single.getDeclaredFields())
                                 .filter(f -> f.getType() == Fastjson2Binder.class).count());
                     }
@@ -98,7 +87,8 @@ class CompiledExactNumbersAnnotationTest {
                 for (NodeConfig config : new NodeConfig[]{NodeConfig.DEFAULT, NodeConfig.EXACT_NUMBERS}) {
                     Object binder = CompiledTestBinders.create(type, backend, config);
                     checkModel(type.getMethod("read", String.class).invoke(binder, MODEL), true);
-                    checkModel(type.getMethod("ordinary", String.class).invoke(binder, MODEL), false);
+                    Object ordinary = CompiledTestBinders.create(defaultType, backend, config);
+                    checkModel(type.getMethod("read", String.class).invoke(ordinary, MODEL), false);
                     byte[] bytes = MODEL.getBytes(StandardCharsets.UTF_8);
                     checkModel(type.getMethod("bytes", byte[].class).invoke(binder, bytes), true);
                     checkModel(type.getMethod("stream", InputStream.class)
@@ -106,9 +96,9 @@ class CompiledExactNumbersAnnotationTest {
                     checkModel(type.getMethod("reader", Reader.class)
                             .invoke(binder, new StringReader(MODEL)), true);
                     checkNumber(type.getMethod("inherited", String.class).invoke(binder, DECIMAL), true);
-                    checkNumber(type.getMethod("inheritedOrdinary", String.class).invoke(binder, DECIMAL), false);
+                    checkNumber(type.getMethod("inherited", String.class).invoke(ordinary, DECIMAL), false);
                     checkNumber(type.getMethod("any", String.class).invoke(binder, DECIMAL), true);
-                    checkNumber(type.getMethod("ordinaryAny", String.class).invoke(binder, DECIMAL), false);
+                    checkNumber(type.getMethod("any", String.class).invoke(ordinary, DECIMAL), false);
                     Map<?, ?> map = (Map<?, ?>) type.getMethod("map", String.class)
                             .invoke(binder, "{\"n\":" + DECIMAL + "}");
                     checkNumber(map.get("n"), true);
@@ -119,18 +109,11 @@ class CompiledExactNumbersAnnotationTest {
                     assertEquals(new BigInteger("9223372036854775808"), list.get(2));
                     assertEquals(0, new BigDecimal("1.25e-400").compareTo((BigDecimal) list.get(3)));
 
-                    Object inverse = CompiledTestBinders.create(defaultType, backend, config);
-                    checkNumber(defaultType.getMethod("read", String.class).invoke(inverse, DECIMAL), false);
-                    checkNumber(defaultType.getMethod("exact", String.class).invoke(inverse, DECIMAL), true);
-                    checkNumber(exactOnly.getMethod("read", String.class).invoke(
-                            CompiledTestBinders.create(exactOnly, backend, config), DECIMAL), true);
-                    checkNumber(ordinaryOnly.getMethod("read", String.class).invoke(
-                            CompiledTestBinders.create(ordinaryOnly, backend, config), DECIMAL), false);
                 }
-                checkNumber(exactOnly.getMethod("read", String.class)
-                        .invoke(CompiledInstances.create(exactOnly), DECIMAL), true);
-                checkNumber(ordinaryOnly.getMethod("read", String.class)
-                        .invoke(CompiledInstances.create(ordinaryOnly), DECIMAL), false);
+                checkNumber(type.getMethod("inherited", String.class)
+                        .invoke(CompiledInstances.create(type), DECIMAL), true);
+                checkNumber(type.getMethod("inherited", String.class)
+                        .invoke(CompiledInstances.create(defaultType), DECIMAL), false);
             }
         }
     }
@@ -160,23 +143,28 @@ class CompiledExactNumbersAnnotationTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + format
                     + ",exactNumbers=true,registries={Codecs.class}) public interface Binder {"
-                    + " @Read Wrapped codec(String json); @Read(exactNumbers=false) Wrapped ordinaryCodec(String json);"
-                    + " @Read Animal animal(String json); @Read(exactNumbers=false) Animal ordinaryAnimal(String json); }");
+                    + " @Read Wrapped codec(String json); @Read Animal animal(String json); }");
+            sources.put("fixture/DefaultBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + format
+                    + ",registries={Codecs.class}) public interface DefaultBinder extends Binder {}");
             NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
                 Class type = loader.loadClass("fixture.Binder");
                 Object binder = CompiledTestBinders.create(type, backend, NodeConfig.DEFAULT);
+                Object ordinaryBinder = CompiledTestBinders.create(loader.loadClass("fixture.DefaultBinder"),
+                        backend, NodeConfig.EXACT_NUMBERS);
                 Object wrapped = type.getMethod("codec", String.class).invoke(binder, DECIMAL);
                 checkNumber(wrapped.getClass().getField("n").get(wrapped), true);
-                Object ordinary = type.getMethod("ordinaryCodec", String.class).invoke(binder, DECIMAL);
+                Object ordinary = type.getMethod("codec", String.class).invoke(ordinaryBinder, DECIMAL);
                 checkNumber(ordinary.getClass().getField("n").get(ordinary), false);
                 for (boolean exact : new boolean[]{true, false}) {
                     // Values on both sides of the discriminator must use the same policy.
                     String json = "{\"n\":" + DECIMAL + ",\"kind\":\"dog\",\"raw\":" + DECIMAL + "}";
-                    Object animal = type.getMethod(exact ? "animal" : "ordinaryAnimal", String.class)
-                            .invoke(binder, json);
+                    Object animal = type.getMethod("animal", String.class)
+                            .invoke(exact ? binder : ordinaryBinder, json);
                     checkNumber(animal.getClass().getField("n").get(animal), exact);
                     checkNumber(animal.getClass().getField("raw").get(animal), exact);
                 }
