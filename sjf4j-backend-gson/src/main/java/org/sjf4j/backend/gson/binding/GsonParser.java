@@ -20,6 +20,8 @@ import java.util.Map;
 /** StreamingParser backed directly by a Gson {@link JsonReader}. */
 public final class GsonParser extends StreamingParser {
 
+    private final boolean exactNumbers;
+
     private final JsonReader reader;
 
     /**
@@ -32,7 +34,8 @@ public final class GsonParser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public GsonParser(JsonReader reader, boolean exactNumbers) {
-        super(Backend.GSON, exactNumbers);
+        super(Backend.GSON);
+        this.exactNumbers = exactNumbers;
         this.reader = Asserts.notNull(reader, "reader");
     }
 

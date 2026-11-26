@@ -46,6 +46,8 @@ import java.util.UUID;
  */
 public final class Jackson2Parser extends StreamingParser {
 
+    private final boolean exactNumbers;
+
     private final JsonParser parser;
     private boolean prefetched;
 
@@ -59,7 +61,8 @@ public final class Jackson2Parser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public Jackson2Parser(JsonParser parser, boolean exactNumbers) {
-        super(Backend.JACKSON2, exactNumbers);
+        super(Backend.JACKSON2);
+        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
         // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;

@@ -47,12 +47,6 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
         this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");
     }
 
-    /** Returns a binder with the requested numeric policy, retaining native settings. */
-    public SnakeBinder withExactNumbers(boolean exactNumbers) {
-        return config.exactNumbers == exactNumbers ? this
-                : new SnakeBinder(loaderOptions, dumperOptions, numberConfig(exactNumbers));
-    }
-
     @Override
     public SnakeParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");

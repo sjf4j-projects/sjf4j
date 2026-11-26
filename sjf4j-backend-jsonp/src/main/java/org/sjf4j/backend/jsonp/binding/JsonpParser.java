@@ -25,6 +25,8 @@ import java.util.Map;
  */
 public final class JsonpParser extends StreamingParser {
 
+    private final boolean exactNumbers;
+
     private final JsonParser parser;
     private JsonParser.Event current;
 
@@ -38,7 +40,8 @@ public final class JsonpParser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public JsonpParser(JsonParser parser, boolean exactNumbers) {
-        super(Backend.JSONP, exactNumbers);
+        super(Backend.JSONP);
+        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
         try {
             current = parser.currentEvent();

@@ -37,6 +37,8 @@ import java.util.Map;
 /** StreamingParser backed directly by SnakeYAML parser events. */
 public final class SnakeParser extends StreamingParser {
 
+    private final boolean exactNumbers;
+
     private static final Resolver RESOLVER = new Resolver();
     private static final String TAG_NULL = Tag.NULL.getValue();
     private static final String TAG_BOOLEAN = Tag.BOOL.getValue();
@@ -68,7 +70,8 @@ public final class SnakeParser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public SnakeParser(Parser parser, boolean exactNumbers) {
-        super(Backend.SNAKE, exactNumbers);
+        super(Backend.SNAKE);
+        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
     }
 

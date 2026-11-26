@@ -58,12 +58,6 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
         this.gson = Asserts.notNull(gson, "gson");
     }
 
-    /** Returns a binder with the requested numeric policy, retaining native settings. */
-    public GsonBinder withExactNumbers(boolean exactNumbers) {
-        return config.exactNumbers == exactNumbers ? this
-                : new GsonBinder(gson, numberConfig(exactNumbers));
-    }
-
     /**
      * Creates a streaming reader that wraps the supplied Gson reader.
      * @param reader the Gson reader

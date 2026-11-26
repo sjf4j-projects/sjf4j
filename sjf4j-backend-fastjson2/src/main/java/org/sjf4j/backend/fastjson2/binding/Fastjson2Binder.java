@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Generator> {
 
     private final JSONReader.Context readerContext;
-    private final long readerFeatures;
     private final JSONWriter.Context writerContext;
 
     /** Creates a binder with default Fastjson2 contexts. */
@@ -60,17 +59,11 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
                            NodeConfig config) {
-        this(readerContext, writerContext, config, Asserts.notNull(readerContext, "readerContext").getFeatures());
-    }
-
-    private Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                            NodeConfig config, long readerFeatures) {
         super(config);
+        Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
         // Never toggle features on a context shared by active readers/binders.
         this.readerContext = _copyReadContext(readerContext);
-        this.readerFeatures = readerFeatures;
-        this.readerContext.setFeatures(readerFeatures);
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals, !config.exactNumbers);
         if (config.exactNumbers) {
             // Fastjson2 uses this feature for exponent literals as well.
@@ -102,30 +95,14 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
      * --------------------------------------------------------------
      */
 
-    /** Returns a binder with the requested numeric policy, retaining native settings. */
-    public Fastjson2Binder withExactNumbers(boolean exactNumbers) {
-        return config.exactNumbers == exactNumbers ? this
-                : new Fastjson2Binder(readerContext, writerContext, numberConfig(exactNumbers), readerFeatures);
-    }
-
     /**
      * Creates a streaming reader that wraps the supplied Fastjson2 reader.
-     * In exact mode the supplied reader must already have an exact numeric
-     * context; this method does not mutate caller-owned reader settings.
+     * The supplied reader uses its own native numeric configuration.
      * @param reader the Fastjson2 reader
      * @return a SJF4J streaming reader
      */
     public Fastjson2Parser createParser(JSONReader reader) {
         Asserts.notNull(reader, "reader");
-        if (config.exactNumbers) {
-            JSONReader.Context context = reader.getContext();
-            if (context.isEnabled(JSONReader.Feature.UseDoubleForDecimals)
-                    || context.isEnabled(JSONReader.Feature.UseLongForInts)
-                    || !(context.isEnabled(JSONReader.Feature.UseBigDecimalForDoubles)
-                    || context.isEnabled(JSONReader.Feature.UseBigDecimalForFloats))) {
-                throw new BindingException("native Fastjson2 reader context does not support exactNumbers");
-            }
-        }
         return new Fastjson2Parser(reader);
     }
 

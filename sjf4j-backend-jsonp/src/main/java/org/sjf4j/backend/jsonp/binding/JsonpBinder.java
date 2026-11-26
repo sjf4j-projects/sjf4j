@@ -57,12 +57,6 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
         this.provider = Asserts.notNull(provider, "provider");
     }
 
-    /** Returns a binder with the requested numeric policy, retaining native settings. */
-    public JsonpBinder withExactNumbers(boolean exactNumbers) {
-        return config.exactNumbers == exactNumbers ? this
-                : new JsonpBinder(provider, numberConfig(exactNumbers));
-    }
-
     /**
      * Creates a streaming reader that wraps the supplied JSON-P parser.
      * @param parser the JSON-P parser
