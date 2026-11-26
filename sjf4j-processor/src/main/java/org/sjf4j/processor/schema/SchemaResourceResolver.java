@@ -1,6 +1,5 @@
 package org.sjf4j.processor.schema;
 
-import org.sjf4j.Sjf4j;
 import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.CompilationContext;
@@ -143,7 +142,7 @@ final class SchemaResourceResolver {
                 } else {
                     JsonSchema mapped = external.get(documentUri);
                     if (mapped != null) {
-                        rootDocument = Sjf4j.global().toJsonString(mapped);
+                        rootDocument = SchemaUtil.writeJson(mapped);
                         rootFromExternal = true;
                     } else {
                         rootDocument = null;
@@ -172,7 +171,7 @@ final class SchemaResourceResolver {
         // externalSchemas is an input representation; the registry only sees
         // ordinary (retrieval URI, JsonSchema) pairs.
         for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-            String document = Sjf4j.global().toJsonString(entry.getValue());
+            String document = SchemaUtil.writeJson(entry.getValue());
             String present = resources.get(entry.getKey());
             if (present != null) {
                 if (!(entry.getKey().equals(documentUri) && rootFromExternal)) {
