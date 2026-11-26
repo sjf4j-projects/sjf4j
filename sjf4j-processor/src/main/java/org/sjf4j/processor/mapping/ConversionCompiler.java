@@ -18,6 +18,8 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +53,115 @@ public final class ConversionCompiler {
     }
 
     /**
+     * Compiles all selected conversions before the source emitter is created.
+     * Keep identity lookup and traversal order independent: helper selection and
+     * imported mapper naming depend on the original method/assignment order.
+     */
+    ConversionPlan compileAll(List<MappingCompiler.CompiledMethod> methods, GeneratedClass generated) {
+        Map<ConverterResolver.Conversion, CompiledConversion> compiled = new IdentityHashMap<>();
+        List<CompiledConversion> ordered = new ArrayList<>();
+        Map<String, TypeElement> importedMappers = new LinkedHashMap<>();
+        for (MappingCompiler.CompiledMethod method : methods) {
+            if (method.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) {
+                if (!compileSelected(method.plan(), method.rootConversion(), generated,
+                        compiled, ordered, importedMappers)) return null;
+                continue;
+            }
+            for (MappingCompiler.ConstructorArgument argument : method.constructorArguments()) {
+                if (!compileValue(method.plan(), argument.value(), generated,
+                        compiled, ordered, importedMappers)) return null;
+            }
+            for (MappingCompiler.Assignment assignment : method.assignments()) {
+                if (!compileValue(method.plan(), assignment.value(), generated,
+                        compiled, ordered, importedMappers)) return null;
+            }
+        }
+        return new ConversionPlan(compiled, ordered, new ArrayList<>(importedMappers.values()));
+    }
+
+    private boolean compileValue(MappingPlan plan, MappingCompiler.Value value, GeneratedClass generated,
+                                 Map<ConverterResolver.Conversion, CompiledConversion> compiled,
+                                 List<CompiledConversion> ordered, Map<String, TypeElement> importedMappers) {
+        return value.kind() != MappingCompiler.Value.Kind.READ ||
+                compileSelected(plan, value.conversion(), generated, compiled, ordered, importedMappers);
+    }
+
+    private boolean compileSelected(MappingPlan plan, ConverterResolver.Conversion conversion,
+                                    GeneratedClass generated,
+                                    Map<ConverterResolver.Conversion, CompiledConversion> compiled,
+                                    List<CompiledConversion> ordered, Map<String, TypeElement> importedMappers) {
+        if (conversion == null) return false;
+        if (compiled.containsKey(conversion)) return true;
+        CompiledConversion resolved = compile(plan, conversion, generated);
+        if (resolved == null) return false;
+        compiled.put(conversion, resolved);
+        ordered.add(resolved);
+        inspect(resolved, importedMappers);
+        return true;
+    }
+
+    private void inspect(CompiledConversion conversion, Map<String, TypeElement> importedMappers) {
+        switch (conversion.kind()) {
+            case METHOD:
+                if (conversion.mapperType() != null) {
+                    TypeElement mapper = conversion.mapperType();
+                    importedMappers.putIfAbsent(mapper.getQualifiedName().toString(), mapper);
+                }
+                return;
+
+            case RAW_CAST:
+            case SCALAR:
+            case LENIENT_SCALAR:
+            case ENUM:
+            case VALUE_CODEC:
+            case CODEC_ENCODE:
+            case ONE_OF:
+                return;
+
+            case CONTAINER:
+                inspect(conversion.elementConversion(), importedMappers);
+                return;
+
+            case MAP:
+                inspect(conversion.keyConversion(), importedMappers);
+                inspect(conversion.valueConversion(), importedMappers);
+                return;
+
+            case STRUCTURAL:
+                for (ConversionCompiler.StructuralArgument argument : conversion.arguments()) {
+                    inspect(argument.conversion(), importedMappers);
+                }
+
+                for (ConversionCompiler.StructuralProperty property :
+                        conversion.properties()) {
+
+                    inspect(property.conversion(), importedMappers);
+                }
+
+                ConversionCompiler.DynamicObjectPlan dynamic =
+                        conversion.dynamicObject();
+
+                if (dynamic != null) {
+                    if (dynamic.valueConversion() != null) {
+                        inspect(dynamic.valueConversion(), importedMappers);
+                    }
+
+                    for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
+                        inspect(property.conversion(), importedMappers);
+                    }
+                }
+
+                return;
+
+            case DIRECT:
+                return;
+
+            default:
+                throw new AssertionError(conversion.kind());
+        }
+    }
+
+    /**
      * Compiles a previously selected conversion.
      */
     public CompiledConversion compile(MappingPlan plan, ConverterResolver.Conversion conversion,
@@ -80,7 +191,7 @@ public final class ConversionCompiler {
                 // Only runtime-unknown scalar leaves participate in lenient
                 // coercion; known Java types keep their compiled conversions.
                 if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN
-                        && plan.rawPolicy(context) == RawPolicy.LENIENT) {
+                        && plan.policy().raws == RawPolicy.LENIENT) {
                     return CompiledConversion.lenientScalar(conversion.sourceType(), conversion.targetType());
                 }
                 return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
@@ -576,7 +687,7 @@ public final class ConversionCompiler {
     private MappingPlan nestedPlan(MappingPlan parent, TypeMirror targetType) {
         return new MappingPlan(parent.method(), parent.methodType(), MappingPlan.Kind.CREATE,
                 targetType, null, parent.sources(), parent.sourceTypes(),
-                Collections.<MappingPlan.Rule>emptyList(), parent.options());
+                Collections.<MappingPlan.Rule>emptyList(), parent.policy());
     }
 
     /*

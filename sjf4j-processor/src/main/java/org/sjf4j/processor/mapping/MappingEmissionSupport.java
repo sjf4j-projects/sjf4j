@@ -2,7 +2,6 @@ package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.access.NodeAccess;
-import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.CompilationContext;
 
@@ -35,11 +34,6 @@ final class MappingEmissionSupport {
 
         return plan.sources()
                 .size() == 1;
-    }
-
-    static String option(CompilationContext context, MappingPlan plan, String name, String defaultValue) {
-        return AnnotationValues.text(
-                AnnotationValues.withDefaults(context.elements, plan.options(), name), defaultValue);
     }
 
     static String sizeExpression(String owner, NodeAccess.Kind kind) {

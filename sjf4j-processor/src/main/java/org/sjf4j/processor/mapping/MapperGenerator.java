@@ -74,17 +74,17 @@ public final class MapperGenerator {
          * 3. Compile recursive conversions
          * --------------------------------------------------------------
          */
-        ConversionEmitter conversionEmitter = new ConversionEmitter(context, type, plans, metadata);
-
-        if (!conversionEmitter.prepare(methods, generated)) return;
-
-        if (!generated.isValid()) return;
+        ConversionCompiler conversionCompiler = new ConversionCompiler(context, type, plans, metadata);
+        ConversionPlan conversions = conversionCompiler.compileAll(methods, generated);
+        if (conversions == null || !generated.isValid()) return;
 
         /*
          * --------------------------------------------------------------
          * 4. Emit methods
          * --------------------------------------------------------------
          */
+        ConversionEmitter conversionEmitter = new ConversionEmitter(context, conversions);
+        conversionEmitter.registerMembers(generated);
         MappingEmitter emitter = new MappingEmitter(context, conversionEmitter);
 
         for (MappingCompiler.CompiledMethod method : methods) {

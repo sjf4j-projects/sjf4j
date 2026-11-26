@@ -1,14 +1,13 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
-import org.sjf4j.processor.code.GeneratedNames;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
-import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
@@ -31,8 +30,8 @@ import java.util.Map;
 /**
  * Emits Java expressions and statements for fully compiled value conversions.
  *
- * <p>All recursive conversion analysis happens during {@link #prepare}. The
- * actual emission phase performs no converter, creator or property discovery.</p>
+ * <p>Consumes the compiled conversion graph. Registration allocates imported
+ * mapper names and shared source-equivalent helpers; it does not compile conversions.</p>
  */
 public final class ConversionEmitter
         implements MappingEmitter.ConversionWriter {
@@ -40,23 +39,17 @@ public final class ConversionEmitter
     private final CompilationContext context;
     private final TypeSystem types;
 
-    private final ConversionCompiler compiler;
-
-    private final IdentityHashMap<ConverterResolver.Conversion, ConversionCompiler.CompiledConversion> compiled =
-            new IdentityHashMap<>();
+    private final ConversionPlan plan;
     private final Map<String, String> importedMapperFields = new LinkedHashMap<>();
-    private final List<ConversionCompiler.CompiledConversion> preparedConversions = new ArrayList<>();
     private final IdentityHashMap<ConversionCompiler.CompiledConversion, String> signatures =
             new IdentityHashMap<>();
     private final Map<String, SharedConversion> sharedConversions = new LinkedHashMap<>();
     private String emittingShared;
-    private GeneratedNames generatedNames;
 
-    public ConversionEmitter(CompilationContext context, TypeElement mapper,
-                             List<MappingPlan> plans, CompiledMetadata metadata) {
+    ConversionEmitter(CompilationContext context, ConversionPlan plan) {
         this.context = context;
         this.types = context.types;
-        this.compiler = new ConversionCompiler(context, mapper, plans, metadata);
+        this.plan = plan;
     }
 
     /*
@@ -65,127 +58,17 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    /**
-     * Compiles all conversions referenced by mapper methods and registers
-     * generated fields required by imported mappers and runtime-only fallback
-     * conversions.
-     */
-    public boolean prepare(List<MappingCompiler.CompiledMethod> methods, GeneratedClass generated) {
-        this.generatedNames = generated.names();
-        for (MappingCompiler.CompiledMethod method : methods) {
-            if (!prepare(method, generated)) return false;
+    /** Registers source-level fields and helpers after semantic compilation. */
+    void registerMembers(GeneratedClass generated) {
+        for (TypeElement mapper : plan.importedMappers()) {
+            String type = mapper.getQualifiedName().toString();
+            String simple = mapper.getSimpleName().toString();
+            String hint = Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
+            if (!simple.endsWith("Mapper")) hint += "Mapper";
+            importedMapperFields.put(type, generated.names().field(hint));
         }
-
         registerFields(generated);
         prepareSharedHelpers(generated);
-        return true;
-    }
-
-    private boolean prepare(MappingCompiler.CompiledMethod method, GeneratedClass generated) {
-        if (method.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) return prepare(method.plan(), method.rootConversion(), generated);
-
-        for (MappingCompiler.ConstructorArgument argument : method.constructorArguments()) {
-            if (!prepare(method.plan(), argument.value(), generated)) return false;
-        }
-
-        for (MappingCompiler.Assignment assignment : method.assignments()) {
-            if (!prepare(method.plan(), assignment.value(), generated)) return false;
-        }
-
-        return true;
-    }
-
-    private boolean prepare(MappingPlan plan, MappingCompiler.Value value, GeneratedClass generated) {
-        if (value.kind() != MappingCompiler.Value.Kind.READ) return true;
-        return prepare(plan, value.conversion(), generated);
-    }
-
-    private boolean prepare(MappingPlan plan, ConverterResolver.Conversion conversion,
-                            GeneratedClass generated) {
-        if (conversion == null) return false;
-
-        if (compiled.containsKey(conversion)) return true;
-
-        ConversionCompiler.CompiledConversion resolved = compiler.compile(plan, conversion, generated);
-
-        if (resolved == null) return false;
-
-        compiled.put(conversion, resolved);
-        preparedConversions.add(resolved);
-        inspect(resolved);
-
-        return true;
-    }
-
-    private void inspect(ConversionCompiler.CompiledConversion conversion) {
-        switch (conversion.kind()) {
-            case METHOD:
-                if (conversion.mapperType() != null) {
-                    registerImportedMapper(conversion.mapperType());
-                }
-                return;
-
-            case RAW_CAST:
-            case SCALAR:
-            case LENIENT_SCALAR:
-            case ENUM:
-            case VALUE_CODEC:
-            case CODEC_ENCODE:
-            case ONE_OF:
-                return;
-
-            case CONTAINER:
-                inspect(conversion.elementConversion());
-                return;
-
-            case MAP:
-                inspect(conversion.keyConversion());
-                inspect(conversion.valueConversion());
-                return;
-
-            case STRUCTURAL:
-                for (ConversionCompiler.StructuralArgument argument : conversion.arguments()) {
-                    inspect(argument.conversion());
-                }
-
-                for (ConversionCompiler.StructuralProperty property :
-                        conversion.properties()) {
-
-                    inspect(
-                            property.conversion());
-                }
-
-                ConversionCompiler.DynamicObjectPlan dynamic =
-                        conversion.dynamicObject();
-
-                if (dynamic != null) {
-                    if (dynamic.valueConversion() != null) {
-                        inspect(dynamic.valueConversion());
-                    }
-
-                    for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
-                        inspect(property.conversion());
-                    }
-                }
-
-                return;
-
-            case DIRECT:
-                return;
-
-            default:
-                throw new AssertionError(conversion.kind());
-        }
-    }
-
-    private void registerImportedMapper(TypeElement mapper) {
-        String type = mapper.getQualifiedName().toString();
-        if (importedMapperFields.containsKey(type)) return;
-
-        String simple = mapper.getSimpleName().toString();
-        String hint = Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
-        if (!simple.endsWith("Mapper")) hint += "Mapper";
-        importedMapperFields.put(type, generatedNames.field(hint));
     }
 
     private void registerFields(GeneratedClass generated) {
@@ -215,7 +98,7 @@ public final class ConversionEmitter
     private void prepareSharedHelpers(GeneratedClass generated) {
         Map<String, SharedConversion> candidates = new LinkedHashMap<>();
 
-        for (ConversionCompiler.CompiledConversion conversion : preparedConversions) {
+        for (ConversionCompiler.CompiledConversion conversion : plan.ordered()) {
             collectShared(conversion, candidates);
         }
 
@@ -334,7 +217,7 @@ public final class ConversionEmitter
                        ConverterResolver.Conversion conversion, String source,
                        TypeMirror sourceType, TypeMirror targetType, boolean sourceKnownNonNull,
                        GeneratedClass generated) {
-        ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
+        ConversionCompiler.CompiledConversion resolved = this.plan.get(conversion);
 
         if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
@@ -344,9 +227,9 @@ public final class ConversionEmitter
     @Override
     public void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
                               ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
-                              TypeMirror targetType, String target, String policy, boolean sourceKnownNonNull,
+                              TypeMirror targetType, String target, ObjectPolicy policy, boolean sourceKnownNonNull,
                               GeneratedClass generated) {
-        ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
+        ConversionCompiler.CompiledConversion resolved = this.plan.get(conversion);
 
         if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
@@ -375,11 +258,11 @@ public final class ConversionEmitter
                 cast(resolved.sourceKeyType(), entry + ".getKey()") + ";");
         String key = emit(out, names, resolved.keyConversion(), rawKey);
 
-        if ("PUT_IF_ABSENT".equals(policy)) {
+        if (policy == ObjectPolicy.PUT_IF_ABSENT) {
             out.beginBlock("if (!" + target + ".containsKey(" + key + ") || " +
                     target + ".get(" + key + ") == null)");
 
-        } else if ("PUT_IF_PRESENT".equals(policy)) {
+        } else if (policy == ObjectPolicy.PUT_IF_PRESENT) {
             out.beginBlock("if (" + target + ".containsKey(" + key + ") && " +
                     target + ".get(" + key + ") != null)");
         }
@@ -391,7 +274,7 @@ public final class ConversionEmitter
         String value = emit(out, names, resolved.valueConversion(), rawValue);
         out.line(target + ".put(" + key + ", " + value + ");");
 
-        if (!"PUT".equals(policy)) {
+        if (policy != ObjectPolicy.PUT) {
             out.endBlock();
         }
 
