@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.schema;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.schema.JsonSchema;
@@ -33,7 +34,8 @@ import java.util.concurrent.TimeUnit;
 @Threads(1)
 @State(Scope.Thread)
 public class CreekSchemaFailureBenchmark {
-    private static final ObjectMapper JACKSON = new ObjectMapper();
+    private static final ObjectMapper JACKSON = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
     private SchemaPlan plan;
     private Object invalidRoot;

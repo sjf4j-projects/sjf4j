@@ -26,9 +26,11 @@ omitted). Schemas, validators, and inputs are prepared outside timed methods.
 **NetworkNT**
 
 ```java
+ObjectMapper jackson = new ObjectMapper()
+        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 Schema validator = SchemaRegistry
         .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
-        .getSchema(schema);
+        .getSchema(jackson.readTree(schema));
 validator.initializeValidators();
 boolean valid = validator.validate(jsonNode, OutputFormat.BOOLEAN);
 ```
@@ -94,6 +96,7 @@ Validation uses the same prebuilt Creek fixture; the NetworkNT comparison uses t
 ## Baseline policy
 
 - **Validation inputs:** use the prebuilt Creek fixture and Draft 2020-12 schema; the NetworkNT and SJF4J Runtime JsonNode results validate the same pre-parsed Jackson2 JsonNode. NetworkNT does not have a directly comparable POJO/Map result in this matrix.
+- **Current numeric policy:** generic Map and JsonNode fixtures use exact numeric parsing (BigDecimal decimals, lossless integers), and NetworkNT receives the exact schema tree. Typed POJO fields retain their declared Java types; roundtrip uses the same exact Jackson2 configuration and `@CompiledBinder(exactNumbers = true)`. The published v1.5.0 results predate this change and must not be treated as a controlled comparison with the new numeric policy.
 - **Compiled validator:** `fallback=true`; validation uses known-valid inputs with non-strict SJF4J `format` handling. POJO/Map compiled results must not be compared against NetworkNT JsonNode as equivalent representations.
 - **Roundtrip boundary:** serialize a Creek POJO to a new JSON `byte[]` and deserialize it; the validation variants additionally validate the deserialized POJO. The Jackson2-only baseline does **not** perform validation.
 - **Historical v1.5.0 profile:** 3 JMH forks, 5 × 400ms warmup and 5 × 400ms measurement, original untrimmed JMH mean. **Do not relabel these published values as Best 2 Mean.**
