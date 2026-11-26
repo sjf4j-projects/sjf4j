@@ -168,6 +168,71 @@ class NumbersTest {
     }
 
     @Test
+    void testExactMultipleOfFastPathMatchesDecimalRemainder() {
+        Number[] values = {
+                (byte) 6, (short) -6, 7, 6L, Long.MIN_VALUE, Long.MAX_VALUE,
+                BigInteger.valueOf(Long.MIN_VALUE), BigInteger.ONE.shiftLeft(64),
+                new BigDecimal("6.000"), new BigDecimal("6.000000000000000001"),
+                0.0d, -0.0f, 12.0d, -12.0f, 12.5d, -12.5f, 0.3d, 0.3f,
+                Double.MIN_VALUE, Float.MIN_VALUE,
+                Math.nextDown(0x1.0p53), 0x1.0p53, Math.nextUp(0x1.0p53),
+                -0x1.0p53, Math.nextDown(-0x1.0p53),
+                Math.nextDown(0x1.0p24f), 0x1.0p24f, Math.nextUp(0x1.0p24f),
+                -0x1.0p24f, Math.nextDown(-0x1.0p24f),
+                1000000064f, 1000000000000000128d, 1e20d, -3e20d
+        };
+        for (long divisor : new long[]{1, 2, 3, 7, 10, Long.MAX_VALUE}) {
+            BigDecimal decimal = BigDecimal.valueOf(divisor);
+            for (Number value : values) {
+                boolean expected = new BigDecimal(value.toString()).remainder(decimal).signum() == 0;
+                assertEquals(expected, Numbers.isMultipleOf(value, decimal, divisor),
+                        value.getClass().getSimpleName() + " " + value + " / " + divisor);
+            }
+        }
+        BigDecimal tenth = new BigDecimal("0.1");
+        assertTrue(Numbers.isMultipleOf(0.3f, tenth, 0L));
+        assertTrue(Numbers.isMultipleOf(0.3d, tenth, 0L));
+        assertFalse(Numbers.isMultipleOf(new BigDecimal("0.300000000000000001"), tenth, 0L));
+        BigDecimal huge = new BigDecimal("18446744073709551616");
+        assertTrue(Numbers.isMultipleOf(BigInteger.ONE.shiftLeft(64), huge, 0L));
+        assertFalse(Numbers.isMultipleOf(Long.MAX_VALUE, huge, 0L));
+    }
+
+    @Test
+    void testExactNumericOrderingAndHashContract() {
+        BigInteger max = new BigInteger("18446744073709551615");
+        assertTrue(Numbers.compare(max, max.add(BigInteger.ONE)) < 0);
+        assertTrue(Numbers.compare(max.negate(), max.negate().subtract(BigInteger.ONE)) > 0);
+        assertTrue(Numbers.compare(9007199254740993L, 9007199254740992d) > 0);
+        assertTrue(Numbers.compare(new BigDecimal("0.123456789123456789"),
+                new BigDecimal("0.123456789123456790")) < 0);
+        assertTrue(Numbers.compare(new BigDecimal("1e-400"), 0d) > 0);
+        assertTrue(Numbers.compare(new BigDecimal("1e400"), Double.MAX_VALUE) > 0);
+
+        Number[][] equalGroups = {
+                {0, -0.0d, -0.0f, BigInteger.ZERO, new BigDecimal("0.000")},
+                {1, 1L, 1.0f, 1.0d, BigInteger.ONE, new BigDecimal("1.000")},
+                {0.1f, 0.1d, new BigDecimal("0.100")},
+                {1e18d, 1000000000000000000L, new BigDecimal("1e18")},
+                {1e20d, new BigInteger("100000000000000000000"), new BigDecimal("1e20")},
+                {new BigDecimal(Double.toString((double) Long.MIN_VALUE)), (double) Long.MIN_VALUE},
+                {new BigDecimal(Float.toString(1000000064f)), 1000000064f},
+                {new BigDecimal(Double.toString(1000000000000000128d)), 1000000000000000128d}
+        };
+        for (Number[] group : equalGroups) {
+            for (Number left : group) {
+                for (Number right : group) {
+                    assertEquals(0, Numbers.compare(left, right), left + " vs " + right);
+                    assertEquals(Numbers.hash(left), Numbers.hash(right), left + " vs " + right);
+                }
+            }
+        }
+        // A widened Float is a different decimal from the original Float.
+        assertTrue(Numbers.compare(0.1f, (double) 0.1f) < 0);
+        assertTrue(Numbers.compare(16777217L, 16777216f) > 0);
+    }
+
+    @Test
     void testSemanticIntegerComparisonAndHashing() {
         assertFalse(Numbers.isSemanticInteger(null));
         assertTrue(Numbers.isSemanticInteger(12));
@@ -197,9 +262,12 @@ class NumbersTest {
             assertEquals(expected, Numbers.hash(value));
             assertEquals(expected, Numbers.hash(BigInteger.valueOf(value)));
             assertEquals(expected, Numbers.hash(new BigDecimal(value + ".0")));
-            if (value != Long.MAX_VALUE) {
-                assertEquals(expected, Numbers.hash((double) value));
-            }
+            double floating = (double) value;
+            // Compare/hash the decimal representation, not the result of a
+            // narrowing cast at the edges of the long range.
+            BigDecimal decimal = new BigDecimal(Double.toString(floating));
+            assertEquals(0, Numbers.compare(floating, decimal));
+            assertEquals(Numbers.hash(decimal), Numbers.hash(floating));
         }
 
         Number custom = new Number() {

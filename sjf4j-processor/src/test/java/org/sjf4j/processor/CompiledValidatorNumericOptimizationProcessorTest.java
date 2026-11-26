@@ -38,6 +38,7 @@ class CompiledValidatorNumericOptimizationProcessorTest {
             assertTrue(output.contains("value < -15L"), type + "\n" + output);
             assertTrue(output.contains("value >= 15L"), type + "\n" + output);
             assertFalse(output.contains("normalizeDecimal("), type + "\n" + output);
+            assertFalse(output.contains("Numbers.isMultipleOf("), type + "\n" + output);
             assertFalse(output.contains("isSemanticInteger("), type + "\n" + output);
             assertFalse(output.contains("new BigDecimal("), type + "\n" + output);
         }
@@ -48,9 +49,20 @@ class CompiledValidatorNumericOptimizationProcessorTest {
         String output = generated("{\"type\":\"integer\",\"multipleOf\":1,"
                 + "\"minimum\":0,\"maximum\":1}", "int");
         assertFalse(output.contains(" % "), output);
-        assertFalse(output.contains(".remainder("), output);
+        assertFalse(output.contains("Numbers.isMultipleOf("), output);
         assertTrue(output.contains("value < 0L"), output);
         assertTrue(output.contains("value > 1L"), output);
+    }
+
+    @Test
+    void floatingAndDynamicNumbersUseSharedExactRemainder() throws Exception {
+        String schema = "{\"type\":\"number\",\"multipleOf\":3}";
+        for (String type : new String[]{"float", "double", "java.lang.Float", "java.lang.Double", "Object"}) {
+            String output = generated(schema, type);
+            assertTrue(output.contains("Numbers.isMultipleOf("), type + "\n" + output);
+            assertTrue(output.contains(", 3L)"), type + "\n" + output);
+            assertFalse(output.contains(" % "), type + "\n" + output);
+        }
     }
 
     @Test
@@ -60,7 +72,7 @@ class CompiledValidatorNumericOptimizationProcessorTest {
         String output = generated(schema, "java.math.BigDecimal");
         assertEquals(2, count(output, "private static final BigDecimal"), output);
         assertEquals(1, count(output, "new BigDecimal(\"1.25\")"), output);
-        assertTrue(output.contains(".remainder("), output);
+        assertTrue(output.contains("Numbers.isMultipleOf("), output);
         assertTrue(output.contains("Numbers.compare("), output);
     }
 
@@ -87,7 +99,7 @@ class CompiledValidatorNumericOptimizationProcessorTest {
     void integerDivisorBeyondLongStillUsesExactDecimal() throws Exception {
         String output = generated("{\"type\":\"integer\","
                 + "\"multipleOf\":18446744073709551616}", "long");
-        assertTrue(output.contains(".remainder("), output);
+        assertTrue(output.contains("Numbers.isMultipleOf("), output);
         assertFalse(output.contains(" % "), output);
         assertEquals(1, count(output, "private static final BigDecimal"), output);
     }

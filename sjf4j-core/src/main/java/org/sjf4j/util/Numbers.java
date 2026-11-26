@@ -452,14 +452,56 @@ public final class Numbers {
      * Normalizes a number to stripped BigDecimal form.
      */
     public static BigDecimal normalizeDecimal(Number number) {
-        if (number instanceof BigDecimal) {
-            return ((BigDecimal) number).stripTrailingZeros();
-        }
-        return new BigDecimal(number.toString()).stripTrailingZeros();
+        return semanticDecimal(number).stripTrailingZeros();
+    }
+
+    // Use the number's decimal representation consistently for comparison,
+    // hashing and remainder. In particular, do not widen Float to Double:
+    // 0.1f is represented as "0.1", not "0.10000000149011612".
+    private static BigDecimal semanticDecimal(Number number) {
+        if (number instanceof BigDecimal) return (BigDecimal) number;
+        if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
+        if (isIntegralType(number)) return BigDecimal.valueOf(number.longValue());
+        if (number instanceof Double) return BigDecimal.valueOf(number.doubleValue());
+        return new BigDecimal(number.toString());
     }
 
     /**
-     * Compares two numbers using cross-type numeric semantics.
+     * Tests divisibility using decimal numeric semantics.
+     *
+     * @param number finite numeric value
+     * @param divisor positive decimal divisor
+     * @param divisorLong exact positive long value of divisor, or zero if it
+     *                    is fractional or outside the long range
+     */
+    public static boolean isMultipleOf(Number number, BigDecimal divisor, long divisorLong) {
+        if (divisorLong > 0L) {
+            if (isIntegralType(number)
+                    && (!(number instanceof BigInteger) || ((BigInteger) number).bitLength() <= 63)) {
+                return number.longValue() % divisorLong == 0;
+            }
+            if (isFloatingType(number)) {
+                double value = number.doubleValue();
+                long limit = exactFloatingIntegerLimit(number);
+                // Within this range an integral floating value has the same
+                // integer decimal representation as its lossless long cast.
+                // Do not divide in floating point: the quotient may round.
+                if (value >= -limit && value <= limit) {
+                    return value == Math.rint(value) && (long) value % divisorLong == 0;
+                }
+            }
+        }
+        return normalizeDecimal(number).remainder(divisor).signum() == 0;
+    }
+
+    private static long exactFloatingIntegerLimit(Number number) {
+        return number instanceof Float ? 1L << 24 : 1L << 53;
+    }
+
+    /**
+     * Compares finite numbers using cross-type decimal numeric semantics.
+     * Floating-point values use their Java decimal string representation;
+     * no precision already lost during parsing can be recovered.
      */
     public static int compare(Number source, Number target) {
         Asserts.notNull(source, "source");
@@ -475,13 +517,18 @@ public final class Numbers {
         boolean sourceFloating = isFloatingType(source);
         boolean targetFloating = isFloatingType(target);
         if (sourceFloating || targetFloating) {
-            boolean canCompareAsDouble = sourceFloating && targetFloating;
+            // Same floating type has monotonic decimal representations.
+            // Float/Double mixing requires decimal comparison, not widening.
+            boolean canCompareAsDouble = sourceFloating && targetFloating
+                    && source.getClass() == target.getClass();
 
-            if (!canCompareAsDouble) {
+            if (!sourceFloating || !targetFloating) {
                 Number integer = sourceFloating ? target : source;
+                Number floating = sourceFloating ? source : target;
                 if (isIntegralType(integer) && !(integer instanceof BigInteger)) {
                     long value = integer.longValue();
-                    canCompareAsDouble = value >= -(1L << 53) && value <= (1L << 53);
+                    long limit = exactFloatingIntegerLimit(floating);
+                    canCompareAsDouble = value >= -limit && value <= limit;
                 }
             }
 
@@ -494,7 +541,7 @@ public final class Numbers {
             }
         }
 
-        return toBigDecimal(source).compareTo(toBigDecimal(target));
+        return semanticDecimal(source).compareTo(semanticDecimal(target));
     }
 
 
@@ -511,23 +558,23 @@ public final class Numbers {
             }
             return Long.hashCode(n.longValue());
         }
-        if (n instanceof BigDecimal) {
-            BigDecimal value = ((BigDecimal) n).stripTrailingZeros();
-            if (value.scale() <= 0 && inLongRange(value)) {
-                return Long.hashCode(value.longValue());
-            }
-            return value.hashCode();
-        }
         if (n instanceof Float || n instanceof Double) {
             double d = n.doubleValue();
-            if (Double.isNaN(d) || Double.isInfinite(d)) {
+            if (!Double.isFinite(d)) {
                 return Double.hashCode(d);
             }
-            if (inLongRange(d) && d == Math.rint(d)) {
+            // Outside the exact-integer range, the decimal representation
+            // can differ from the integer produced by a primitive cast.
+            long limit = exactFloatingIntegerLimit(n);
+            if (d >= -limit && d <= limit && d == Math.rint(d)) {
                 return Long.hashCode((long) d);
             }
         }
-        return toBigDecimal(n).stripTrailingZeros().hashCode();
+        BigDecimal value = normalizeDecimal(n);
+        if (value.scale() <= 0 && inLongRange(value)) {
+            return Long.hashCode(value.longValue());
+        }
+        return value.hashCode();
     }
 
 }
