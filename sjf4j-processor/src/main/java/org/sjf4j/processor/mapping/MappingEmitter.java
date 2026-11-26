@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.MethodSignature;
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
@@ -66,7 +68,7 @@ public final class MappingEmitter {
 
         out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
         out.line("@Override");
-        out.beginBlock(methodHeader(plan));
+        out.beginBlock(MethodSignature.override(plan.method(), plan.methodType(), true));
         emitNullRootGuard(out, plan);
 
         if (compiled.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) {
@@ -419,7 +421,7 @@ public final class MappingEmitter {
                         "existing");
 
         out.line(
-                localType(
+                JavaExpressions.boxedType(types, 
                         access.readType()) +
                         " " +
                         existing +
@@ -883,7 +885,7 @@ public final class MappingEmitter {
                         // exactly once: an expression-valued converter must not
                         // be invoked twice by the null/default branch.
                         String raw = names.newName("constructorValue");
-                        out.line(localType(argument.value().type()) + " " + raw +
+                        out.line(JavaExpressions.boxedType(types, argument.value().type()) + " " + raw +
                                 " = " + values[i] + ";");
                         values[i] = "(" + raw + " == null ? " +
                                 primitiveDefault(argument.value().type().getKind()) +
@@ -999,7 +1001,7 @@ public final class MappingEmitter {
             String local = names.newName("sourceValue");
             locals[i - start] = local;
 
-            out.line((primitive ? read.type().toString() : localType(read.type())) +
+            out.line((primitive ? read.type().toString() : JavaExpressions.boxedType(types, read.type())) +
                     " " + local + " = " +
                     (primitive ? primitiveDefault(read.type().getKind()) : "null") + ";");
 
@@ -1112,7 +1114,7 @@ public final class MappingEmitter {
                     // A qualified multi-source root/property read needs only
                     // one guard. Read the leaf and convert in that same block.
                     String converted = names.newName("converted");
-                    out.line(localType(value.type()) + " " + converted + " = null;");
+                    out.line(JavaExpressions.boxedType(types, value.type()) + " " + converted + " = null;");
                     out.beginBlock("if (" + read.root().getSimpleName() + " != null)");
                     String source = emitRead(out, names, read, true, primitiveDirect);
                     String expression = conversions.emit(out, names, plan,
@@ -1136,7 +1138,7 @@ public final class MappingEmitter {
 
                 if (reached != null) {
                     String converted = names.newName("converted");
-                    out.line(localType(value.type()) + " " + converted + " = null;");
+                    out.line(JavaExpressions.boxedType(types, value.type()) + " " + converted + " = null;");
                     out.beginBlock("if (" + reached + ")");
                     String expression = conversions.emit(out, names, plan,
                             value.conversion(), source, read.type(), value.type(), false, generated);
@@ -1217,7 +1219,7 @@ public final class MappingEmitter {
                         .trim();
 
         String targetType =
-                localType(
+                JavaExpressions.boxedType(types, 
                         value.type());
 
         if (compute.startsWith("this::")) {
@@ -1327,7 +1329,7 @@ public final class MappingEmitter {
             String parameter = parameterNames[i].trim();
             MappingCompiler.Read input = inputs.get(i);
             if (input.rootValue() || input.steps().isEmpty()) {
-                out.line(localType(input.type()) + " " + parameter + " = " +
+                out.line(JavaExpressions.boxedType(types, input.type()) + " " + parameter + " = " +
                         input.root().getSimpleName() + ";");
             } else {
                 // Bind the final read directly to the named compute parameter.
@@ -1460,7 +1462,7 @@ public final class MappingEmitter {
                 // An optional primitive constructor argument defaults to zero
                 // (or false), while a boxed/reference result propagates null.
                 out.line(
-                        (primitiveLast ? valueType.toString() : localType(valueType)) +
+                        (primitiveLast ? valueType.toString() : JavaExpressions.boxedType(types, valueType)) +
                                 " " +
                                 value +
                                 " = " +
@@ -1476,7 +1478,7 @@ public final class MappingEmitter {
                     PathSegment.Index) {
 
                 out.line(
-                        localType(valueType) +
+                        JavaExpressions.boxedType(types, valueType) +
                                 " " +
                                 value +
                                 " = null;");
@@ -1507,7 +1509,7 @@ public final class MappingEmitter {
                                     ";");
                 } else {
                     out.line(
-                            (primitiveLast ? valueType.toString() : localType(valueType)) +
+                            (primitiveLast ? valueType.toString() : JavaExpressions.boxedType(types, valueType)) +
                                     " " +
                                     value +
                                     " = " +
@@ -1846,7 +1848,7 @@ public final class MappingEmitter {
                         "existing");
 
         out.line(
-                localType(
+                JavaExpressions.boxedType(types, 
                         access.readType()) +
                         " " +
                         existing +
@@ -2066,7 +2068,7 @@ public final class MappingEmitter {
                         "converted");
 
         out.line(
-                localType(type) +
+                JavaExpressions.boxedType(types, type) +
                         " " +
                         result +
                         " = " +
@@ -2136,7 +2138,7 @@ public final class MappingEmitter {
                         "existing");
 
         out.line(
-                localType(
+                JavaExpressions.boxedType(types, 
                         access.readType()) +
                         " " +
                         existing +
@@ -2329,7 +2331,7 @@ public final class MappingEmitter {
             }
 
             out.line(
-                    localType(
+                    JavaExpressions.boxedType(types, 
                             access.readType()) +
                             " " +
                             child +
@@ -2690,9 +2692,7 @@ public final class MappingEmitter {
                     return "new java.util.LinkedHashMap<>()";
                 }
 
-                return "new " +
-                        type +
-                        "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             case ARRAY_LIST:
                 if (types.isSameErasure(
@@ -2702,9 +2702,7 @@ public final class MappingEmitter {
                     return "new java.util.ArrayList<>()";
                 }
 
-                return "new " +
-                        type +
-                        "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             case OBJECT_JSON_OBJECT:
                 return "new org.sjf4j.JsonObject()";
@@ -2715,9 +2713,7 @@ public final class MappingEmitter {
             case OBJECT_POJO:
             case OBJECT_JOJO:
             case ARRAY_JAJO:
-                return "new " +
-                        type +
-                        "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             default:
                 throw new IllegalStateException(
@@ -2771,53 +2767,6 @@ public final class MappingEmitter {
         }
 
         return defaultValue;
-    }
-
-    private String methodHeader(MappingPlan plan) {
-        ExecutableElement method = plan.method();
-        StringBuilder result = new StringBuilder();
-
-        result.append("public ")
-                .append(plan.methodType().getReturnType())
-                .append(' ')
-                .append(method.getSimpleName())
-                .append('(');
-
-        List<? extends VariableElement> parameters = method.getParameters();
-        List<? extends TypeMirror> parameterTypes = plan.methodType().getParameterTypes();
-
-        for (int i = 0; i < parameters.size(); i++) {
-            if (i != 0) {
-                result.append(", ");
-            }
-
-            VariableElement parameter = parameters.get(i);
-            result.append(parameterTypes.get(i))
-                    .append(' ')
-                    .append(parameter.getSimpleName());
-        }
-
-        result.append(')');
-
-        List<? extends TypeMirror> thrown = plan.methodType().getThrownTypes();
-
-        if (!thrown.isEmpty()) {
-            result.append(" throws ");
-
-            for (int i = 0; i < thrown.size(); i++) {
-                if (i != 0) {
-                    result.append(", ");
-                }
-
-                result.append(thrown.get(i));
-            }
-        }
-
-        return result.toString();
-    }
-
-    private String localType(TypeMirror type) {
-        return types.boxed(types.concrete(type)).toString();
     }
 
     private String sizeExpression(String owner, NodeAccess.Kind kind) {

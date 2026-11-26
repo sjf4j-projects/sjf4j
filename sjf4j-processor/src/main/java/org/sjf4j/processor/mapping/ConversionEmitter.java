@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -231,8 +232,8 @@ public final class ConversionEmitter
 
         for (SharedConversion helper : sharedConversions.values()) {
             generated.addHelper(out -> {
-                out.beginBlock("private " + localType(helper.conversion.targetType())
-                        + " " + helper.name + "(" + localType(helper.conversion.sourceType())
+                out.beginBlock("private " + JavaExpressions.boxedType(types, helper.conversion.targetType())
+                        + " " + helper.name + "(" + JavaExpressions.boxedType(types, helper.conversion.sourceType())
                         + " source)");
                 NameAllocator locals = generated.names().helperLocals("source");
                 String previous = emittingShared;
@@ -370,7 +371,7 @@ public final class ConversionEmitter
         }
 
         String rawKey = names.newName("key");
-        out.line(localType(resolved.sourceKeyType()) + " " + rawKey + " = " +
+        out.line(JavaExpressions.boxedType(types, resolved.sourceKeyType()) + " " + rawKey + " = " +
                 cast(resolved.sourceKeyType(), entry + ".getKey()") + ";");
         String key = emit(out, names, resolved.keyConversion(), rawKey);
 
@@ -384,7 +385,7 @@ public final class ConversionEmitter
         }
 
         String rawValue = names.newName("value");
-        out.line(localType(resolved.sourceValueType()) + " " + rawValue + " = " +
+        out.line(JavaExpressions.boxedType(types, resolved.sourceValueType()) + " " + rawValue + " = " +
                 cast(resolved.sourceValueType(), entry + ".getValue()") + ";");
 
         String value = emit(out, names, resolved.valueConversion(), rawValue);
@@ -422,7 +423,7 @@ public final class ConversionEmitter
                 // Preserve the original single-evaluation semantics: callers may
                 // use the returned expression in both guards and assignments.
                 String result = names.newName("converted");
-                out.line(localType(conversion.targetType()) + " " + result
+                out.line(JavaExpressions.boxedType(types, conversion.targetType()) + " " + result
                         + " = " + helper.name + "(" + source + ");");
                 return result;
             }
@@ -492,10 +493,10 @@ public final class ConversionEmitter
                             ConversionCompiler.CompiledConversion conversion, String source) {
         String input = names.newName("enumSource");
         String result = names.newName("converted");
-        String target = localType(conversion.targetType());
+        String target = JavaExpressions.boxedType(types, conversion.targetType());
 
         // Evaluate the source once, including when it is a property getter.
-        out.line(localType(conversion.sourceType()) + " " + input + " = " + source + ";");
+        out.line(JavaExpressions.boxedType(types, conversion.sourceType()) + " " + input + " = " + source + ";");
         out.line(target + " " + result + " = null;");
         out.beginBlock("if (" + input + " != null)");
         out.beginBlock("switch (" + input + ")");
@@ -537,7 +538,7 @@ public final class ConversionEmitter
     private String emitRawCast(JavaWriter out, NameAllocator names, TypeMirror sourceType,
                                TypeMirror targetType, String source) {
         String result = names.newName("raw");
-        String type = localType(targetType);
+        String type = JavaExpressions.boxedType(types, targetType);
         if (type.indexOf('<') >= 0) {
             out.line("@SuppressWarnings(\"unchecked\")");
         }
@@ -559,7 +560,7 @@ public final class ConversionEmitter
     private String emitNodeMapperAs(JavaWriter out, NameAllocator names, TypeMirror targetType,
                                     String source) {
         String result = names.newName("converted");
-        String target = rawName(targetType);
+        String target = JavaExpressions.boxedRawType(types, context.typeUtils, targetType);
         String expr;
         if ("java.lang.String".equals(target)) {
             expr = "org.sjf4j.node.NodeMapper.asString(" + source + ", org.sjf4j.NodeConfig.DEFAULT)";
@@ -569,13 +570,13 @@ public final class ConversionEmitter
             expr = "org.sjf4j.node.NodeMapper.asChar(" + source + ", org.sjf4j.NodeConfig.DEFAULT)";
         } else if (isEnum(targetType)) {
             expr = "org.sjf4j.node.NodeMapper.asEnum(" + source + ", "
-                    + classLiteral(targetType) + ", org.sjf4j.NodeConfig.DEFAULT)";
+                    + JavaExpressions.boxedClassLiteral(types, context.typeUtils, targetType) + ", org.sjf4j.NodeConfig.DEFAULT)";
         } else {
             // Numeric targets are normalized and range-checked by NodeMapper.as.
             expr = "org.sjf4j.node.NodeMapper.as(" + source + ", "
-                    + classLiteral(targetType) + ", org.sjf4j.NodeConfig.DEFAULT)";
+                    + JavaExpressions.boxedClassLiteral(types, context.typeUtils, targetType) + ", org.sjf4j.NodeConfig.DEFAULT)";
         }
-        out.line(localType(targetType) + " " + result + " = " + expr + ";");
+        out.line(JavaExpressions.boxedType(types, targetType) + " " + result + " = " + expr + ";");
         return result;
     }
 
@@ -584,8 +585,8 @@ public final class ConversionEmitter
                               ConversionCompiler.CompiledConversion conversion, String source) {
         TypeMirror sourceType = types.boxed(conversion.sourceType());
         TypeMirror targetType = types.boxed(conversion.targetType());
-        String sourceName = rawName(sourceType);
-        String targetName = rawName(targetType);
+        String sourceName = JavaExpressions.boxedRawType(types, context.typeUtils, sourceType);
+        String targetName = JavaExpressions.boxedRawType(types, context.typeUtils, targetType);
 
         /*
          * A value declared as Object has no compile-time NodeKind. Keep the
@@ -601,9 +602,9 @@ public final class ConversionEmitter
          */
         if (isNumber(sourceName) && isNumber(targetName)) {
             String value = names.newName("converted");
-            out.line(localType(targetType) + " " + value + " = " + source
+            out.line(JavaExpressions.boxedType(types, targetType) + " " + value + " = " + source
                     + " == null ? null : org.sjf4j.util.Numbers.to(" + source
-                    + ", " + classLiteral(targetType) + ");");
+                    + ", " + JavaExpressions.boxedClassLiteral(types, context.typeUtils, targetType) + ");");
 
             return value;
         }
@@ -645,8 +646,8 @@ public final class ConversionEmitter
          */
         if ("java.lang.String".equals(sourceName) && isEnum(targetType)) {
             String value = names.newName("converted");
-            out.line(localType(targetType) + " " + value + " = " + source + " == null ? null : " +
-                    localType(targetType) + ".valueOf(" + source + ");");
+            out.line(JavaExpressions.boxedType(types, targetType) + " " + value + " = " + source + " == null ? null : " +
+                    JavaExpressions.boxedType(types, targetType) + ".valueOf(" + source + ");");
 
             return value;
         }
@@ -676,7 +677,7 @@ public final class ConversionEmitter
         NodeKind sourceKind = types.nodeKind(sourceType);
         NodeKind targetKind = types.nodeKind(targetType);
         String result = names.newName("converted");
-        String targetLocalType = localType(targetType);
+        String targetLocalType = JavaExpressions.boxedType(types, targetType);
 
         if (!sourceKnownNonNull) {
             out.line(targetLocalType + " " + result + " = null;");
@@ -726,7 +727,7 @@ public final class ConversionEmitter
 
         String item = names.newName("item");
 
-        out.line(localType(conversion.sourceElementType()) + " " + item + " = " +
+        out.line(JavaExpressions.boxedType(types, conversion.sourceElementType()) + " " + item + " = " +
                 sourceElementExpression(source, index, sourceKind, conversion.sourceElementType()) + ";");
 
         String converted = emit(out, names, conversion.elementConversion(), item);
@@ -744,7 +745,7 @@ public final class ConversionEmitter
 
         out.line("int " + index + " = 0;");
 
-        out.line("for (" + localType(conversion.sourceElementType()) + " " + item + " : " + source + ") {");
+        out.line("for (" + JavaExpressions.boxedType(types, conversion.sourceElementType()) + " " + item + " : " + source + ") {");
 
         out.indent();
 
@@ -788,7 +789,7 @@ public final class ConversionEmitter
                            boolean sourceKnownNonNull) {
         String result = names.newName("converted");
 
-        String targetType = localType(conversion.targetType());
+        String targetType = JavaExpressions.boxedType(types, conversion.targetType());
         if (!sourceKnownNonNull) {
             out.line(targetType + " " + result + " = null;");
             out.beginBlock("if (" + source + " != null)");
@@ -815,10 +816,10 @@ public final class ConversionEmitter
         }
 
         String rawKey = names.newName("key");
-        out.line(localType(conversion.sourceKeyType()) + " " + rawKey + " = " +
+        out.line(JavaExpressions.boxedType(types, conversion.sourceKeyType()) + " " + rawKey + " = " +
                 cast(conversion.sourceKeyType(), entry + ".getKey()") + ";");
         String rawValue = names.newName("value");
-        out.line(localType(conversion.sourceValueType()) + " " + rawValue + " = " +
+        out.line(JavaExpressions.boxedType(types, conversion.sourceValueType()) + " " + rawValue + " = " +
                 cast(conversion.sourceValueType(), entry + ".getValue()") + ";");
 
         String key = emit(out, names, conversion.keyConversion(), rawKey);
@@ -863,13 +864,13 @@ public final class ConversionEmitter
         String result = names.newName("converted");
         TypeMirror workingType = conversion.workingTargetType();
 
-        out.line(localType(workingType) + " " + result + (sourceKnownNonNull ? ";" : " = null;"));
+        out.line(JavaExpressions.boxedType(types, workingType) + " " + result + (sourceKnownNonNull ? ";" : " = null;"));
         if (!sourceKnownNonNull) out.beginBlock("if (" + source + " != null)");
         boolean runtimeSource = types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN;
 
         if (runtimeSource) {
-            out.beginBlock("if (" + source + " instanceof " + rawName(workingType) + ")");
-            out.line(result + " = (" + localType(workingType) + ") " + source + ";");
+            out.beginBlock("if (" + source + " instanceof " + JavaExpressions.boxedRawType(types, context.typeUtils, workingType) + ")");
+            out.line(result + " = (" + JavaExpressions.boxedType(types, workingType) + ") " + source + ";");
 
             out.endBlock();
             out.beginBlock("else");
@@ -954,7 +955,7 @@ public final class ConversionEmitter
                                      ConversionCompiler.DynamicObjectPlan dynamic, String source,
                                      boolean sourceKnownNonNull) {
         String result = names.newName("converted");
-        String targetType = localType(conversion.targetType());
+        String targetType = JavaExpressions.boxedType(types, conversion.targetType());
         if (!sourceKnownNonNull) {
             out.line(targetType + " " + result + " = null;");
             out.beginBlock("if (" + source + " != null)");
@@ -1093,7 +1094,7 @@ public final class ConversionEmitter
     private String emitCodecRaw(JavaWriter out, NameAllocator names, TypeMirror targetType, String source) {
 
         String result = names.newName("raw");
-        out.line(localType(targetType) + " " + result + " = "
+        out.line(JavaExpressions.boxedType(types, targetType) + " " + result + " = "
                 + cast(targetType, "org.sjf4j.node.NodeMapper.convertToRaw("
                         + source + ", org.sjf4j.NodeConfig.DEFAULT)") + ";");
         return result;
@@ -1102,14 +1103,14 @@ public final class ConversionEmitter
     private String emitNodeMapperTo(JavaWriter out, NameAllocator names, TypeMirror targetType,
                                     String source, String hint) {
         String result = names.newName(hint);
-        if ("java.lang.String".equals(rawName(targetType))) {
+        if ("java.lang.String".equals(JavaExpressions.boxedRawType(types, context.typeUtils, targetType))) {
             // Same strict semantics as NodeMapper.to(node, String.class, context),
             // but avoid target-class dispatch for a statically known String.
             out.line("java.lang.String " + result + " = org.sjf4j.node.NodeMapper.toString("
                     + source + ", org.sjf4j.NodeConfig.DEFAULT);");
         } else {
-            out.line(localType(targetType) + " " + result + " = " + mapperToCast(targetType) +
-                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
+            out.line(JavaExpressions.boxedType(types, targetType) + " " + result + " = " + mapperToCast(targetType) +
+                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + JavaExpressions.boxedClassLiteral(types, context.typeUtils, targetType) +
                     ", org.sjf4j.NodeConfig.DEFAULT);");
         }
 
@@ -1118,7 +1119,7 @@ public final class ConversionEmitter
 
     private String mapperToCast(TypeMirror targetType) {
         if (!(targetType instanceof DeclaredType) || ((DeclaredType) targetType).getTypeArguments().isEmpty()) return "";
-        return "(" + localType(targetType) + ") ";
+        return "(" + JavaExpressions.boxedType(types, targetType) + ") ";
     }
 
     /*
@@ -1170,7 +1171,7 @@ public final class ConversionEmitter
                 && conversion.kind() == ConversionCompiler.CompiledConversion.Kind.DIRECT
                 && conversion.targetType().getKind().isPrimitive();
         String type = primitiveDirect ? types.concrete(access.readType()).toString()
-                : localType(access.readType());
+                : JavaExpressions.boxedType(types, access.readType());
         out.line(type + " " + result + " = " + accessReadExpression(owner, name, access) + ";");
 
         return result;
@@ -1240,18 +1241,18 @@ public final class ConversionEmitter
 
                 if (isInterfaceOrAbstract(type)) return "new java.util.ArrayList<>(" + size + ")";
 
-                return "new " + type + "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             case ARRAY_SET:
                 if (isInterfaceOrAbstract(type)) return "new java.util.LinkedHashSet<>(" + size + ")";
 
-                return "new " + type + "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             case ARRAY_JSON_ARRAY:
                 return "new org.sjf4j.JsonArray()";
 
             case ARRAY_JAJO:
-                return "new " + type + "()";
+                return JavaExpressions.newInstance(type.toString(), false);
 
             default:
                 throw new IllegalStateException("unsupported target container " + kind);
@@ -1274,7 +1275,7 @@ public final class ConversionEmitter
 
     private String newMapExpression(TypeMirror type) {
         if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) return "new java.util.LinkedHashMap<>()";
-        return "new " + type + "()";
+        return JavaExpressions.newInstance(type.toString(), false);
     }
 
     private String newObjectExpression(TypeMirror type) {
@@ -1299,26 +1300,10 @@ public final class ConversionEmitter
         return creation.factoryOwner().getQualifiedName() + "." + factory.getSimpleName() + "()";
     }
 
-    private String localType(TypeMirror type) {
-        return types.boxed(types.concrete(type)).toString();
-    }
-
-    private String classLiteral(TypeMirror type) {
-        TypeMirror boxed = types.boxed(types.concrete(type));
-        return context.typeUtils.erasure(boxed).toString() + ".class";
-    }
-
     private String cast(TypeMirror type, String expression) {
         TypeMirror concrete = types.concrete(type);
-
         if (types.isObject(concrete)) return expression;
-
-        return "(" + localType(concrete) + ") " + expression;
-    }
-
-    private String rawName(TypeMirror type) {
-        TypeMirror boxed = types.boxed(types.concrete(type));
-        return context.typeUtils.erasure(boxed).toString();
+        return JavaExpressions.cast(JavaExpressions.boxedType(types, concrete), expression);
     }
 
     private boolean isEnum(TypeMirror type) {

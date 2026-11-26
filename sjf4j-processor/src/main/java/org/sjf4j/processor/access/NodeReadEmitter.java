@@ -1,5 +1,6 @@
 package org.sjf4j.processor.access;
 
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.type.TypeSystem;
 
@@ -69,6 +70,6 @@ public final class NodeReadEmitter {
 
     private String cast(TypeMirror type, String expression) {
         if (types.isObject(type)) return expression;
-        return "(" + types.boxed(types.concrete(type)) + ") " + expression;
+        return JavaExpressions.cast(JavaExpressions.boxedType(types, type), expression);
     }
 }

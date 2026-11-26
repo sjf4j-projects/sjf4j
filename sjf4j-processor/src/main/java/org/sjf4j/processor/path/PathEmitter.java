@@ -1,5 +1,7 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.processor.code.MethodSignature;
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -16,7 +18,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import java.util.List;
 
 /** Emits direct Java source for fully compiled Get/Put path plans. */
 final class PathEmitter {
@@ -54,7 +55,7 @@ final class PathEmitter {
         NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(methodHeader(method));
+        out.beginBlock(MethodSignature.override(method, false));
 
         String root = resolved.plan.root.getSimpleName().toString();
         String missing = getMissing(method, resolved.plan);
@@ -117,7 +118,7 @@ final class PathEmitter {
         NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(methodHeader(method));
+        out.beginBlock(MethodSignature.override(method, false));
 
         String root = plan.root.getSimpleName().toString();
         String value = plan.value.getSimpleName().toString();
@@ -167,7 +168,7 @@ final class PathEmitter {
         NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(methodHeader(method));
+        out.beginBlock(MethodSignature.override(method, false));
 
         String root = plan.root.getSimpleName().toString();
         String value = plan.value.getSimpleName().toString();
@@ -189,7 +190,7 @@ final class PathEmitter {
              */
             if (step.resolved.segment() instanceof PathSegment.Append) {
                 out.line(
-                        localType(step.resultType) +
+                        JavaExpressions.concreteType(types, step.resultType) +
                                 " " +
                                 next +
                                 " = " +
@@ -271,7 +272,7 @@ final class PathEmitter {
             case PROPERTY:
             case MAP:
             case JSON_OBJECT:
-                out.line(localType(type) + " " + target + " = " +
+                out.line(JavaExpressions.concreteType(types, type) + " " + target + " = " +
                         reads.name(step.resolved.access(), owner, nameExpression(step)) + ";");
                 break;
 
@@ -373,7 +374,7 @@ final class PathEmitter {
 
         if (mode == ReadMode.ENSURE) {
             out.line(
-                    localType(type) +
+                    JavaExpressions.concreteType(types, type) +
                             " " +
                             target +
                             " = (" +
@@ -400,7 +401,7 @@ final class PathEmitter {
                         missing);
 
         out.line(
-                localType(type) +
+                JavaExpressions.concreteType(types, type) +
                         " " +
                         target +
                         " = " +
@@ -415,7 +416,7 @@ final class PathEmitter {
             String expression) {
 
         out.line(
-                localType(type) +
+                JavaExpressions.concreteType(types, type) +
                         " " +
                         target +
                         " = " +
@@ -431,7 +432,7 @@ final class PathEmitter {
 
         if (types.isObject(type)) return expression;
 
-        return "(" + localType(type) + ") " + expression;
+        return JavaExpressions.cast(JavaExpressions.concreteType(types, type), expression);
     }
 
     /*
@@ -527,7 +528,7 @@ final class PathEmitter {
             return;
         }
 
-        out.line(localType(step.resolved.access().readType()) + " " + old + " = " +
+        out.line(JavaExpressions.concreteType(types, step.resolved.access().readType()) + " " + old + " = " +
                 reads.name(step.resolved.access(), owner, nameExpression(step)) + ";");
     }
 
@@ -545,7 +546,7 @@ final class PathEmitter {
         }
 
         out.line(
-                localType(step.oldType) +
+                JavaExpressions.concreteType(types, step.oldType) +
                         " " +
                         old +
                         " = " +
@@ -569,7 +570,7 @@ final class PathEmitter {
         TypeMirror type = step.oldType;
 
         out.line(
-                localType(type) +
+                JavaExpressions.concreteType(types, type) +
                         " " +
                         old +
                         " = " +
@@ -629,7 +630,7 @@ final class PathEmitter {
 
             if (old != null) {
                 out.line(
-                        localType(step.oldType) +
+                        JavaExpressions.concreteType(types, step.oldType) +
                                 " " +
                                 old +
                                 " = " +
@@ -646,7 +647,7 @@ final class PathEmitter {
 
         if (old != null) {
             out.line(
-                    localType(step.oldType) +
+                    JavaExpressions.concreteType(types, step.oldType) +
                             " " +
                             old +
                             ";");
@@ -667,7 +668,7 @@ final class PathEmitter {
                             " = " +
                             (step.resolved.access().kind() == NodeAccess.Kind.LIST
                                     || types.isObject(step.oldType)
-                                    ? "" : "(" + localType(step.oldType) + ") ") +
+                                    ? "" : "(" + JavaExpressions.concreteType(types, step.oldType) + ") ") +
                             NodeWriteEmitter.index(step.resolved.access(), owner, index, value) +
                             ";");
         } else {
@@ -767,7 +768,7 @@ final class PathEmitter {
     }
 
     private String creationExpression(Creation creation) {
-        return "new " + creation.typeName + (creation.diamond ? "<>()" : "()");
+        return JavaExpressions.newInstance(creation.typeName, creation.diamond);
     }
 
     /*
@@ -859,36 +860,6 @@ final class PathEmitter {
 
         return step.resolved.segment() instanceof PathSegment.Param && step.parameter != null
                 && step.parameter.asType().getKind() == TypeKind.INT;
-    }
-
-    private String methodHeader(
-            ExecutableElement method) {
-
-        StringBuilder out = new StringBuilder();
-
-        out.append("public ")
-                .append(method.getReturnType())
-                .append(' ')
-                .append(method.getSimpleName())
-                .append('(');
-
-        List<? extends VariableElement> parameters = method.getParameters();
-
-        for (int i = 0; i < parameters.size(); i++) {
-            if (i != 0) {
-                out.append(", ");
-            }
-
-            VariableElement parameter = parameters.get(i);
-
-            out.append(parameter.asType())
-                    .append(' ')
-                    .append(parameter.getSimpleName());
-        }
-
-        out.append(')');
-
-        return out.toString();
     }
 
     private NameAllocator names(
@@ -984,10 +955,6 @@ final class PathEmitter {
      * Helpers
      * --------------------------------------------------------------
      */
-
-    private String localType(TypeMirror type) {
-        return types.concrete(type).toString();
-    }
 
     private String stepHint(Step step) {
         if (step.resolved.segment() instanceof PathSegment.Name) return ((PathSegment.Name) step.resolved.segment()).name;

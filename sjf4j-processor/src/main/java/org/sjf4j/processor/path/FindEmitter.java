@@ -1,5 +1,7 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.processor.code.MethodSignature;
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
@@ -50,8 +52,7 @@ final class FindEmitter {
             NameAllocator names = generated.names().locals(plan.method);
 
             out.line("@Override");
-            out.beginBlock("public " + plan.method.getReturnType() + " " +
-                    plan.method.getSimpleName() + "(" + root.asType() + " " + rootName + ")");
+            out.beginBlock(MethodSignature.override(plan.method, false));
 
             if (!root.asType().getKind().isPrimitive()) {
                 out.line("org.sjf4j.util.Asserts.notNull(" + rootName + ", " +
@@ -59,7 +60,7 @@ final class FindEmitter {
             }
 
             String result = names.newName("result");
-            out.line("java.util.ArrayList<" + localType(plan.elementType) + "> " + result +
+            out.line("java.util.ArrayList<" + JavaExpressions.boxedType(types, plan.elementType) + "> " + result +
                     " = new java.util.ArrayList<>();");
 
             String access = "null";
@@ -104,7 +105,7 @@ final class FindEmitter {
                                       Map<FindPlan.Step, String> filters,
                                       Map<FindPlan.Step, String> descendants) {
         out.beginBlock("private static void " + helper + "(" + plan.root.asType() +
-                " root, Object current, java.util.List<" + localType(plan.elementType) +
+                " root, Object current, java.util.List<" + JavaExpressions.boxedType(types, plan.elementType) +
                 "> result, org.sjf4j.node.NodeWalker.Access access)");
         out.line("if (current == null) return;");
 
@@ -223,7 +224,7 @@ final class FindEmitter {
                 String value = owner;
                 if (!types.isObject(step.valueType) &&
                         !types.isAssignableBoxedGeneric(step.ownerType, step.valueType)) {
-                    value = "(" + localType(step.valueType) + ") " + owner;
+                    value = "(" + JavaExpressions.boxedType(types, step.valueType) + ") " + owner;
                 }
                 out.line(result + ".add(" + value + ");");
                 return;
@@ -299,7 +300,7 @@ final class FindEmitter {
         if (step.segment instanceof PathSegment.Name) {
             String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
             String expression = reads.name(nodeAccess, owner, key);
-            out.line(localType(step.valueType) + " " + value + " = " + expression + ";");
+            out.line(JavaExpressions.boxedType(types, step.valueType) + " " + value + " = " + expression + ";");
             if (nodeAccess.kind() == NodeAccess.Kind.MAP ||
                     nodeAccess.kind() == NodeAccess.Kind.JSON_OBJECT) {
                 out.beginBlock("if (" + value + " != null || " + owner +
@@ -321,7 +322,7 @@ final class FindEmitter {
             out.line("int " + index + " = " + ((PathSegment.Index) step.segment).index + ";");
             out.line("if (" + index + " < 0) " + index + " += " + size + ";");
             out.beginBlock("if (" + index + " >= 0 && " + index + " < " + size + ")");
-            out.line(localType(step.valueType) + " " + value + " = " +
+            out.line(JavaExpressions.boxedType(types, step.valueType) + " " + value + " = " +
                     reads.index(nodeAccess, owner, index) + ";");
             emitStep(out, names, step.next, value, root, result,
                     filters, descendants, accessVar);
@@ -344,7 +345,7 @@ final class FindEmitter {
         if (!slice && (kind == NodeKind.OBJECT_MAP || kind == NodeKind.ARRAY_LIST
                 || kind == NodeKind.ARRAY_SET)) {
             String iterable = kind == NodeKind.OBJECT_MAP ? owner + ".values()" : owner;
-            out.beginBlock("for (" + localType(step.valueType) + " " + item +
+            out.beginBlock("for (" + JavaExpressions.boxedType(types, step.valueType) + " " + item +
                     " : " + iterable + ")");
             emitSelectionChild(out, names, step, item, root, result,
                     filters, descendants, accessVar);
@@ -478,7 +479,7 @@ final class FindEmitter {
             String iterator = null;
             if (list) {
                 iterator = names.newName("iterator");
-                out.line("java.util.ListIterator<? extends " + localType(step.valueType) +
+                out.line("java.util.ListIterator<? extends " + JavaExpressions.boxedType(types, step.valueType) +
                         "> " + iterator + " = " + owner +
                         ".listIterator(" + (reverse ? size : "0") + ");");
             }
@@ -488,13 +489,13 @@ final class FindEmitter {
                         (reverse ? "previousIndex() > " : "nextIndex() < ") + index + ")");
                 out.line(iterator + "." + (reverse ? "previous()" : "next()") + ";");
                 out.endBlock();
-                out.line(localType(step.valueType) + " " + item + " = " +
+                out.line(JavaExpressions.boxedType(types, step.valueType) + " " + item + " = " +
                         iterator + "." + (reverse ? "previous()": "next()") + ";");
             } else {
                 String expression = dynamic
                         ? "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")"
                         : reads.index(step.access, owner, index);
-                out.line(localType(step.valueType) + " " + item + " = " + expression + ";");
+                out.line(JavaExpressions.boxedType(types, step.valueType) + " " + item + " = " + expression + ";");
             }
         } else {
             String index = names.newName("index");
@@ -503,7 +504,7 @@ final class FindEmitter {
             String expression = dynamic
                     ? "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")"
                     : reads.index(step.access, owner, index);
-            out.line(localType(step.valueType) + " " + item + " = " + expression + ";");
+            out.line(JavaExpressions.boxedType(types, step.valueType) + " " + item + " = " + expression + ";");
         }
 
         emitSelectionChild(out, names, step, item, root, result,
@@ -542,7 +543,4 @@ final class FindEmitter {
         return index;
     }
 
-    private String localType(TypeMirror type) {
-        return types.boxed(types.concrete(type)).toString();
-    }
 }

@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.code.MethodSignature;
+import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -16,7 +18,6 @@ import org.sjf4j.processor.type.TypeSystem;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -79,9 +80,9 @@ public final class JdbcEmitter {
 
         out.blank();
         out.line("@Override");
-        out.line(methodHeader(plan) + " {");
+        out.line(MethodSignature.override(plan.method(), plan.methodType(), false) + " {");
         out.indent();
-        out.line("org.sjf4j.util.Asserts.notNull(" + rs + ", " + stringLiteral(rs) + ");");
+        out.line("org.sjf4j.util.Asserts.notNull(" + rs + ", " + JavaWriter.stringLiteral(rs) + ");");
         out.line("try {");
         out.indent();
         out.line("java.util.List<" + type + "> " + result
@@ -111,7 +112,7 @@ public final class JdbcEmitter {
         out.line("} catch (java.sql.SQLException e) {");
         out.indent();
         out.line("throw new org.sjf4j.exception.BindingException("
-                + stringLiteral("failed to map JDBC ResultSet in " + plan.method().getSimpleName())
+                + JavaWriter.stringLiteral("failed to map JDBC ResultSet in " + plan.method().getSimpleName())
                 + ", e);");
         out.dedent();
         out.line("}");
@@ -141,14 +142,14 @@ public final class JdbcEmitter {
         out.blank();
         if (helperName == null) {
             out.line("@Override");
-            out.line(methodHeader(plan) + " {");
+            out.line(MethodSignature.override(plan.method(), plan.methodType(), false) + " {");
         } else {
             out.line("private org.sjf4j.mapping.JdbcRowMapper<" + plan.rowType() + "> "
                     + helperName + "(java.sql.ResultSetMetaData " + metadata + ") {");
         }
         out.indent();
         out.line("org.sjf4j.util.Asserts.notNull(" + metadata + ", "
-                + stringLiteral(metadata) + ");");
+                + JavaWriter.stringLiteral(metadata) + ");");
         out.line("try {");
         out.indent();
 
@@ -184,7 +185,7 @@ public final class JdbcEmitter {
         out.line("return " + rowSet + " -> {");
         out.indent();
         out.line("org.sjf4j.util.Asserts.notNull(" + rowSet + ", "
-                + stringLiteral(rowSet) + ");");
+                + JavaWriter.stringLiteral(rowSet) + ");");
         out.line("try {");
         out.indent();
 
@@ -196,7 +197,7 @@ public final class JdbcEmitter {
         out.line("} catch (java.sql.SQLException e) {");
         out.indent();
         out.line("throw new org.sjf4j.exception.BindingException("
-                + stringLiteral("failed to map JDBC row in " + plan.method().getSimpleName())
+                + JavaWriter.stringLiteral("failed to map JDBC row in " + plan.method().getSimpleName())
                 + ", e);");
         out.dedent();
         out.line("}");
@@ -207,7 +208,7 @@ public final class JdbcEmitter {
         out.line("} catch (java.sql.SQLException e) {");
         out.indent();
         out.line("throw new org.sjf4j.exception.BindingException("
-                + stringLiteral("failed to prepare JDBC mapper in " + plan.method().getSimpleName())
+                + JavaWriter.stringLiteral("failed to prepare JDBC mapper in " + plan.method().getSimpleName())
                 + ", e);");
         out.dedent();
         out.line("}");
@@ -232,7 +233,7 @@ public final class JdbcEmitter {
 
         out.line("");
         out.line("@Override");
-        out.line(methodHeader(plan) + " {");
+        out.line(MethodSignature.override(plan.method(), plan.methodType(), false) + " {");
 
         out.indent();
 
@@ -240,7 +241,7 @@ public final class JdbcEmitter {
                 "org.sjf4j.util.Asserts.notNull(" +
                         resultSet +
                         ", " +
-                        stringLiteral(resultSet) +
+                        JavaWriter.stringLiteral(resultSet) +
                         ");");
 
         out.line("try {");
@@ -351,7 +352,7 @@ public final class JdbcEmitter {
 
         out.line(
                 "throw new org.sjf4j.exception.BindingException(" +
-                        stringLiteral(
+                        JavaWriter.stringLiteral(
                                 "failed to map JDBC ResultSet in " +
                                         plan.method()
                                                 .getSimpleName()) +
@@ -369,53 +370,6 @@ public final class JdbcEmitter {
      * Method Shell
      * --------------------------------------------------------------
      */
-
-    private String methodHeader(
-            JdbcPlan plan) {
-
-        ExecutableElement method =
-                plan.method();
-
-        ExecutableType methodType =
-                plan.methodType();
-
-        StringBuilder out =
-                new StringBuilder();
-
-        out.append("public ")
-                .append(
-                        methodType.getReturnType())
-                .append(' ')
-                .append(
-                        method.getSimpleName())
-                .append('(');
-
-        List<? extends VariableElement> parameters =
-                method.getParameters();
-
-        List<? extends TypeMirror> parameterTypes =
-                methodType.getParameterTypes();
-
-        for (int i = 0;
-             i < parameters.size();
-             i++) {
-
-            if (i != 0) {
-                out.append(", ");
-            }
-
-            out.append(
-                            parameterTypes.get(i))
-                    .append(' ')
-                    .append(
-                            parameters.get(i)
-                                    .getSimpleName());
-        }
-
-        out.append(')');
-
-        return out.toString();
-    }
 
     /*
      * --------------------------------------------------------------
@@ -461,7 +415,7 @@ public final class JdbcEmitter {
 
             out.line(
                     "throw new org.sjf4j.exception.BindingException(" +
-                            stringLiteral(
+                            JavaWriter.stringLiteral(
                                     "JDBC mapper expected a single row but ResultSet contains multiple rows") +
                             ");");
 
@@ -751,7 +705,7 @@ public final class JdbcEmitter {
         StringBuilder namesLiteral = new StringBuilder("new String[]{");
         for (int i = 0; i < sourceColumns.size(); i++) {
             if (i != 0) namesLiteral.append(", ");
-            namesLiteral.append(stringLiteral(sourceColumns.get(i)));
+            namesLiteral.append(JavaWriter.stringLiteral(sourceColumns.get(i)));
         }
         namesLiteral.append('}');
 
@@ -915,7 +869,7 @@ public final class JdbcEmitter {
         String result = names.newName("computed");
 
         out.line(
-                localType(
+                JavaExpressions.boxedType(types, 
                         compute.targetType()) +
                         " " +
                         result +
@@ -945,7 +899,7 @@ public final class JdbcEmitter {
                         .append(" != 0");
             } else {
                 out.append(columns).append(".contains(")
-                        .append(stringLiteral(read.column())).append(")");
+                        .append(JavaWriter.stringLiteral(read.column())).append(")");
             }
         }
 
@@ -964,7 +918,7 @@ public final class JdbcEmitter {
                         read.column());
 
         if (column == null) {
-            column = stringLiteral(
+            column = JavaWriter.stringLiteral(
                     read.column());
         }
 
@@ -1211,7 +1165,7 @@ public final class JdbcEmitter {
 
             out.line(
                     "throw new org.sjf4j.exception.BindingException(" +
-                            stringLiteral(
+                            JavaWriter.stringLiteral(
                                     "SQL NULL cannot be mapped to primitive target from column '" +
                                             read.column() +
                                             "'") +
@@ -1271,7 +1225,7 @@ public final class JdbcEmitter {
 
             out.line(
                     "throw new org.sjf4j.exception.BindingException(" +
-                            stringLiteral(
+                            JavaWriter.stringLiteral(
                                     "SQL NULL cannot be mapped to primitive char from column '" +
                                             read.column() +
                                             "'") +
@@ -1344,7 +1298,7 @@ public final class JdbcEmitter {
 
         out.line(
                 "throw new org.sjf4j.exception.BindingException(" +
-                        stringLiteral(
+                        JavaWriter.stringLiteral(
                                 "JDBC column '" +
                                         column +
                                         "' cannot be mapped to char because its string value does not contain exactly one character") +
@@ -1432,7 +1386,7 @@ public final class JdbcEmitter {
                         ".getObject(" +
                         column +
                         ", " +
-                        classLiteral(
+                        JavaExpressions.boxedClassLiteral(types, context.typeUtils, 
                                 read.targetType()) +
                         ");");
 
@@ -1509,7 +1463,7 @@ public final class JdbcEmitter {
         out.line(read.targetType() + " " + value + " = "
                 + (generic ? "(" + read.targetType() + ") " : "")
                 + "org.sjf4j.node.NodeMapper.to(" + raw + ", "
-                + classLiteral(read.targetType()) + ", org.sjf4j.NodeConfig.DEFAULT);");
+                + JavaExpressions.boxedClassLiteral(types, context.typeUtils, read.targetType()) + ", org.sjf4j.NodeConfig.DEFAULT);");
 
         return value;
     }
@@ -1548,7 +1502,7 @@ public final class JdbcEmitter {
                             "parent");
 
             out.line(
-                    localType(
+                    JavaExpressions.boxedType(types, 
                             access.readType()) +
                             " " +
                             next +
@@ -1567,7 +1521,7 @@ public final class JdbcEmitter {
 
             out.line(
                     "throw new org.sjf4j.exception.BindingException(" +
-                            stringLiteral(
+                            JavaWriter.stringLiteral(
                                     "JDBC target path parent is null: " +
                                             target.expression()) +
                             ");");
@@ -1646,25 +1600,15 @@ public final class JdbcEmitter {
      * --------------------------------------------------------------
      */
 
-    private String classLiteral(TypeMirror type) {
-        TypeMirror boxed = types.boxed(type);
-        return context.typeUtils.erasure(boxed).toString() + ".class";
-    }
-
-    private String localType(TypeMirror type) {
-        return types.boxed(type).toString();
-    }
-
     private String cast(TypeMirror type, String expression) {
         if (type == null || types.isObject(type)) return expression;
-
-        return "(" + localType(type) + ") " + expression;
+        return JavaExpressions.cast(JavaExpressions.boxedType(types, type), expression);
     }
 
     private String nameKey(PathSegment segment) {
         if (!(segment instanceof PathSegment.Name)) throw new IllegalStateException("Expected name segment, got " + segment);
 
-        return stringLiteral(((PathSegment.Name) segment).name);
+        return JavaWriter.stringLiteral(((PathSegment.Name) segment).name);
     }
 
     private int index(PathSegment segment) {
@@ -1686,66 +1630,4 @@ public final class JdbcEmitter {
         return out.toString();
     }
 
-    /**
-     * JDK-8-compatible Java string literal escaping.
-     */
-    private static String stringLiteral(String value) {
-        StringBuilder out = new StringBuilder(value.length() + 2);
-
-        out.append('"');
-
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-
-            switch (c) {
-                case '\\':
-                    out.append("\\\\");
-                    break;
-
-                case '"':
-                    out.append("\\\"");
-                    break;
-
-                case '\n':
-                    out.append("\\n");
-                    break;
-
-                case '\r':
-                    out.append("\\r");
-                    break;
-
-                case '\t':
-                    out.append("\\t");
-                    break;
-
-                case '\b':
-                    out.append("\\b");
-                    break;
-
-                case '\f':
-                    out.append("\\f");
-                    break;
-
-                default:
-                    if (c < 0x20) {
-                        String hex = Integer.toHexString(c);
-
-                        out.append("\\u");
-
-                        for (int j = hex.length(); j < 4; j++) {
-                            out.append('0');
-                        }
-
-                        out.append(hex);
-
-                    } else {
-                        out.append(c);
-                    }
-            }
-        }
-
-        out.append('"');
-
-        return out.toString();
-    }
 }
