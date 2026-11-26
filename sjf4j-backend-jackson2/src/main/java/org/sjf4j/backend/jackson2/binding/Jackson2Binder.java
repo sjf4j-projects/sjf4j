@@ -65,29 +65,29 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
      * @return a SJF4J streaming reader
      */
     public Jackson2Parser createParser(JsonParser parser) {
-        return new Jackson2Parser(Asserts.notNull(parser, "parser"), config.exactNumbers);
+        return new Jackson2Parser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
     public Jackson2Parser createParser(Reader input) throws IOException {
-        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), config.exactNumbers);
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     @Override
     public Jackson2Parser createParser(InputStream input) throws IOException {
-        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), config.exactNumbers);
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     @Override
     public Jackson2Parser createParser(String input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Parser(factory.createParser(input), config.exactNumbers);
+        return new Jackson2Parser(factory.createParser(input));
     }
 
     @Override
     public Jackson2Parser createParser(byte[] input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Parser(factory.createParser(input), config.exactNumbers);
+        return new Jackson2Parser(factory.createParser(input));
     }
 
 

@@ -1,5 +1,6 @@
 package org.sjf4j.backend.jackson2.binding;
 
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
@@ -46,8 +47,6 @@ import java.util.UUID;
  */
 public final class Jackson2Parser extends StreamingParser {
 
-    private final boolean exactNumbers;
-
     private final JsonParser parser;
     private boolean prefetched;
 
@@ -56,13 +55,7 @@ public final class Jackson2Parser extends StreamingParser {
      * @param parser the Jackson 2 parser
      */
     public Jackson2Parser(JsonParser parser) {
-        this(parser, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public Jackson2Parser(JsonParser parser, boolean exactNumbers) {
         super(Backend.JACKSON2);
-        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
         // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;
@@ -398,11 +391,16 @@ public final class Jackson2Parser extends StreamingParser {
         if (current == JsonToken.VALUE_NULL) {
             return null;
         }
-        return _readNumber();
+        return parser.getNumberValue();
     }
 
-    private Number _readNumber() throws IOException {
-        return exactNumbers ? parser.getNumberValueExact() : parser.getNumberValue();
+    @Override
+    public Number readNumberExact() throws IOException {
+        JsonToken current = nextValue();
+        if (current == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        return parser.getNumberValueExact();
     }
 
     /* --------------------------------------------------------------
@@ -625,24 +623,24 @@ public final class Jackson2Parser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
-        return _readRawCurrent(nextValue());
+    public Object readRaw(NodeConfig config) throws IOException {
+        return _readRawCurrent(nextValue(), config.exactNumbers);
     }
 
-    private Object _readRawCurrent(JsonToken current) throws IOException {
+    private Object _readRawCurrent(JsonToken current, boolean exactNumbers) throws IOException {
         if (current == null) {
             throw expected("raw node", null);
         }
         switch (current) {
             case START_OBJECT:
-                return _readRawObject();
+                return _readRawObject(exactNumbers);
             case START_ARRAY:
-                return _readRawArray();
+                return _readRawArray(exactNumbers);
             case VALUE_STRING:
                 return parser.getText();
             case VALUE_NUMBER_INT:
             case VALUE_NUMBER_FLOAT:
-                return _readNumber();
+                return exactNumbers ? parser.getNumberValueExact() : parser.getNumberValue();
             case VALUE_TRUE:
                 return Boolean.TRUE;
             case VALUE_FALSE:
@@ -655,39 +653,39 @@ public final class Jackson2Parser extends StreamingParser {
     }
 
     @Override
-    public Map<String, Object> readRawObject() throws IOException {
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
         JsonToken current = nextValue();
         if (current == JsonToken.VALUE_NULL) return null;
         if (current != JsonToken.START_OBJECT) {
             throw new BindingException("expected raw object or null, but was " + current);
         }
-        return _readRawObject();
+        return _readRawObject(config.exactNumbers);
     }
 
     @Override
-    public List<Object> readRawArray() throws IOException {
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
         JsonToken current = nextValue();
         if (current == JsonToken.VALUE_NULL) return null;
         if (current != JsonToken.START_ARRAY) {
             throw new BindingException("expected raw array or null, but was " + current);
         }
-        return _readRawArray();
+        return _readRawArray(config.exactNumbers);
     }
 
-    private Map<String, Object> _readRawObject() throws IOException {
+    private Map<String, Object> _readRawObject(boolean exactNumbers) throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextFieldName()) != null) {
-            value.put(name, _readRawCurrent(parser.nextToken()));
+            value.put(name, _readRawCurrent(parser.nextToken(), exactNumbers));
         }
         return value;
     }
 
-    private List<Object> _readRawArray() throws IOException {
+    private List<Object> _readRawArray(boolean exactNumbers) throws IOException {
         List<Object> value = new ArrayList<>();
         JsonToken token;
         while ((token = parser.nextToken()) != JsonToken.END_ARRAY) {
-            value.add(_readRawCurrent(token));
+            value.add(_readRawCurrent(token, exactNumbers));
         }
         return value;
     }

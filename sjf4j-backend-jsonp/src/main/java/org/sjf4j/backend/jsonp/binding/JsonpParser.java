@@ -1,6 +1,7 @@
 package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.stream.JsonParser;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -25,8 +26,6 @@ import java.util.Map;
  */
 public final class JsonpParser extends StreamingParser {
 
-    private final boolean exactNumbers;
-
     private final JsonParser parser;
     private JsonParser.Event current;
 
@@ -35,13 +34,7 @@ public final class JsonpParser extends StreamingParser {
      * @param parser the JSON-P parser
      */
     public JsonpParser(JsonParser parser) {
-        this(parser, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public JsonpParser(JsonParser parser, boolean exactNumbers) {
         super(Backend.JSONP);
-        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
         try {
             current = parser.currentEvent();
@@ -139,6 +132,15 @@ public final class JsonpParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
+        return _readNumber(false);
+    }
+
+    @Override
+    public Number readNumberExact() throws IOException {
+        return _readNumber(true);
+    }
+
+    private Number _readNumber(boolean exactNumbers) throws IOException {
         if (nextIfNull()) {
             return null;
         }
@@ -244,19 +246,19 @@ public final class JsonpParser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
+    public Object readRaw(NodeConfig config) throws IOException {
         if (current == null) {
             throw new BindingException("unexpected token 'EOF'");
         }
         switch (current) {
             case START_OBJECT:
-                return _readRawObject();
+                return _readRawObject(config);
             case START_ARRAY:
-                return _readRawArray();
+                return _readRawArray(config);
             case VALUE_STRING:
                 return readString();
             case VALUE_NUMBER:
-                return readNumber();
+                return _readNumber(config.exactNumbers);
             case VALUE_TRUE:
             case VALUE_FALSE:
                 return readBooleanValue();
@@ -274,7 +276,7 @@ public final class JsonpParser extends StreamingParser {
     }
 
     @Override
-    public Map<String, Object> readRawObject() throws IOException {
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
         if (current == JsonParser.Event.VALUE_NULL) {
             advance();
             return null;
@@ -282,11 +284,11 @@ public final class JsonpParser extends StreamingParser {
         if (current != JsonParser.Event.START_OBJECT) {
             throw new BindingException("expected raw object or null");
         }
-        return _readRawObject();
+        return _readRawObject(config);
     }
 
     @Override
-    public List<Object> readRawArray() throws IOException {
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
         if (current == JsonParser.Event.VALUE_NULL) {
             advance();
             return null;
@@ -294,24 +296,24 @@ public final class JsonpParser extends StreamingParser {
         if (current != JsonParser.Event.START_ARRAY) {
             throw new BindingException("expected raw array or null");
         }
-        return _readRawArray();
+        return _readRawArray(config);
     }
 
-    private Map<String, Object> _readRawObject() throws IOException {
+    private Map<String, Object> _readRawObject(NodeConfig config) throws IOException {
         advance();
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = nextName()) != null) {
-            value.put(name, readRaw());
+            value.put(name, readRaw(config));
         }
         return value;
     }
 
-    private List<Object> _readRawArray() throws IOException {
+    private List<Object> _readRawArray(NodeConfig config) throws IOException {
         advance();
         List<Object> value = new ArrayList<>();
         while (!nextIfArrayEnd()) {
-            value.add(readRaw());
+            value.add(readRaw(config));
         }
         return value;
     }

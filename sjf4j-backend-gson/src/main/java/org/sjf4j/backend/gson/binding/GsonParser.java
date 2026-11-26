@@ -2,6 +2,7 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -20,8 +21,6 @@ import java.util.Map;
 /** StreamingParser backed directly by a Gson {@link JsonReader}. */
 public final class GsonParser extends StreamingParser {
 
-    private final boolean exactNumbers;
-
     private final JsonReader reader;
 
     /**
@@ -29,13 +28,7 @@ public final class GsonParser extends StreamingParser {
      * @param reader the Gson reader
      */
     public GsonParser(JsonReader reader) {
-        this(reader, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public GsonParser(JsonReader reader, boolean exactNumbers) {
         super(Backend.GSON);
-        this.exactNumbers = exactNumbers;
         this.reader = Asserts.notNull(reader, "reader");
     }
 
@@ -136,12 +129,12 @@ public final class GsonParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
-        return nextIfNull() ? null : _readNumberText();
+        return nextIfNull() ? null : Numbers.parseNumber(reader.nextString());
     }
 
-    private Number _readNumberText() throws IOException {
-        String text = reader.nextString();
-        return exactNumbers ? Numbers.parseNumberExact(text) : Numbers.parseNumber(text);
+    @Override
+    public Number readNumberExact() throws IOException {
+        return nextIfNull() ? null : Numbers.parseNumberExact(reader.nextString());
     }
 
     @Override
@@ -195,17 +188,18 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
+    public Object readRaw(NodeConfig config) throws IOException {
         JsonToken token = reader.peek();
         switch (token) {
             case BEGIN_OBJECT:
-                return _readRawObject();
+                return _readRawObject(config);
             case BEGIN_ARRAY:
-                return _readRawArray();
+                return _readRawArray(config);
             case STRING:
                 return reader.nextString();
             case NUMBER:
-                return _readNumberText();
+                return config.exactNumbers ? Numbers.parseNumberExact(reader.nextString())
+                        : Numbers.parseNumber(reader.nextString());
             case BOOLEAN:
                 return reader.nextBoolean();
             case NULL:
@@ -217,7 +211,7 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
-    public Map<String, Object> readRawObject() throws IOException {
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
         JsonToken token = reader.peek();
         if (token == JsonToken.NULL) {
             reader.nextNull();
@@ -226,11 +220,11 @@ public final class GsonParser extends StreamingParser {
         if (token != JsonToken.BEGIN_OBJECT) {
             throw new BindingException("expected raw object or null, but was '" + token + "'");
         }
-        return _readRawObject();
+        return _readRawObject(config);
     }
 
     @Override
-    public List<Object> readRawArray() throws IOException {
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
         JsonToken token = reader.peek();
         if (token == JsonToken.NULL) {
             reader.nextNull();
@@ -239,7 +233,7 @@ public final class GsonParser extends StreamingParser {
         if (token != JsonToken.BEGIN_ARRAY) {
             throw new BindingException("expected raw array or null, but was '" + token + "'");
         }
-        return _readRawArray();
+        return _readRawArray(config);
     }
 
     @Override
@@ -247,21 +241,21 @@ public final class GsonParser extends StreamingParser {
         // Gson has no pooled parser resources; the caller owns the input.
     }
 
-    private Map<String, Object> _readRawObject() throws IOException {
+    private Map<String, Object> _readRawObject(NodeConfig config) throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
         reader.beginObject();
         while (reader.hasNext()) {
-            value.put(reader.nextName(), readRaw());
+            value.put(reader.nextName(), readRaw(config));
         }
         reader.endObject();
         return value;
     }
 
-    private List<Object> _readRawArray() throws IOException {
+    private List<Object> _readRawArray(NodeConfig config) throws IOException {
         List<Object> value = new ArrayList<>();
         reader.beginArray();
         while (reader.hasNext()) {
-            value.add(readRaw());
+            value.add(readRaw(config));
         }
         reader.endArray();
         return value;

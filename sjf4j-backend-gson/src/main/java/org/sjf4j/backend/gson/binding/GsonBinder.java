@@ -64,13 +64,13 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
      * @return a SJF4J streaming reader
      */
     public GsonParser createParser(JsonReader reader) {
-        return new GsonParser(Asserts.notNull(reader, "reader"), config.exactNumbers);
+        return new GsonParser(Asserts.notNull(reader, "reader"));
     }
 
     @Override
     public GsonParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new GsonParser(gson.newJsonReader(input), config.exactNumbers);
+        return new GsonParser(gson.newJsonReader(input));
     }
 
     @Override

@@ -70,14 +70,14 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     public Jackson3Parser createParser(Reader input) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")), config.exactNumbers);
+                Asserts.notNull(input, "input")));
     }
 
     @Override
     public Jackson3Parser createParser(InputStream input) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")), config.exactNumbers);
+                Asserts.notNull(input, "input")));
     }
 
     /**
@@ -86,20 +86,20 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
      * @return a SJF4J streaming reader
      */
     public Jackson3Parser createParser(JsonParser parser) {
-        return new Jackson3Parser(Asserts.notNull(parser, "parser"), config.exactNumbers);
+        return new Jackson3Parser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
     public Jackson3Parser createParser(String input) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")), config.exactNumbers);
+                Asserts.notNull(input, "input")));
     }
 
     @Override
     public Jackson3Parser createParser(byte[] input) throws IOException {
         return new Jackson3Parser(
-                factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")), config.exactNumbers);
+                factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")));
     }
 
     @Override

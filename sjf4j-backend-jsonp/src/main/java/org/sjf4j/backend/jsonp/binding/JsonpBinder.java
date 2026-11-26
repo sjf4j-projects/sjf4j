@@ -63,7 +63,7 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
      * @return a SJF4J streaming reader
      */
     public JsonpParser createParser(JsonParser parser) {
-        return new JsonpParser(Asserts.notNull(parser, "parser"), config.exactNumbers);
+        return new JsonpParser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
