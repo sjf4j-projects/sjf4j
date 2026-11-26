@@ -51,3 +51,5 @@ jobs:
             build/reports/spotbugs/
             **/build/reports/spotbugs/
           if-no-files-found: error
+
+# Temporary verification of main at 49b307e; do not merge.
