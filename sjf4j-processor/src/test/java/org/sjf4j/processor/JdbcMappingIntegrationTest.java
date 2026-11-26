@@ -202,8 +202,8 @@ class JdbcMappingIntegrationTest {
                 "package fixture; import org.sjf4j.annotation.mapping.*; "
                 + "import org.sjf4j.annotation.mapping.jdbc.*; "
                 + "@CompiledJdbcMapper public interface Mapper { "
-                + "@Mapping(target=\\\"first\\\", source=\\\"user_name\\\") "
-                + "@Mapping(target=\\\"second\\\", source=\\\"user-name\\\") "
+                + "@Mapping(target=\"first\", source=\"user_name\") "
+                + "@Mapping(target=\"second\", source=\"user-name\") "
                 + "Row map(java.sql.ResultSet userName); }");
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());

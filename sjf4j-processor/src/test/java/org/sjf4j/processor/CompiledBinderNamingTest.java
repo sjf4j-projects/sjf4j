@@ -133,13 +133,13 @@ class CompiledBinderNamingTest {
                     "package fixture; import org.sjf4j.annotation.node.*; "
                     + "public class Bean { "
                     + "public final String parser; public final String value; "
-                    + "@NodeProperty(\\\"first-name\\\") public final String first; "
-                    + "@NodeProperty(\\\"first_name\\\") public final String second; "
+                    + "@NodeProperty(\"first-name\") public final String first; "
+                    + "@NodeProperty(\"first_name\") public final String second; "
                     + "public String item; public String nativeGenerator; "
                     + "public String uuidValueInfo; public java.util.UUID uuid; "
                     + "@NodeCreator public Bean(String parser, String value, "
-                    + "@NodeProperty(\\\"first-name\\\") String first, "
-                    + "@NodeProperty(\\\"first_name\\\") String second) { "
+                    + "@NodeProperty(\"first-name\") String first, "
+                    + "@NodeProperty(\"first_name\") String second) { "
                     + "this.parser=parser; this.value=value; this.first=first; this.second=second; } }");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
