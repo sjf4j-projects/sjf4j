@@ -1,6 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.GeneratedClass;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
@@ -320,44 +321,48 @@ final class Fastjson2ReadEmitter implements NativeReadEmitter {
         }
     }
 
-    void emitHelpers(JavaWriter out) {
+    void registerHelpers(GeneratedClass generated) {
         for (TypeMirror enumType : enums.values()) {
-            String type = enumType.toString();
-            String name = BindingNames.fieldType(enumType);
             String method = names.enumHelper(enumType, "read", "read" + BindingNames.simpleType(enumType) + "Enum");
-            String ordinals = names.enumField(enumType, "ordinals", name + "_ORDINALS");
-            String byHash = names.enumField(enumType, "byHash", name + "_BY_HASH");
-            String hashes = names.enumField(enumType, "hashes", name + "_HASHES");
-            out.beginBlock("private static " + type + " " + method
-                    + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser)"
-                    + " throws java.io.IOException");
-            out.line("com.alibaba.fastjson2.JSONReader nativeParser = parser.nativeParser();");
-            out.beginBlock("if (nativeParser.nextIfNull())");
-            out.line("return null;");
-            out.endBlock();
-            out.beginBlock("if (nativeParser.isString())");
-            out.line("long hash = nativeParser.readValueHashCode();");
-            out.line("int index = java.util.Arrays.binarySearch(" + hashes + ", hash);");
-            out.beginBlock("if (index >= 0)");
-            out.line("return " + byHash + "[index];");
-            out.endBlock();
-            out.line("throw new IllegalArgumentException("
-                    + "\"No enum constant \" + " + type + ".class.getName()"
-                    + " + \".\" + nativeParser.getString());");
-            out.endBlock();
-            out.beginBlock("if (nativeParser.isNumber())");
-            out.line("int ordinal = nativeParser.readInt32Value();");
-            out.beginBlock("if (ordinal >= 0 && ordinal < " + ordinals + ".length)");
-            out.line("return " + ordinals + "[ordinal];");
-            out.endBlock();
-            out.line("throw new org.sjf4j.exception.BindingException("
-                    + "\"enum ordinal '\" + ordinal + \"' out of range for type '\""
-                    + " + " + type + ".class.getName() + \"'\");");
-            out.endBlock();
-            out.line("throw new org.sjf4j.exception.BindingException("
-                    + "\"cannot read enum '\" + " + type + ".class.getName()"
-                    + " + \"' from token '\" + parser.peekToken() + \"'\");");
-            out.endBlock();
+            generated.addHelper(method, out -> emitHelper(out, enumType, method));
         }
+    }
+
+    private void emitHelper(JavaWriter out, TypeMirror enumType, String method) {
+        String type = enumType.toString();
+        String name = BindingNames.fieldType(enumType);
+        String ordinals = names.enumField(enumType, "ordinals", name + "_ORDINALS");
+        String byHash = names.enumField(enumType, "byHash", name + "_BY_HASH");
+        String hashes = names.enumField(enumType, "hashes", name + "_HASHES");
+        out.beginBlock("private static " + type + " " + method
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser)"
+                + " throws java.io.IOException");
+        out.line("com.alibaba.fastjson2.JSONReader nativeParser = parser.nativeParser();");
+        out.beginBlock("if (nativeParser.nextIfNull())");
+        out.line("return null;");
+        out.endBlock();
+        out.beginBlock("if (nativeParser.isString())");
+        out.line("long hash = nativeParser.readValueHashCode();");
+        out.line("int index = java.util.Arrays.binarySearch(" + hashes + ", hash);");
+        out.beginBlock("if (index >= 0)");
+        out.line("return " + byHash + "[index];");
+        out.endBlock();
+        out.line("throw new IllegalArgumentException("
+                + "\"No enum constant \" + " + type + ".class.getName()"
+                + " + \".\" + nativeParser.getString());");
+        out.endBlock();
+        out.beginBlock("if (nativeParser.isNumber())");
+        out.line("int ordinal = nativeParser.readInt32Value();");
+        out.beginBlock("if (ordinal >= 0 && ordinal < " + ordinals + ".length)");
+        out.line("return " + ordinals + "[ordinal];");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + "\"enum ordinal '\" + ordinal + \"' out of range for type '\""
+                + " + " + type + ".class.getName() + \"'\");");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + "\"cannot read enum '\" + " + type + ".class.getName()"
+                + " + \"' from token '\" + parser.peekToken() + \"'\");");
+        out.endBlock();
     }
 }

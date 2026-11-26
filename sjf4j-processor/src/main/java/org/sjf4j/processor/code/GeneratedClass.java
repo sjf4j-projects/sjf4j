@@ -152,14 +152,15 @@ public final class GeneratedClass {
         methods.add(Asserts.notNull(member, "member"));
     }
 
-    public void addHelper(Member member) {
+    /** Registers an always-retained trailing member group (e.g. fields or nested types). */
+    public void addMemberGroup(Member member) {
         helpers.add(new Helper(null, Asserts.notNull(member, "member")));
     }
 
     /**
      * Registers one private helper with its allocated name. Only helpers
-     * reachable from retained members are emitted. Unnamed member groups
-     * remain roots; this is opt-in, not general Java dead-code elimination.
+     * reachable from retained members are emitted. Explicit member groups
+     * remain roots; this is conservative, not general Java dead-code elimination.
      */
     public void addHelper(String name, Member member) {
         helpers.add(new Helper(Asserts.notNull(name, "name"), Asserts.notNull(member, "member")));

@@ -40,7 +40,7 @@ final class SchemaFallbackEmitter {
     }
 
     void emit(GeneratedClass generated) {
-        generated.addHelper(out -> {
+        generated.addMemberGroup(out -> {
             out.beginBlock("private static final class " + fallbackType);
             for (Plan plan : plans) {
                 if (!plan.used()) continue;

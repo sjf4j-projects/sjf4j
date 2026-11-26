@@ -114,7 +114,7 @@ public final class ConversionEmitter
         }
 
         for (SharedConversion helper : sharedConversions.values()) {
-            generated.addHelper(out -> {
+            generated.addHelper(helper.name, out -> {
                 out.beginBlock("private " + JavaExpressions.boxedType(types, helper.conversion.targetType())
                         + " " + helper.name + "(" + JavaExpressions.boxedType(types, helper.conversion.sourceType())
                         + " source)");

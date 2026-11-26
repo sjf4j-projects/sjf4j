@@ -86,7 +86,7 @@ final class SchemaEmitter {
         if (pointerEscaper == null) {
             pointerEscaper = generated.names().helperMethod("escapePointerToken");
             final String helper = pointerEscaper;
-            generated.addHelper(out -> {
+            generated.addHelper(helper, out -> {
                 out.beginBlock("private static String " + helper + "(String token)");
                 out.line("return token.replace(\"~\", \"~0\").replace(\"/\", \"~1\");");
                 out.endBlock();
@@ -106,7 +106,7 @@ final class SchemaEmitter {
             final String resource = uri == null ? "null" : literal(uri);
             // Only called from a failing assertion. In particular, constructing
             // the instance path and ValidationException stays off the hot path.
-            generated.addHelper(out -> {
+            generated.addHelper(method, out -> {
                 out.beginBlock("private static org.sjf4j.schema.ValidationException "
                         + method + "(String keyword, String pointer, "
                         + "String instancePointer)");
@@ -482,7 +482,7 @@ final class SchemaEmitter {
                     }
                     final boolean alwaysRejects = !body.isEmpty()
                             && "return false;".equals(body.get(body.size() - 1));
-                    generated.addHelper(out -> {
+                    generated.addHelper(method, out -> {
                         out.beginBlock("private static boolean " + method + "("
                                 + parameterType + " value, boolean strictFormat)");
                         for (String statement : body) out.line(statement);
@@ -690,7 +690,7 @@ final class SchemaEmitter {
         if (body.isEmpty()) return "true";
         boolean alwaysRejects = "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();
-        generated.addHelper(out -> {
+        generated.addHelper(helper, out -> {
             out.beginBlock("private static boolean " + helper + "("
                     + parameterType + " value, boolean strictFormat)");
             for (String source : body) out.line(source);
@@ -889,7 +889,7 @@ final class SchemaEmitter {
         }
         if (check.pattern != null) {
             String holder = generated.names().field("PATTERN");
-            generated.addHelper(out -> out.line("private static final java.util.regex.Pattern "
+            generated.addMemberGroup(out -> out.line("private static final java.util.regex.Pattern "
                     + holder + " = org.sjf4j.schema.SchemaUtil.compileRegexPattern("
                     + literal(check.pattern) + ", \"pattern\", null, null);"));
             lines.add("if (!" + holder + ".matcher(" + text + ").find()) " + fail(onFailure, check.patternDiagnostic));
@@ -997,7 +997,7 @@ final class SchemaEmitter {
         if (cached != null) return cached;
         String field = generated.names().field("DECIMAL");
         decimalConstants.put(key, field);
-        generated.addHelper(out -> out.line("private static final java.math.BigDecimal "
+        generated.addMemberGroup(out -> out.line("private static final java.math.BigDecimal "
                 + field + " = " + expression + ";"));
         return field;
     }
