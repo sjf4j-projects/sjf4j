@@ -465,7 +465,145 @@ final class MappingUpdateEmitter {
                     generated,
                     "ArrayPolicy.SET requires an indexed target");
 
-        return;
+            return;
+        }
+
+        if (targetKind ==
+                NodeKind.ARRAY_ARRAY &&
+                "ADD".equals(policy)) {
+
+            MappingEmissionSupport.error(context,
+                    plan.method(),
+                    generated,
+                    "ArrayPolicy.ADD cannot grow a Java array");
+
+            return;
+        }
+
+        if ("ADD".equals(policy)) {
+            out.line(
+                    target +
+                            ".addAll(" +
+                            value +
+                            ");");
+
+            return;
+        }
+
+        if (targetKind ==
+                NodeKind.ARRAY_ARRAY) {
+
+            out.beginBlock(
+                    "if (" +
+                            value +
+                            ".length > " +
+                            target +
+                            ".length)");
+            out.line(
+                    "throw new org.sjf4j.exception.BindingException(" +
+                            JavaWriter.stringLiteral(
+                                    "ArrayPolicy.SET source length exceeds target array length") +
+                            ");");
+            out.endBlock();
+
+            String index =
+                    names.newName("i");
+
+            out.line(
+                    "for (int " +
+                            index +
+                            " = 0; " +
+                            index +
+                            " < " +
+                            value +
+                            ".length; " +
+                            index +
+                            "++) {");
+            out.indent();
+            out.line(
+                    target +
+                            "[" +
+                            index +
+                            "] = " +
+                            value +
+                            "[" +
+                            index +
+                            "];");
+            out.dedent();
+            out.line("}");
+
+            return;
+        }
+
+        String index =
+                names.newName("i");
+
+        out.line(
+                "for (int " +
+                        index +
+                        " = 0; " +
+                        index +
+                        " < " +
+                        value +
+                        ".size(); " +
+                        index +
+                        "++) {");
+        out.indent();
+        out.beginBlock(
+                "if (" +
+                        index +
+                        " < " +
+                        target +
+                        ".size())");
+
+        if (targetKind ==
+                NodeKind.ARRAY_LIST) {
+            out.line(
+                    target +
+                            ".set(" +
+                            index +
+                            ", " +
+                            value +
+                            ".get(" +
+                            index +
+                            "));");
+        } else {
+            out.line(
+                    target +
+                            ".set(" +
+                            index +
+                            ", " +
+                            value +
+                            ".getNode(" +
+                            index +
+                            "));");
+        }
+
+        out.endBlock();
+        out.beginBlock("else");
+
+        if (targetKind ==
+                NodeKind.ARRAY_LIST) {
+            out.line(
+                    target +
+                            ".add(" +
+                            value +
+                            ".get(" +
+                            index +
+                            "));");
+        } else {
+            out.line(
+                    target +
+                            ".add(" +
+                            value +
+                            ".getNode(" +
+                            index +
+                            "));");
+        }
+
+        out.endBlock();
+        out.dedent();
+        out.line("}");
     }
 
     String materialize(
