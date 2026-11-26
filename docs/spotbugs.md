@@ -32,10 +32,23 @@ as well as bug instances. Reports are written to each module's
 `build/reports/spotbugs/summary.txt` in the root project. Each completed task
 includes a local HTML report URI (on CI, locate the same report in the
 `spotbugs-reports` artifact). It lists the
-finding totals by SpotBugs priority (P1/P2/P3/other), analysis errors, and
-missing classes. Source sets with no classes are marked `NO-SOURCE`; missing
-or invalid XML reports and scans that did not complete are marked incomplete
-and excluded from totals. A preparation task clears the previous summary,
+finding totals by SpotBugs rank, analysis errors, and missing classes.
+Ranks are grouped into four severity levels:
+
+| Severity | Rank | SpotBugs category |
+| --- | --- | --- |
+| Critical | 1–4 | Scariest |
+| High | 5–9 | Scary |
+| Medium | 10–14 | Troubling |
+| Low | 15–20 | Of Concern |
+
+The summary does not group by confidence (P1/P2/P3). All confidence levels
+remain enabled; individual XML/HTML reports retain their original details.
+These are SpotBugs bug ranks, not security vulnerability scores.
+
+Source sets with no classes are marked `NO-SOURCE`; missing or invalid XML
+reports (including missing or invalid ranks) and scans that did not complete
+are marked incomplete and excluded from totals. A preparation task clears the previous summary,
 and its finalizer writes the current summary even if a compilation or scan
 task fails. Use `--continue` to collect as many independent reports as possible.
 The summary is diagnostic, not a new publication gate; task failures still
