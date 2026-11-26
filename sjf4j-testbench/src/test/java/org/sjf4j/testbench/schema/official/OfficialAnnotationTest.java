@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
@@ -229,7 +228,7 @@ public final class OfficialAnnotationTest {
 
     static Report runFile(Path file, SchemaDialect dialect, Integer groupFilter,
                                   Integer testFilter) throws Exception {
-        JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
+        JsonObject suite = OfficialFixtures.readObject(file);
         JsonArray groups = suite.getJsonArray("suite");
         Report report = new Report();
 

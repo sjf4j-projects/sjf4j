@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
@@ -176,7 +175,7 @@ public final class OfficialRuntimeTest {
         CategoryReport category = OfficialTestPolicy.isRequired(fileName) ? suite.required : suite.optional;
         JsonArray groups;
         try {
-            JsonObject source = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
+            JsonObject source = OfficialFixtures.readObject(file);
             groups = source.getJsonArray("tests");
             if (groups == null) throw new IllegalArgumentException("Missing root tests array: " + file);
         } catch (Exception e) {

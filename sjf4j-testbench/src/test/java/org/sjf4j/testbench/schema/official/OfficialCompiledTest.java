@@ -10,7 +10,6 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -270,8 +269,7 @@ public final class OfficialCompiledTest {
         int expectedAssertions = 0;
         for (Path file : jsonFiles) {
             String fileName = officialDir.relativize(file).toString().replace('\\', '/');
-            JsonArray groups = Sjf4j.global()
-                    .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
+            JsonArray groups = OfficialFixtures.readObject(file).getJsonArray("tests");
             for (int i = 0; i < groups.size(); i++) {
                 JsonObject group = groups.getJsonObject(i);
                 if (!OfficialCompatibility.matches(group.getString("compatibility"), dialect)) continue;
@@ -307,8 +305,7 @@ public final class OfficialCompiledTest {
         int assertions = 0;
         for (Path file : jsonFiles) {
             String fileName = officialDir.relativize(file).toString().replace('\\', '/');
-            JsonArray groups = Sjf4j.global()
-                    .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
+            JsonArray groups = OfficialFixtures.readObject(file).getJsonArray("tests");
             List<OfficialCaseRunner.Spec> fileSpecs = byFile.get(fileName);
             if (mainGroup < 0) {
                 assertEquals(fileSpecs.size(), expectedKeys.stream()
@@ -325,7 +322,7 @@ public final class OfficialCompiledTest {
                 Path schemaResource = generated.resolve("resources/official").resolve(draft)
                         .resolve(stem).resolve(String.format(java.util.Locale.ROOT,
                                 "%03d.json", i));
-                Object generatedSchema = Sjf4j.global().fromJson(Files.readAllBytes(schemaResource));
+                Object generatedSchema = OfficialFixtures.readNode(schemaResource);
                 if (!"draft2020-12".equals(draft)
                         && JsonType.of(officialSchema) == JsonType.OBJECT
                         && !Nodes.toJsonObject(officialSchema).containsKey("$schema")
