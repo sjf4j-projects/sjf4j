@@ -32,31 +32,24 @@ final class BindingPlan {
     private final TypeMirror valueType;
     private final ReadInput readInput;
     private final WriteOutput writeOutput;
-    private final boolean includeNulls;
-    private final boolean exactNumbers;
 
     private BindingPlan(ResolvedMethod method, Direction direction, TypeMirror valueType,
-                        ReadInput readInput, WriteOutput writeOutput, boolean includeNulls,
-                        boolean exactNumbers) {
+                        ReadInput readInput, WriteOutput writeOutput) {
         this.method = Asserts.notNull(method, "method");
         this.direction = Asserts.notNull(direction, "direction");
         this.valueType = Asserts.notNull(valueType, "valueType");
         this.readInput = readInput;
         this.writeOutput = writeOutput;
-        this.includeNulls = includeNulls;
-        this.exactNumbers = exactNumbers;
     }
 
-    static BindingPlan readFrom(ResolvedMethod method, TypeMirror valueType, ReadInput input,
-                                boolean exactNumbers) {
+    static BindingPlan readFrom(ResolvedMethod method, TypeMirror valueType, ReadInput input) {
         return new BindingPlan(method, Direction.READ_FROM, valueType,
-                Asserts.notNull(input, "input"), null, true, exactNumbers);
+                Asserts.notNull(input, "input"), null);
     }
 
-    static BindingPlan writeTo(ResolvedMethod method, TypeMirror valueType, WriteOutput output,
-                               boolean includeNulls) {
+    static BindingPlan writeTo(ResolvedMethod method, TypeMirror valueType, WriteOutput output) {
         return new BindingPlan(method, Direction.WRITE_TO, valueType,
-                null, Asserts.notNull(output, "output"), includeNulls, false);
+                null, Asserts.notNull(output, "output"));
     }
 
     ResolvedMethod method() {
@@ -77,13 +70,5 @@ final class BindingPlan {
 
     WriteOutput writeOutput() {
         return writeOutput;
-    }
-
-    boolean includeNulls() {
-        return includeNulls;
-    }
-
-    boolean exactNumbers() {
-        return exactNumbers;
     }
 }

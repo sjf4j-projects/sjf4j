@@ -52,8 +52,6 @@ final class BindingCompiler {
     private final CompiledMetadata metadata;
     private final Backend backend;
     private final StandardCreatorResolver creators;
-    private boolean writeIncludeNulls;
-    private boolean readExactNumbers;
 
     private final TypeMirror stringType;
     private final TypeMirror arrayListType;
@@ -81,8 +79,6 @@ final class BindingCompiler {
     }
 
     CompiledMethod compile(BindingPlan plan, GeneratedClass generated) {
-        writeIncludeNulls = plan.includeNulls();
-        readExactNumbers = plan.exactNumbers();
         BindingValue value = compileValue(plan.direction(), plan.valueType(),
                 plan.method().declaration(), generated);
 
@@ -112,8 +108,6 @@ final class BindingCompiler {
         TypeMirror type = context.types.concrete(inputType);
         String key = direction.name() + ':' + type.toString()
                 + ':' + valueFormat + ':' + valuePattern
-                + (direction == BindingPlan.Direction.WRITE_TO
-                        ? ":includeNulls:" + writeIncludeNulls : ":exactNumbers:" + readExactNumbers)
                 // The mapped OneOf constant-inlining plan must not be reused
                 // for direct @Write bindings of the same POJO type.
                 + (inlineOneOfSubtypes.contains(type.toString()) ? ":oneOfInline" : "");
@@ -148,7 +142,7 @@ final class BindingCompiler {
         }
 
         BindingValue value = new BindingValue(direction, type, kind,
-                type.getKind().isPrimitive(), writeIncludeNulls, readExactNumbers);
+                type.getKind().isPrimitive());
 
         /*
          * Cache the placeholder before recursively compiling children so
@@ -770,7 +764,7 @@ final class BindingCompiler {
                 }
                 if (!included) {
                     BindingValue stringValue = new BindingValue(BindingPlan.Direction.WRITE_TO,
-                            stringType, BindingValue.Kind.STRING, false, value.writeIncludeNulls(), false);
+                            stringType, BindingValue.Kind.STRING, false);
                     constants.add(new BindingProperty(name, (String) field.getConstantValue(),
                             stringValue));
                 }
@@ -795,7 +789,7 @@ final class BindingCompiler {
                                             ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(propertyType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
-                false, owner.writeIncludeNulls(), owner.readExactNumbers());
+                false);
         result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         if (owner.direction() == BindingPlan.Direction.READ_FROM) {
             result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
@@ -1037,7 +1031,7 @@ final class BindingCompiler {
                                               ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(argType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
-                false, owner.writeIncludeNulls(), owner.readExactNumbers());
+                false);
         result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         result.oneOfCreator(context.typeUtils.erasure(owner.type()).toString(), index);
         if (!compileOneOfRead(result, annotation, method, generated)) return null;

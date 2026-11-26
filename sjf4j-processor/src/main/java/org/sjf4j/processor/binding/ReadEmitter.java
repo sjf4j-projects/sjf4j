@@ -20,7 +20,7 @@ final class ReadEmitter {
     private final CompilationContext context;
     private final BackendSpec backend;
     private final BindingNames names;
-    private final String exactReadBinder;
+    private final boolean exactNumbers;
     private final Jackson2ReadEmitter jackson2;
     private final Jackson3ReadEmitter jackson3;
     private final Jackson3NativeReadEmitter jackson3Native;
@@ -28,11 +28,11 @@ final class ReadEmitter {
     private final NativeReadEmitter nativeRead;
 
     ReadEmitter(CompilationContext context, BackendSpec backend, BindingNames names,
-                String exactReadBinder) {
+                boolean exactNumbers) {
         this.context = context;
         this.backend = backend;
         this.names = names;
-        this.exactReadBinder = exactReadBinder;
+        this.exactNumbers = exactNumbers;
         this.jackson2 = backend.backend() == Backend.JACKSON2
                 ? new Jackson2ReadEmitter() : null;
         this.jackson3 = backend.backend() == Backend.JACKSON3
@@ -67,9 +67,8 @@ final class ReadEmitter {
         NameAllocator names = methodNames(plan);
         String parser = names.newName("parser");
 
-        String readBinder = plan.exactNumbers() ? exactReadBinder : "binder";
         out.beginBlock("try (" + backend.parserType() + " " + parser
-                + " = this." + readBinder + ".createParser(" + input + "))");
+                + " = this.binder.createParser(" + input + "))");
         emitReadBody(out, plan, value, parser, names);
         out.endBlock();
 
@@ -162,10 +161,10 @@ final class ReadEmitter {
                 emitPojo(out, value);
                 break;
             case JSON_OBJECT:
-                out.line("return " + STREAMING_IO + ".readJsonObject(parser, " + readConfig(value) + ");");
+                out.line("return " + STREAMING_IO + ".readJsonObject(parser, " + readConfig() + ");");
                 break;
             case JSON_ARRAY:
-                out.line("return " + STREAMING_IO + ".readJsonArray(parser, " + readConfig(value) + ");");
+                out.line("return " + STREAMING_IO + ".readJsonArray(parser, " + readConfig() + ");");
                 break;
 
             case ARRAY:
@@ -231,7 +230,7 @@ final class ReadEmitter {
         out.beginBlock("while ((nameIndex = parser.nextNameMatch("
                 + names.field(value, "discriminator", BindingNames.fieldType(value.type()) + "_DISCRIMINATOR_MATCHER") + ", 0)) != " + NAME_MATCHER + ".OBJECT_END)");
         out.beginBlock("if (nameIndex == 0)");
-        out.line("Object discriminator = parser.readRaw(" + readConfig(value) + ");");
+        out.line("Object discriminator = parser.readRaw(" + readConfig() + ");");
         out.beginBlock("if (discriminator != null)");
         out.beginBlock("switch (String.valueOf(discriminator))");
         for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
@@ -273,7 +272,7 @@ final class ReadEmitter {
         out.line("prefixValues = java.util.Arrays.copyOf(prefixValues, prefixSize << 1);");
         out.endBlock();
         out.line("prefixNames[prefixSize] = parser.currentName();");
-        out.line("prefixValues[prefixSize++] = parser.readRaw(" + readConfig(value) + ");");
+        out.line("prefixValues[prefixSize++] = parser.readRaw(" + readConfig() + ");");
         out.endBlock(); // while
 
         out.beginBlock("if (" + info + ".fallbackNull)");
@@ -610,7 +609,7 @@ final class ReadEmitter {
         out.line("dynamic = new java.util.LinkedHashMap<>();");
         out.line("org.sjf4j.InternalAccess.dynamicMembers(value, dynamic);");
         out.endBlock();
-        out.line("dynamic.put(unknownName, parser.readRaw(" + readConfig(value) + "));");
+        out.line("dynamic.put(unknownName, parser.readRaw(" + readConfig() + "));");
         if (!value.ignoredNames().isEmpty()) out.endBlock();
     }
 
@@ -758,7 +757,7 @@ final class ReadEmitter {
             case "java.lang.Byte": return "readByte";
             case "java.math.BigInteger": return "readBigInteger";
             case "java.math.BigDecimal": return "readBigDecimal";
-            case "java.lang.Number": return value.readExactNumbers() ? "readNumberExact" : "readNumber";
+            case "java.lang.Number": return exactNumbers ? "readNumberExact" : "readNumber";
             default: return null;
         }
     }
@@ -811,7 +810,7 @@ final class ReadEmitter {
                         : parser + ".readDouble()";
 
             case NUMBER:
-                return parser + (value.readExactNumbers() ? ".readNumberExact()" : ".readNumber()");
+                return parser + (exactNumbers ? ".readNumberExact()" : ".readNumber()");
 
             case BIG_INTEGER:
                 return parser + ".readBigInteger()";
@@ -823,7 +822,7 @@ final class ReadEmitter {
                 String rawReader = codecRawReader(value);
                 String info = names.field(value, "valueInfo", BindingNames.lowerType(value.type()) + "ValueInfo");
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + parser + ", "
-                        + info + ", " + readConfig(value) + ")";
+                        + info + ", " + readConfig() + ")";
                 String scalarRead;
                 if (rawReader == null) {
                     scalarRead = runtimeRead;
@@ -844,7 +843,7 @@ final class ReadEmitter {
                     String set = names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet");
                     String selected = STREAMING_IO + ".readValueSet(" + parser + ", "
                             + value.type() + ".class, " + value.type() + ".class, "
-                            + set + ", " + readConfig(value) + ")";
+                            + set + ", " + readConfig() + ")";
                     return "(" + value.type() + ") (" + set + ".multiples ? "
                             + selected + " : " + scalarRead + ")";
                 }
@@ -853,13 +852,13 @@ final class ReadEmitter {
             case ENUM:
                 if (fastjson2 != null) return fastjson2.readExpression(value, parser);
                 return "(" + value.type() + ") " + STREAMING_IO + ".readEnum(" + parser + ", "
-                        + value.type() + ".class, " + readConfig(value) + ")";
+                        + value.type() + ".class, " + readConfig() + ")";
 
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return (context.types.isObject(value.type()) ? "" : "(" + value.type() + ") ")
                         + "org.sjf4j.binding.OneOfIO.readOneOf(" + parser + ", "
-                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", " + readConfig(value) + ")";
+                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", " + readConfig() + ")";
 
             case RAW_MAP:
                 return rawReadExpression(value, parser, true);
@@ -868,17 +867,17 @@ final class ReadEmitter {
                 return rawReadExpression(value, parser, false);
 
             case RUNTIME:
-                if (context.types.isObject(value.type())) return parser + ".readRaw(" + readConfig(value) + ")";
+                if (context.types.isObject(value.type())) return parser + ".readRaw(" + readConfig() + ")";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
-                        + context.typeUtils.erasure(value.type()) + ".class, " + readConfig(value) + ")";
+                        + context.typeUtils.erasure(value.type()) + ".class, " + readConfig() + ")";
 
             default:
                 throw new AssertionError("Unsupported read kind " + value.kind());
         }
     }
 
-    private String readConfig(BindingValue value) {
-        return value.readExactNumbers() ? "org.sjf4j.NodeConfig.EXACT_NUMBERS" : "org.sjf4j.NodeConfig.DEFAULT";
+    private String readConfig() {
+        return exactNumbers ? "org.sjf4j.NodeConfig.EXACT_NUMBERS" : "org.sjf4j.NodeConfig.DEFAULT";
     }
 
     /**
@@ -887,7 +886,7 @@ final class ReadEmitter {
      * assignable, but keep casts for concrete targets such as LinkedHashMap.
      */
     private String rawReadExpression(BindingValue value, String parser, boolean map) {
-        String expression = parser + (map ? ".readRawObject(" + readConfig(value) + ")" : ".readRawArray(" + readConfig(value) + ")");
+        String expression = parser + (map ? ".readRawObject(" + readConfig() + ")" : ".readRawArray(" + readConfig() + ")");
         TypeElement container = context.elements.getTypeElement(
                 map ? "java.util.Map" : "java.util.List");
         TypeMirror object = context.elements.getTypeElement("java.lang.Object").asType();
