@@ -4,7 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.mapping.CreatorResolver;
@@ -70,7 +70,7 @@ public final class JdbcCompiler {
                                     Timestamp.class.getName(),
                                     Object.class.getName())));
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
     private final CompiledMetadata metadata;
     private final TypeElement mapper;
@@ -86,11 +86,11 @@ public final class JdbcCompiler {
     private final TypeMirror runtimeExceptionType;
     private final TypeMirror errorType;
 
-    public JdbcCompiler(ProcessorContext context, TypeElement mapper) {
+    public JdbcCompiler(CompilationContext context, TypeElement mapper) {
         this.context = context;
         this.types = context.types;
         this.mapper = mapper;
-        this.metadata = context.metadata(mapper);
+        this.metadata = context.metadata;
 
         this.creators = new CreatorResolver(context);
         this.stringType = requiredType(String.class);

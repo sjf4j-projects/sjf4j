@@ -3,7 +3,7 @@ package org.sjf4j.processor.mapping;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
@@ -37,9 +37,9 @@ public final class MapperMethodGenerator {
     private static final String MAPPING_IF_PARENT_PRESENT = "org.sjf4j.annotation.mapping.MappingIfParentPresent";
     private static final String ENSURE_MAPPING = "org.sjf4j.annotation.mapping.EnsureMapping";
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
 
-    public MapperMethodGenerator(ProcessorContext context) {
+    public MapperMethodGenerator(CompilationContext context) {
         this.context = context;
     }
 

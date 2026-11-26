@@ -33,11 +33,6 @@ public final class CodegenProcessor extends AbstractProcessor {
     private ProcessorContext context;
     private AnnotationValidator annotationValidator;
 
-    private NavigatorGenerator navigatorGenerator;
-    private MapperGenerator mapperGenerator;
-    private JdbcMapperGenerator jdbcMapperGenerator;
-    private BindingGenerator bindingGenerator;
-    private SchemaGenerator schemaGenerator;
 
     /**
      * Lists both root and method-level annotations so invalid element kinds
@@ -58,11 +53,6 @@ public final class CodegenProcessor extends AbstractProcessor {
         super.init(processingEnv);
         this.context = new ProcessorContext(processingEnv);
         this.annotationValidator = new AnnotationValidator(context);
-        this.navigatorGenerator = new NavigatorGenerator(context);
-        this.mapperGenerator = new MapperGenerator(context);
-        this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
-        this.bindingGenerator = new BindingGenerator(context);
-        this.schemaGenerator = new SchemaGenerator(context);
     }
 
     /** Processes each discovered interface; other processors may see the same annotations. */
@@ -81,37 +71,39 @@ public final class CodegenProcessor extends AbstractProcessor {
         // Discovery precedes generation within each annotation processing round.
         context.discovery.collect(roundEnv);
 
-        processInterfaces(roundEnv, CompiledNavigator.class, navigatorGenerator::generate);
+        processInterfaces(roundEnv, CompiledNavigator.class, scope -> new NavigatorGenerator(scope).generate(scope.owner));
         processInterfaces(roundEnv, CompiledMapper.class, this::generateMapper);
         processInterfaces(roundEnv, CompiledJdbcMapper.class, this::generateJdbcMapper);
-        processInterfaces(roundEnv, CompiledBinder.class, bindingGenerator::generate);
-        processInterfaces(roundEnv, CompiledValidator.class, schemaGenerator::generate);
+        processInterfaces(roundEnv, CompiledBinder.class, scope -> new BindingGenerator(scope).generate(scope.owner));
+        processInterfaces(roundEnv, CompiledValidator.class, scope -> new SchemaGenerator(scope).generate(scope.owner));
 
         return false;
     }
 
-    private void generateMapper(TypeElement type) {
+    private void generateMapper(CompilationContext scope) {
+        TypeElement type = scope.owner;
         if (type.getAnnotation(CompiledJdbcMapper.class) != null) {
             context.error(type, "An interface cannot be annotated with both @CompiledMapper and @CompiledJdbcMapper");
             return;
         }
 
-        mapperGenerator.generate(type);
+        new MapperGenerator(scope).generate(type);
     }
 
-    private void generateJdbcMapper(TypeElement type) {
+    private void generateJdbcMapper(CompilationContext scope) {
+        TypeElement type = scope.owner;
         /*
          * The CompiledMapper pass reports the conflict once.
          */
         if (type.getAnnotation(CompiledMapper.class) != null) return;
 
-        jdbcMapperGenerator.generate(type);
+        new JdbcMapperGenerator(scope).generate(type);
     }
 
     private <A extends Annotation> void processInterfaces(
             RoundEnvironment roundEnv,
             Class<A> annotationType,
-            Consumer<TypeElement> generator) {
+            Consumer<CompilationContext> generator) {
 
         for (Element element : roundEnv.getElementsAnnotatedWith(annotationType)) {
             if (element.getKind() != ElementKind.INTERFACE) {
@@ -120,15 +112,7 @@ public final class CodegenProcessor extends AbstractProcessor {
                 continue;
             }
             TypeElement owner = (TypeElement) element;
-            try {
-                if (annotationType == CompiledBinder.class || annotationType == CompiledMapper.class
-                        || annotationType == CompiledJdbcMapper.class || annotationType == CompiledValidator.class) {
-                    context.types.setRegisteredExternalRoots(context.discovery.externalTypes(owner));
-                }
-                generator.accept(owner);
-            } finally {
-                context.types.setRegisteredExternalRoots(java.util.Collections.emptyList());
-            }
+            generator.accept(context.forInterface(owner, annotationType != CompiledNavigator.class));
         }
     }
 }

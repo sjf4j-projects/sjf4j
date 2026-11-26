@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
@@ -16,11 +16,11 @@ import java.util.List;
  */
 public final class BindingGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final BindingMethodGenerator methodGenerator;
     private final BackendResolver backendResolver;
 
-    public BindingGenerator(ProcessorContext context) {
+    public BindingGenerator(CompilationContext context) {
         this.context = context;
         this.methodGenerator = new BindingMethodGenerator(context);
         this.backendResolver = new BackendResolver(context);
@@ -57,7 +57,7 @@ public final class BindingGenerator {
         if (!generated.isValid()) return;
 
         BindingCompiler compiler = new BindingCompiler(
-                context, generated.names(), context.metadata(type), backend.backend());
+                context, generated.names(), context.metadata, backend.backend());
         List<BindingCompiler.CompiledMethod> compiled =
                 new ArrayList<BindingCompiler.CompiledMethod>(plans.size());
 

@@ -1,7 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.GeneratedNames;
@@ -35,7 +35,7 @@ import java.util.Map;
 public final class ConversionEmitter
         implements MappingEmitter.ConversionWriter {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
     private final ConversionCompiler compiler;
@@ -50,7 +50,7 @@ public final class ConversionEmitter
     private String emittingShared;
     private GeneratedNames generatedNames;
 
-    public ConversionEmitter(ProcessorContext context, TypeElement mapper,
+    public ConversionEmitter(CompilationContext context, TypeElement mapper,
                              List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;

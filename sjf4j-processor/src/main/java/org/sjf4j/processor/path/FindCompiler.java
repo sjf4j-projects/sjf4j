@@ -4,7 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.type.TypeSystem;
@@ -23,12 +23,12 @@ import java.util.List;
  * dynamically typed node uses OBNT dispatch rather than whole-path fallback.
  */
 final class FindCompiler {
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
     private boolean allowFallback;
     private TypeMirror rootType;
 
-    FindCompiler(ProcessorContext context) {
+    FindCompiler(CompilationContext context) {
         this.context = context;
         this.types = context.types;
     }

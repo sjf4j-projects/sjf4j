@@ -42,7 +42,8 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
         finished = true;
         context.discovery.collect(round);
         TypeElement owner = context.elements.getTypeElement("fixture.Binder");
-        CompiledMetadata metadata = context.metadata(owner);
+        CompilationContext binder = context.forInterface(owner, true);
+        CompiledMetadata metadata = binder.metadata;
         for (String name : new String[]{"fixture.Money", "fixture.Amount", UUID.class.getName(), Instant.class.getName()}) {
             TypeElement value = context.elements.getTypeElement(name);
             if (value == null) continue;
@@ -66,16 +67,15 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
             for (String name : new String[]{"fixture.Binder", "fixture.OtherBinder", "fixture.Mapper"}) {
                 TypeElement compiled = context.elements.getTypeElement(name);
                 if (compiled == null) continue;
-                context.types.setRegisteredExternalRoots(context.discovery.externalTypes(compiled));
+                CompilationContext scope = context.forInterface(compiled, true);
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                        "EXTERNAL " + name + " " + context.types.isExternalNode(externalRoot.asType()));
-                context.types.setRegisteredExternalRoots(java.util.Collections.emptyList());
+                        "EXTERNAL " + name + " " + scope.types.isExternalNode(externalRoot.asType()));
             }
         }
 
         TypeElement otherOwner = context.elements.getTypeElement("fixture.OtherBinder");
         if (otherOwner != null) {
-            CompiledMetadata other = context.metadata(otherOwner);
+            CompiledMetadata other = context.forInterface(otherOwner, true).metadata;
             TypeElement instant = context.elements.getTypeElement(Instant.class.getName());
             for (String format : new String[]{"alpha", "beta"}) {
                 ValueCodecMetadata info = other.valueCodec(instant.asType(), format);

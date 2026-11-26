@@ -2,7 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
@@ -19,7 +19,7 @@ import java.util.Map;
 /** Analyzes one abstract {@code @CompiledBinder} method before source emission. */
 final class BindingMethodGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
 
     private final TypeMirror stringType;
     private final TypeMirror readerType;
@@ -27,7 +27,7 @@ final class BindingMethodGenerator {
     private final TypeMirror writerType;
     private final TypeMirror outputStreamType;
 
-    BindingMethodGenerator(ProcessorContext context) {
+    BindingMethodGenerator(CompilationContext context) {
         this.context = context;
         this.stringType = requiredType("java.lang.String");
         this.readerType = requiredType("java.io.Reader");

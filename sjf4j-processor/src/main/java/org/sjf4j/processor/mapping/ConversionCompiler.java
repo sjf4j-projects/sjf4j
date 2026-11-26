@@ -2,7 +2,7 @@ package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.RawPolicy;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -33,7 +33,7 @@ import java.util.Set;
  */
 public final class ConversionCompiler {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
     private final TypeElement mapper;
@@ -41,7 +41,7 @@ public final class ConversionCompiler {
     private final CreatorResolver creators;
     private final ConverterResolver converters;
 
-    public ConversionCompiler(ProcessorContext context, TypeElement mapper,
+    public ConversionCompiler(CompilationContext context, TypeElement mapper,
                               List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;

@@ -15,9 +15,7 @@ import java.util.Set;
 /**
  * Test-only processor bridge for compiler integration tests.
  *
- * <p>The production processor is intentionally absent while the processor
- * refactor is in progress. This bridge exercises the refactored context and
- * navigator generator without making either available from main sources.</p>
+ * Exercises navigation generation independently of the production dispatcher.
  */
 @SupportedAnnotationTypes("org.sjf4j.annotation.path.CompiledNavigator")
 public final class TestNavigatorProcessor extends AbstractProcessor {
@@ -37,7 +35,6 @@ public final class TestNavigatorProcessor extends AbstractProcessor {
         }
 
         ProcessorContext context = new ProcessorContext(processingEnv);
-        NavigatorGenerator generator = new NavigatorGenerator(context);
 
         for (Element element : round.getElementsAnnotatedWith(CompiledNavigator.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
@@ -45,7 +42,8 @@ public final class TestNavigatorProcessor extends AbstractProcessor {
                 continue;
             }
 
-            generator.generate((TypeElement) element);
+            TypeElement owner = (TypeElement) element;
+            new NavigatorGenerator(context.forInterface(owner, false)).generate(owner);
         }
 
         return true;

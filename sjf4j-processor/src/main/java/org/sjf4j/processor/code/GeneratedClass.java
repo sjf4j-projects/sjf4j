@@ -1,7 +1,7 @@
 package org.sjf4j.processor.code;
 
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.PackageElement;
@@ -28,7 +28,7 @@ public final class GeneratedClass {
 
     public static final String IMPL_SUFFIX = CompiledInstances.IMPL_SUFFIX;
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeElement origin;
 
     private final String packageName;
@@ -48,7 +48,7 @@ public final class GeneratedClass {
     private boolean valid = true;
 
     private GeneratedClass(
-            ProcessorContext context,
+            CompilationContext context,
             TypeElement origin,
             String suffix) {
 
@@ -89,7 +89,7 @@ public final class GeneratedClass {
      * Creates the default generated implementation for an interface.
      */
     public static GeneratedClass forInterface(
-            ProcessorContext context,
+            CompilationContext context,
             TypeElement origin) {
 
         return new GeneratedClass(context, origin, IMPL_SUFFIX);
@@ -99,7 +99,7 @@ public final class GeneratedClass {
      * Creates a generated implementation using a custom suffix.
      */
     public static GeneratedClass forInterface(
-            ProcessorContext context,
+            CompilationContext context,
             TypeElement origin,
             String suffix) {
 

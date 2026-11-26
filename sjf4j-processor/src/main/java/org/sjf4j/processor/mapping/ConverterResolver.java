@@ -3,7 +3,7 @@ package org.sjf4j.processor.mapping;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.RawPolicy;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
@@ -37,7 +37,7 @@ public final class ConverterResolver {
 
     private static final String COMPILED_MAPPER = "org.sjf4j.annotation.mapping.CompiledMapper";
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
     private final CompiledMetadata metadata;
 
@@ -47,7 +47,7 @@ public final class ConverterResolver {
     private final List<MethodCandidate> localMethods;
     private final List<ImportedMapper> importedMappers;
 
-    public ConverterResolver(ProcessorContext context, TypeElement mapper,
+    public ConverterResolver(CompilationContext context, TypeElement mapper,
                              List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;

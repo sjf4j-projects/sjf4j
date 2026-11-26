@@ -2,7 +2,7 @@ package org.sjf4j.processor.path;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -24,9 +24,9 @@ import java.util.Map;
 final class FindEmitter {
     private final TypeSystem types;
     private final NodeReadEmitter reads;
-    private final ProcessorContext context;
+    private final CompilationContext context;
 
-    FindEmitter(ProcessorContext context) {
+    FindEmitter(CompilationContext context) {
         this.context = context;
         this.types = context.types;
         this.reads = new NodeReadEmitter(context.types);

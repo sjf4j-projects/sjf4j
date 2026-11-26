@@ -3,7 +3,7 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.schema.SchemaException;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
@@ -100,8 +100,8 @@ final class SchemaResourceResolver {
         }
     }
 
-    private final ProcessorContext context;
-    SchemaResourceResolver(ProcessorContext context) {
+    private final CompilationContext context;
+    SchemaResourceResolver(CompilationContext context) {
         this.context = context;
     }
 

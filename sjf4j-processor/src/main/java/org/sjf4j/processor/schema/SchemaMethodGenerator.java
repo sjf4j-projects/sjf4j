@@ -5,7 +5,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
@@ -31,13 +31,13 @@ import java.util.List;
  */
 final class SchemaMethodGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final CompiledMetadata metadata;
     private final SchemaResourceResolver resources;
     private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
+    SchemaMethodGenerator(CompilationContext context, GeneratedClass generated,
                           CompiledMetadata metadata) {
         this.context = context;
         this.metadata = metadata;

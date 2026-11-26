@@ -4,7 +4,7 @@ import org.sjf4j.annotation.mapping.EnsureMapping;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingIfParentPresent;
 import org.sjf4j.mapping.JdbcRowMapper;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 import org.sjf4j.processor.type.TypeSystem;
@@ -30,14 +30,14 @@ import java.util.Set;
  */
 public final class JdbcMethodGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final TypeSystem types;
 
     private final TypeMirror resultSetType;
     private final TypeMirror metadataType;
     private final TypeMirror rowMapperType;
 
-    public JdbcMethodGenerator(ProcessorContext context) {
+    public JdbcMethodGenerator(CompilationContext context) {
         this.context = context;
         this.types = context.types;
 

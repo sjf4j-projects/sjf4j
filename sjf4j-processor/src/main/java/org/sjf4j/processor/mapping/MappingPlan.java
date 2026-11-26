@@ -1,7 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.annotation.mapping.RawPolicy;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -123,7 +123,7 @@ final class MappingPlan {
      * default values. Source-retained annotations are not reliably available
      * through runtime annotation proxies in an annotation processor.
      */
-    RawPolicy rawPolicy(ProcessorContext context) {
+    RawPolicy rawPolicy(CompilationContext context) {
         if (options == null) return RawPolicy.STRICT;
         for (java.util.Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
                 context.elements.getElementValuesWithDefaults(options).entrySet()) {

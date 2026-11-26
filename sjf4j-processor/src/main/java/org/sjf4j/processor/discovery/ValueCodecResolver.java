@@ -3,7 +3,7 @@ package org.sjf4j.processor.discovery;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.value.ValueCodec;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -26,13 +26,13 @@ import java.util.Map;
 
 /** Resolves annotated codec fields using compiler model types only. */
 public final class ValueCodecResolver {
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final List<TypeElement> registries;
     private final TypeMirror codecType;
     private final Map<String, Map<String, ValueCodecMetadata>> byType = new LinkedHashMap<>();
     private boolean scanned;
 
-    public ValueCodecResolver(ProcessorContext context, List<TypeElement> registries) {
+    public ValueCodecResolver(CompilationContext context, List<TypeElement> registries) {
         this.context = context;
         this.registries = registries;
         this.codecType = context.elements.getTypeElement(ValueCodec.class.getName()).asType();

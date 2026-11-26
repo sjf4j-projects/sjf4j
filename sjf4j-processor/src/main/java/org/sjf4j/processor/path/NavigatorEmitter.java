@@ -1,13 +1,13 @@
 package org.sjf4j.processor.path;
 
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
 /** Contributes already compiled navigator methods to the generated class. */
 final class NavigatorEmitter {
     private final FindEmitter find;
 
-    NavigatorEmitter(ProcessorContext context) {
+    NavigatorEmitter(CompilationContext context) {
         this.find = new FindEmitter(context);
     }
 

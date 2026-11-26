@@ -1,7 +1,7 @@
 package org.sjf4j.processor.path;
 
 import org.sjf4j.annotation.path.CompiledNavigator;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
@@ -19,12 +19,12 @@ import java.util.List;
  */
 public final class NavigatorGenerator {
 
-    private final ProcessorContext context;
+    private final CompilationContext context;
     private final NavigatorMethodAnalyzer analyzer;
     private final NavigatorCompiler compiler;
     private final NavigatorEmitter emitter;
 
-    public NavigatorGenerator(ProcessorContext context) {
+    public NavigatorGenerator(CompilationContext context) {
         this.context = context;
         this.analyzer = new NavigatorMethodAnalyzer(context);
         this.compiler = new NavigatorCompiler(context);

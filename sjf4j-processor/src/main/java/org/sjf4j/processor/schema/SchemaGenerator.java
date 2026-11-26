@@ -1,7 +1,7 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.annotation.schema.CompiledValidator;
-import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -17,8 +17,8 @@ import javax.lang.model.element.TypeElement;
  */
 public final class SchemaGenerator {
 
-    private final ProcessorContext context;
-    public SchemaGenerator(ProcessorContext context) {
+    private final CompilationContext context;
+    public SchemaGenerator(CompilationContext context) {
         this.context = context;
     }
 
@@ -34,7 +34,7 @@ public final class SchemaGenerator {
         CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
         // A fresh method generator per interface preserves plan sharing within
         // that interface without leaking metadata across generated classes.
-        CompiledMetadata metadata = context.metadata(iface);
+        CompiledMetadata metadata = context.metadata;
         SchemaMethodGenerator methods = new SchemaMethodGenerator(context, generated, metadata);
         for (ResolvedMethod method : context.methods.abstractMethods(iface)) {
             methods.generate(method, generated, options.fallback());
