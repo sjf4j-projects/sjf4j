@@ -641,14 +641,6 @@ public final class MappingCompiler {
 
         SourceSelector resolved = sourceSelector(plan, selector);
 
-        if (resolved == null) {
-            if (required) {
-                error(plan.method(), generated, "unknown source parameter in '" + selector + "'");
-            }
-
-            return null;
-        }
-
         VariableElement root = resolved.root;
         String expression = resolved.expression;
 

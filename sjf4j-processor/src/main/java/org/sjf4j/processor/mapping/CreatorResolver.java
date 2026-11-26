@@ -308,7 +308,7 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private static final CreatorRule INVALID_RULE = new CreatorRule(null, null, null, null, null);
+    private static final CreatorRule INVALID_RULE = new CreatorRule(null, null, null, null);
 
     private CreatorRule selectRule(TypeMirror actualTarget, List<CreatorRule> rules,
                                    ExecutableElement method, GeneratedClass generated) {
@@ -438,7 +438,7 @@ public final class CreatorResolver {
             }
         }
 
-        return new CreatorRule(annotation, owner, types.concrete(targetType),
+        return new CreatorRule(owner, types.concrete(targetType),
                 implementation == null ? null : types.concrete(implementation), creator);
     }
 
@@ -628,7 +628,6 @@ public final class CreatorResolver {
 
     private static final class CreatorRule {
 
-        final AnnotationMirror annotation;
         final TypeElement owner;
 
         final TypeMirror targetType;
@@ -636,9 +635,8 @@ public final class CreatorResolver {
 
         final String creator;
 
-        CreatorRule(AnnotationMirror annotation, TypeElement owner, TypeMirror targetType,
+        CreatorRule(TypeElement owner, TypeMirror targetType,
                     TypeMirror implementation, String creator) {
-            this.annotation = annotation;
             this.owner = owner;
             this.targetType = targetType;
             this.implementation = implementation;

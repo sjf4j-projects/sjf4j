@@ -4,7 +4,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.Nodes;
-import org.sjf4j.processor.ProcessorContext;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,11 +14,9 @@ import java.util.List;
  * index scope required by JSON Schema: items applies after local prefixItems.
  */
 final class ArrayCompiler {
-    private final ProcessorContext context;
     private final SchemaCompiler schemaCompiler;
 
-    ArrayCompiler(ProcessorContext context, SchemaCompiler schemaCompiler) {
-        this.context = context;
+    ArrayCompiler(SchemaCompiler schemaCompiler) {
         this.schemaCompiler = schemaCompiler;
     }
 

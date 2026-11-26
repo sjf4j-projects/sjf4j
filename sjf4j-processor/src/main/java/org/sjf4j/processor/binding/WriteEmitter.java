@@ -104,10 +104,6 @@ final class WriteEmitter {
     boolean hasEnumFields() { return !enumFields.isEmpty(); }
 
     void emitEnumFields(JavaWriter out) {
-        if (fastjson2 != null) {
-            fastjson2.emitEnumFields(out, enumFields);
-            return;
-        }
         if (fastjson2 != null) fastjson2.emitEnumFields(out, enumFields);
         else if (jackson != null) jackson.emitEnumFields(out, enumFields);
     }

@@ -270,10 +270,7 @@ final class ObjectCompiler {
                 Property property = dynamic ? null : javaProperties.get(name);
                 if (!dynamic && (property == null || property.read() == null))
                     return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
-                // Primitive members cannot be null, so a required check is redundant.
-                String requiredAccess = property == null || property.read().type().getKind().isPrimitive()
-                        ? null : property.read().memberName() + (property.read().isMethod() ? "()" : "");
-                requiredChecks.add(new SchemaCheck.Required(name, requiredAccess));
+                requiredChecks.add(new SchemaCheck.Required(name));
             }
         }
 
@@ -340,7 +337,6 @@ final class ObjectCompiler {
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
                 maxProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "maxProperties"),
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
-                dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
                         ? SchemaCompiler.diagnostic(rootUri, additionalKeyword) : null,
                 propertyNamesCheck == null ? null : SchemaCompiler.diagnostic(rootUri, "propertyNames"));

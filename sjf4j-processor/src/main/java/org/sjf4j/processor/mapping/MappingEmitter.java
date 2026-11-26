@@ -2290,11 +2290,6 @@ public final class MappingEmitter {
         String current =
                 root;
 
-        TypeMirror currentType =
-                steps.get(0)
-                        .access()
-                        .ownerType();
-
         int opened =
                 0;
 
@@ -2330,8 +2325,6 @@ public final class MappingEmitter {
                                 ((PathSegment.Index) segment)
                                         .index,
                                 target.mode());
-
-                if (index == null) return;
             }
 
             out.line(
@@ -2403,9 +2396,6 @@ public final class MappingEmitter {
 
             current =
                     child;
-
-            currentType =
-                    access.readType();
         }
 
         MappingCompiler.TargetStep tail =
@@ -3000,14 +2990,6 @@ public final class MappingEmitter {
 
     private String localType(TypeMirror type) {
         return types.boxed(types.concrete(type)).toString();
-    }
-
-    private String cast(TypeMirror type, String expression) {
-        TypeMirror concrete = types.concrete(type);
-
-        if (types.isObject(concrete)) return expression;
-
-        return "(" + localType(concrete) + ") " + expression;
     }
 
     private String sizeExpression(String owner, NodeAccess.Kind kind) {

@@ -739,62 +739,6 @@ public final class JdbcEmitter {
      * --------------------------------------------------------------
      */
 
-    private String emitColumnSet(
-            JavaWriter out,
-            NameAllocator names,
-            String metadata) {
-
-        String columns =
-                names.newName(
-                        "columns");
-
-        String count =
-                names.newName(
-                        "columnCount");
-
-        String index =
-                names.newName(
-                        "column");
-
-        out.line(
-                "java.util.Set<String> " +
-                        columns +
-                        " = new java.util.HashSet<String>();");
-
-        out.line(
-                "int " +
-                        count +
-                        " = " +
-                        metadata +
-                        ".getColumnCount();");
-
-        out.line(
-                "for (int " +
-                        index +
-                        " = 1; " +
-                        index +
-                        " <= " +
-                        count +
-                        "; " +
-                        index +
-                        "++) {");
-
-        out.indent();
-
-        out.line(
-                columns +
-                        ".add(" +
-                        metadata +
-                        ".getColumnLabel(" +
-                        index +
-                        "));");
-
-        out.dedent();
-        out.line("}");
-
-        return columns;
-    }
-
     private Map<String, String> emitColumnIndexes(
             JavaWriter out, NameAllocator names, String metadata,
             List<String> sourceColumns, org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy policy,
