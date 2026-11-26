@@ -1,91 +1,53 @@
-name: Exact Numbers Binding Regression (temporary)
+name: Exact Numbers Binding Retest (temporary)
 
 on:
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/exact-numbers-binding-regression.yml'
-      - 'scripts/benchmark-exact-numbers-regression.sh'
-      - 'scripts/analyze-exact-numbers-regression.py'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/ExactNumbersReadBenchmark.java'
+      - 'scripts/retest-exact-numbers-binding.py'
 
 permissions:
   contents: read
-
-env:
-  BASELINE: 0ee49e76adb87117c78000e383725eaaacf1fed0
-  CURRENT: 1dca67b8b0c19283fce57defd11df476eb0163ee
+  actions: read
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '25'
-      - uses: gradle/actions/setup-gradle@v6
-      - name: Build fixed baseline and current
-        shell: bash
-        run: |
-          set -euo pipefail
-          git worktree add --detach "$RUNNER_TEMP/baseline" "$BASELINE"
-          git worktree add --detach "$RUNNER_TEMP/current" "$CURRENT"
-          file='sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/ExactNumbersReadBenchmark.java'
-          cp "$file" "$RUNNER_TEMP/current/$file"
-          mkdir -p jars
-          for revision in baseline current; do
-            dir="$RUNNER_TEMP/$revision"
-            (cd "$dir" && ./gradlew :sjf4j-testbench:jmhJar)
-            jar="$(find "$dir/sjf4j-testbench/build/libs" -name '*-jmh.jar' -print -quit)"
-            test -n "$jar"
-            cp "$jar" "jars/$revision.jar"
-          done
-      - uses: actions/upload-artifact@v4
-        with:
-          name: exact-numbers-jars
-          path: jars/
-          if-no-files-found: error
-          retention-days: 7
-
   benchmark:
-    name: Paired Binding / ${{ matrix.backend }}
-    needs: build
+    name: Retest / ${{ matrix.backend }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 35
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 4
       matrix:
-        backend: [jackson2, jackson3, fastjson2, gson, jsonp, simple, snake]
+        backend: [jackson2, simple, jsonp, snake]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
-      - uses: actions/download-artifact@v8
+      - name: Reuse exact baseline and current jars from first experiment
+        uses: actions/download-artifact@v8
         with:
           name: exact-numbers-jars
+          run-id: 45786732782
+          github-token: ${{ github.token }}
           path: jars
-      - name: Record environment and measure
+      - name: Record environment and retest
         shell: bash
         env:
           BACKEND: ${{ matrix.backend }}
         run: |
           set -euo pipefail
           mkdir -p results
-          { echo "Baseline=$BASELINE"; echo "Current=$CURRENT"; java -version 2>&1; lscpu; free -h; } > results/runner.txt
-          bash scripts/benchmark-exact-numbers-regression.sh "$BACKEND" jars/baseline.jar jars/current.jar results
+          { echo "Original run: 45786732782"; java -version 2>&1; lscpu; free -h; sha256sum jars/*.jar; } > results/runner.txt
+          python3 scripts/retest-exact-numbers-binding.py "$BACKEND" jars/baseline.jar jars/current.jar results
           cat results/summary.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: exact-numbers-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: exact-numbers-retest-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/
           if-no-files-found: warn
           retention-days: 30
