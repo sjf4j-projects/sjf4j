@@ -276,14 +276,10 @@ public interface Evaluator {
         final PathSegment exclusiveMinimumKeywordPs;
         final PathSegment exclusiveMaximumKeywordPs;
         final URI schemaUri;
-        final boolean hasMinimum;
-        final double minimum;
-        final boolean hasMaximum;
-        final double maximum;
-        final boolean hasExclusiveMinimum;
-        final double exclusiveMinimum;
-        final boolean hasExclusiveMaximum;
-        final double exclusiveMaximum;
+        final Number minimum;
+        final Number maximum;
+        final Number exclusiveMinimum;
+        final Number exclusiveMaximum;
         public NumberEvaluator(PathSegment minimumKeywordPs, PathSegment maximumKeywordPs,
                                PathSegment exclusiveMinimumKeywordPs, PathSegment exclusiveMaximumKeywordPs,
                                URI schemaUri, Number minimum, Number maximum,
@@ -293,14 +289,10 @@ public interface Evaluator {
             this.exclusiveMinimumKeywordPs = exclusiveMinimumKeywordPs;
             this.exclusiveMaximumKeywordPs = exclusiveMaximumKeywordPs;
             this.schemaUri = schemaUri;
-            this.hasMinimum = minimum != null;
-            this.minimum = minimum != null ? minimum.doubleValue() : 0;
-            this.hasMaximum = maximum != null;
-            this.maximum = maximum != null ? maximum.doubleValue() : 0;
-            this.hasExclusiveMinimum = exclusiveMinimum != null;
-            this.exclusiveMinimum = exclusiveMinimum != null ? exclusiveMinimum.doubleValue() : 0;
-            this.hasExclusiveMaximum = exclusiveMaximum != null;
-            this.exclusiveMaximum = exclusiveMaximum != null ? exclusiveMaximum.doubleValue() : 0;
+            this.minimum = minimum;
+            this.maximum = maximum;
+            this.exclusiveMinimum = exclusiveMinimum;
+            this.exclusiveMaximum = exclusiveMaximum;
         }
 
         /**
@@ -313,20 +305,19 @@ public interface Evaluator {
                 return true;
             }
             Number node = Nodes.toNumber(instance.raw());
-            double nodeDouble = node.doubleValue();
-            if (hasMinimum && nodeDouble < minimum) {
+            if (minimum != null && Numbers.compare(node, minimum) < 0) {
                 ctx.addError(instance, ps, minimumKeywordPs, schemaUri, "minimum",
                         ctx.needsErrorDetail() ? ("expected number >= " + minimum + ", found " + node) : null);
                 return false;
-            } else if (hasMaximum && nodeDouble > maximum) {
+            } else if (maximum != null && Numbers.compare(node, maximum) > 0) {
                 ctx.addError(instance, ps, maximumKeywordPs, schemaUri, "maximum",
                         ctx.needsErrorDetail() ? ("expected number <= " + maximum + ", found " + node) : null);
                 return false;
-            } else if (hasExclusiveMinimum && nodeDouble <= exclusiveMinimum) {
+            } else if (exclusiveMinimum != null && Numbers.compare(node, exclusiveMinimum) <= 0) {
                 ctx.addError(instance, ps, exclusiveMinimumKeywordPs, schemaUri, "exclusiveMinimum",
                         ctx.needsErrorDetail() ? ("expected number > " + exclusiveMinimum + ", found " + node) : null);
                 return false;
-            } else if (hasExclusiveMaximum && nodeDouble >= exclusiveMaximum) {
+            } else if (exclusiveMaximum != null && Numbers.compare(node, exclusiveMaximum) >= 0) {
                 ctx.addError(instance, ps, exclusiveMaximumKeywordPs, schemaUri, "exclusiveMaximum",
                         ctx.needsErrorDetail() ? ("expected number < " + exclusiveMaximum + ", found " + node) : null);
                 return false;
@@ -343,7 +334,6 @@ public interface Evaluator {
         final BigDecimal divisor;
         final boolean isIntegerDivisor;
         final long divisorLong;
-        final double divisorDouble;
         /**
          * Creates evaluator for multipleOf divisor.
          */
@@ -360,7 +350,6 @@ public interface Evaluator {
             this.isIntegerDivisor = divisor.scale() <= 0
                     && divisor.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) <= 0;
             this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
-            this.divisorDouble = divisor.doubleValue();
         }
 
         /**
@@ -385,18 +374,11 @@ public interface Evaluator {
                             ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
                     return false;
                 }
-            } else if (isIntegerDivisor && (node instanceof Double || node instanceof Float)) {
-                double dv = node.doubleValue();
-                double q = dv / divisorDouble;
-                if (q != Math.rint(q)) {
-                    ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
-                    return false;
-                }
             } else {
+                // A rounded floating-point quotient can look integral even when
+                // the original number is not a multiple. Use decimal remainder.
                 BigDecimal v = Numbers.normalizeDecimal(node);
-                BigDecimal[] dr = v.divideAndRemainder(divisor);
-                if (dr[1].signum() != 0) {
+                if (v.remainder(divisor).signum() != 0) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
                             ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
                     return false;

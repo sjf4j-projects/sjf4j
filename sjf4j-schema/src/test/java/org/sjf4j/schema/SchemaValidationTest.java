@@ -8,6 +8,8 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
@@ -122,6 +124,77 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid(8));
         assertFalse(plan.isValid(10));
         assertFalse(plan.isValid(3));
+    }
+
+    @Test
+    public void testExactNumericBounds() {
+        BigInteger max = new BigInteger("18446744073709551615");
+        SchemaPlan maximum = JsonSchema.fromNode(Collections.singletonMap("maximum", max)).createPlan();
+        assertTrue(maximum.isValid(max));
+        assertFalse(maximum.isValid(max.add(BigInteger.ONE)));
+        SchemaPlan minimum = JsonSchema.fromNode(Collections.singletonMap("minimum", max.negate())).createPlan();
+        assertTrue(minimum.isValid(max.negate()));
+        assertFalse(minimum.isValid(max.negate().subtract(BigInteger.ONE)));
+
+        BigDecimal bound = new BigDecimal("972783798187987123879878123.18878137");
+        BigDecimal delta = new BigDecimal("0.000000001");
+        SchemaPlan exclusiveMaximum = JsonSchema.fromNode(
+                Collections.singletonMap("exclusiveMaximum", bound)).createPlan();
+        assertTrue(exclusiveMaximum.isValid(bound.subtract(delta)));
+        assertFalse(exclusiveMaximum.isValid(bound));
+        assertFalse(exclusiveMaximum.isValid(bound.add(delta)));
+        SchemaPlan exclusiveMinimum = JsonSchema.fromNode(
+                Collections.singletonMap("exclusiveMinimum", bound.negate())).createPlan();
+        assertTrue(exclusiveMinimum.isValid(bound.negate().add(delta)));
+        assertFalse(exclusiveMinimum.isValid(bound.negate()));
+        assertFalse(exclusiveMinimum.isValid(bound.negate().subtract(delta)));
+
+        SchemaPlan largeLong = JsonSchema.fromJson("{\"maximum\":9007199254740992}").createPlan();
+        assertFalse(largeLong.isValid(9007199254740993L));
+        SchemaPlan huge = JsonSchema.fromNode(
+                Collections.singletonMap("exclusiveMinimum", new BigDecimal("1e400"))).createPlan();
+        assertTrue(huge.isValid(new BigDecimal("2e400")));
+        assertFalse(huge.isValid(new BigDecimal("1e400")));
+    }
+
+    @Test
+    public void testMultipleOfDoesNotRoundQuotient() {
+        SchemaPlan three = JsonSchema.fromJson("{\"multipleOf\":3}").createPlan();
+        assertTrue(three.isValid(300000000000000000000d));
+        assertFalse(three.isValid(100000000000000000000d));
+        assertTrue(three.isValid(new BigInteger("300000000000000000000")));
+        assertFalse(three.isValid(new BigInteger("100000000000000000000")));
+        assertFalse(three.isValid(Double.MIN_VALUE));
+        assertTrue(three.isValid(6L));
+        assertFalse(three.isValid(7L));
+
+        SchemaPlan tenth = JsonSchema.fromNode(
+                Collections.singletonMap("multipleOf", new BigDecimal("0.1"))).createPlan();
+        assertTrue(tenth.isValid(0.3d));
+        assertTrue(tenth.isValid(0.3f));
+        assertFalse(tenth.isValid(new BigDecimal("0.300000000000000001")));
+    }
+
+    @Test
+    public void testExactNumericEqualityAndUniqueness() {
+        BigDecimal first = new BigDecimal("0.123456789123456789");
+        BigDecimal second = new BigDecimal("0.123456789123456790");
+        SchemaPlan constPlan = JsonSchema.fromNode(Collections.singletonMap("const", first)).createPlan();
+        assertTrue(constPlan.isValid(first));
+        assertFalse(constPlan.isValid(second));
+        SchemaPlan enumPlan = JsonSchema.fromNode(
+                Collections.singletonMap("enum", Collections.singletonList(first))).createPlan();
+        assertTrue(enumPlan.isValid(first));
+        assertFalse(enumPlan.isValid(second));
+        SchemaPlan unique = JsonSchema.fromJson("{\"uniqueItems\":true}").createPlan();
+        assertTrue(unique.isValid(Arrays.asList(first, second)));
+        assertFalse(unique.isValid(Arrays.asList(first, first.setScale(20))));
+        assertFalse(unique.isValid(Arrays.asList(0.1f, new BigDecimal("0.10"))));
+        assertFalse(unique.isValid(Arrays.asList(1e18d, 1000000000000000000L)));
+        assertTrue(unique.isValid(Arrays.asList(
+                Collections.singletonMap("value", first), Collections.singletonMap("value", second))));
+        assertFalse(unique.isValid(Arrays.asList(
+                Collections.singletonList(first), Collections.singletonList(first.setScale(20)))));
     }
 
     @Test
