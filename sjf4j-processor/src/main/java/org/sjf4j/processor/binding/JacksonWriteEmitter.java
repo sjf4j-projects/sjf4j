@@ -75,7 +75,9 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             return;
         }
         String nativeGenerator = names.newName("g");
-        out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
+        if (StructuralWriteEmitter.needsNativeValue(value, backend.backend(), false)) {
+            out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
+        }
         emitValue(out, value, expression, generator, nativeGenerator, names.newName("item"));
     }
 
@@ -87,35 +89,10 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         out.beginBlock("private void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = generator.nativeGenerator();");
-
-        if (value.kind() == BindingValue.Kind.ONE_OF) {
-            structures.emitOneOf(out, value);
-        } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
-                || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line(STREAMING_IO + ".writeNode(generator, value, " + writes.runtimeConfig() + ");");
-        } else {
-            switch (value.kind()) {
-                case POJO:
-                case JOJO:
-                    structures.emitPojo(out, value);
-                    break;
-                case ARRAY:
-                    structures.emitArray(out, value);
-                    break;
-                case LIST:
-                    structures.emitList(out, value);
-                    break;
-                case SET:
-                    structures.emitSet(out, value);
-                    break;
-                case MAP:
-                    structures.emitMap(out, value);
-                    break;
-                default:
-                    throw new AssertionError(value.kind());
-            }
+        if (StructuralWriteEmitter.needsNativeGenerator(value, backend.backend())) {
+            out.line(generatorType() + " g = generator.nativeGenerator();");
         }
+        structures.emitHelperBody(out, value);
         out.endBlock();
     }
 
@@ -191,6 +168,16 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             return;
         }
         switch (value.kind()) {
+            case VALUE_CODEC:
+                CodecWriteEmitter.emit(out, value, expression, "generator", "g",
+                        backend.backend(), writes.naming(), writes.runtimeConfig(), true);
+                return;
+            case RUNTIME:
+                writeRuntimeValue(out, expression);
+                return;
+            case NUMBER:
+                out.line("generator.writeNumber(" + expression + ");");
+                return;
             case STRING:
                 out.line("g.writeString(" + expression + ");");
                 return;

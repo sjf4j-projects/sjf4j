@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 
 /**
@@ -9,8 +10,8 @@ import org.sjf4j.processor.code.JavaWriter;
  * still call the selected backend's native API directly; there is no runtime
  * operation interface or extra virtual dispatch.
  *
- * The enclosing helper declares its generator and native generator. Backend
- * implementations own token operations, field names and separators.
+ * Backend implementations own token operations, field names and separators.
+ * The traversal determines whether a helper needs a native generator local.
  */
 final class StructuralWriteEmitter {
 
@@ -27,7 +28,7 @@ final class StructuralWriteEmitter {
         void writeDynamicName(JavaWriter out, String expression);
         void writeMapName(JavaWriter out, String expression);
         void writeValue(JavaWriter out, BindingValue value, String expression);
-        /** Writes a scalar property whose value has already passed a null check. */
+        /** Writes a value already known to be non-null at this call site. */
         void writeNonNullValue(JavaWriter out, BindingValue value, String expression);
         void writeRuntimeValue(JavaWriter out, String expression);
         boolean includeNulls();
@@ -50,7 +51,70 @@ final class StructuralWriteEmitter {
         this.names = names;
     }
 
-    void emitPojo(JavaWriter out, BindingValue value) {
+    /** Whether a direct value write needs the backend's native generator. */
+    static boolean needsNativeValue(BindingValue value, Backend backend, boolean knownNonNull) {
+        if (value.helperRequired()) return false;
+        if (value.isCodec()) {
+            return CodecWriteEmitter.needsNativeWriter(value, backend, knownNonNull);
+        }
+        return nonNullScalar(value);
+    }
+
+    /** Structural containers emit native tokens; delegation-only helpers do not. */
+    static boolean needsNativeGenerator(BindingValue value, Backend backend) {
+        switch (value.kind()) {
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                return false;
+            case ONE_OF:
+                for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+                    if (!subtype.cachedPojo && subtype.compiled != null
+                            && needsNativeValue(subtype.compiled, backend, true)) return true;
+                }
+                return false;
+            case POJO:
+            case JOJO:
+            case ARRAY:
+            case LIST:
+            case SET:
+            case MAP:
+                return true;
+            default:
+                throw new AssertionError(value.kind());
+        }
+    }
+
+    void emitHelperBody(JavaWriter out, BindingValue value) {
+        switch (value.kind()) {
+            case JSON_OBJECT:
+            case JSON_ARRAY:
+                ops.writeRuntimeValue(out, "value");
+                break;
+            case ONE_OF:
+                emitOneOf(out, value);
+                break;
+            case POJO:
+            case JOJO:
+                emitPojo(out, value);
+                break;
+            case ARRAY:
+                emitArray(out, value);
+                break;
+            case LIST:
+                emitList(out, value);
+                break;
+            case SET:
+                emitSet(out, value);
+                break;
+            case MAP:
+                emitMap(out, value);
+                break;
+            default:
+                throw new AssertionError(value.kind());
+        }
+    }
+
+    private void emitPojo(JavaWriter out, BindingValue value) {
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         int index = 0;
@@ -59,12 +123,19 @@ final class StructuralWriteEmitter {
             boolean stringMember = child.kind() == BindingValue.Kind.STRING
                     && ops.supportsStringMember();
             String expr = WriteEmitter.propertyExpression(property, "value");
+            if (property.constantString() != null && !stringMember) {
+                emitPropertyName(out, value, index);
+                ops.writeNonNullValue(out, child, expr);
+                index++;
+                continue;
+            }
             if (!child.primitive()) {
                 // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
                 expr = propertyVar;
-                if (!stringMember && (nonNullScalar(child) || child.helperRequired())) {
+                if (!stringMember && (nonNullScalar(child) || child.helperRequired()
+                        || (!ops.includeNulls() && child.isCodec()))) {
                     if (ops.includeNulls()) {
                         out.beginBlock("if (" + propertyVar + " == null)");
                         emitPropertyName(out, value, index);
@@ -141,7 +212,7 @@ final class StructuralWriteEmitter {
     }
 
     /** Java arrays use statically resolved element writes, without runtime dispatch. */
-    void emitArray(JavaWriter out, BindingValue value) {
+    private void emitArray(JavaWriter out, BindingValue value) {
         ops.startArray(out);
         out.beginBlock("for (int i = 0; i < value.length; i++)");
         if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
@@ -151,7 +222,7 @@ final class StructuralWriteEmitter {
     }
 
     /** Random-access and sequential lists use the same element emission. */
-    void emitList(JavaWriter out, BindingValue value) {
+    private void emitList(JavaWriter out, BindingValue value) {
         ops.startArray(out);
         out.beginBlock("if (value instanceof java.util.RandomAccess)");
         out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
@@ -176,7 +247,7 @@ final class StructuralWriteEmitter {
         ops.endArray(out);
     }
 
-    void emitSet(JavaWriter out, BindingValue value) {
+    private void emitSet(JavaWriter out, BindingValue value) {
         ops.startArray(out);
         if (ops.explicitArraySeparators()) out.line("int elementCount = 0;");
         out.beginBlock("for (" + value.elementValue().type() + " element : value)");
@@ -188,7 +259,7 @@ final class StructuralWriteEmitter {
         ops.endArray(out);
     }
 
-    void emitMap(JavaWriter out, BindingValue value) {
+    private void emitMap(JavaWriter out, BindingValue value) {
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
@@ -199,14 +270,18 @@ final class StructuralWriteEmitter {
         }
         ops.writeMapName(out, "(String) entry.getKey()");
         String mapExpression = "java.lang.Object".equals(value.mapValue().type().toString())
-                ? "mapValue" : "(" + value.mapValue().type() + ") mapValue";
-        ops.writeValue(out, value.mapValue(), mapExpression);
+                ? "mapValue" : "((" + value.mapValue().type() + ") mapValue)";
+        if (ops.includeNulls()) {
+            ops.writeValue(out, value.mapValue(), mapExpression);
+        } else {
+            ops.writeNonNullValue(out, value.mapValue(), mapExpression);
+        }
         if (!ops.includeNulls()) out.endBlock();
         out.endBlock();
         ops.endObject(out);
     }
 
-    void emitOneOf(JavaWriter out, BindingValue value) {
+    private void emitOneOf(JavaWriter out, BindingValue value) {
         boolean knownSubtype = false;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
             if (subtype.compiled != null || subtype.cachedPojo) {
@@ -226,11 +301,7 @@ final class StructuralWriteEmitter {
                 out.line("org.sjf4j.binding.StreamingIO.writePojo(generator, value, "
                         + metadata + ", " + ops.runtimeConfig() + ");");
             } else {
-                if (subtype.compiled.helperRequired()) {
-                    ops.writeNonNullValue(out, subtype.compiled, "(" + type + ") value");
-                } else {
-                    ops.writeValue(out, subtype.compiled, "(" + type + ") value");
-                }
+                ops.writeNonNullValue(out, subtype.compiled, "((" + type + ") value)");
             }
             out.line("return;");
             out.endBlock();

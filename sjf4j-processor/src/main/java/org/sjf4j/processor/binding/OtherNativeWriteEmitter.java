@@ -48,16 +48,10 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
 
         String nativeGenerator = names.newName("g");
-        switch (value.kind()) {
-            case VALUE_CODEC:
-            case NUMBER:
-            case RUNTIME:
-                // These paths do not need a native generator local.
-                break;
-            default:
-                out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
+        if (StructuralWriteEmitter.needsNativeValue(value, backend.backend(), false)) {
+            out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
         }
-        emitValue(out, value, expression, nativeGenerator, names);
+        emitValue(out, value, expression, generator, nativeGenerator, names);
     }
 
     /** All structural helpers share the (generator, value) signature. */
@@ -65,46 +59,10 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         out.beginBlock("private void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = generator.nativeGenerator();");
-
-        switch (value.kind()) {
-            case JSON_OBJECT:
-            case JSON_ARRAY:
-                writeRuntimeValue(out, "value");
-                break;
-            case ONE_OF:
-                structures.emitOneOf(out, value);
-                break;
-            case POJO:
-            case JOJO:
-            case ARRAY:
-            case LIST:
-            case SET:
-            case MAP:
-                switch (value.kind()) {
-                    case ARRAY:
-                        structures.emitArray(out, value);
-                        break;
-                    case POJO:
-                    case JOJO:
-                        structures.emitPojo(out, value);
-                        break;
-                    case LIST:
-                        structures.emitList(out, value);
-                        break;
-                    case SET:
-                        structures.emitSet(out, value);
-                        break;
-                    case MAP:
-                        structures.emitMap(out, value);
-                        break;
-                    default:
-                        throw new AssertionError(value.kind());
-                }
-                break;
-            default:
-                throw new AssertionError(value.kind());
+        if (StructuralWriteEmitter.needsNativeGenerator(value, backend.backend())) {
+            out.line(generatorType() + " g = generator.nativeGenerator();");
         }
+        structures.emitHelperBody(out, value);
         out.endBlock();
     }
 
@@ -162,7 +120,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeValue(JavaWriter out, BindingValue child, String expression) {
-        emitValue(out, child, expression, "g", null);
+        emitValue(out, child, expression, "generator", "g", null);
     }
 
     @Override
@@ -173,6 +131,16 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
         String method = gson() ? "value" : "write";
         switch (value.kind()) {
+            case VALUE_CODEC:
+                CodecWriteEmitter.emit(out, value, expression, "generator", null,
+                        backend.backend(), names, writes.runtimeConfig(), true);
+                return;
+            case RUNTIME:
+                writeRuntimeValue(out, expression);
+                return;
+            case NUMBER:
+                out.line("generator.writeNumber(" + expression + ");");
+                return;
             case ENUM:
                 out.line("g." + method + "(" + expression + ".name());");
                 return;
@@ -206,15 +174,15 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     }
 
     private void emitValue(JavaWriter out, BindingValue child, String expression,
-                           String nativeGenerator, NameAllocator names) {
+                           String generator, String nativeGenerator, NameAllocator names) {
         // Method parameters are reserved for root values; helpers use their local scope.
         String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
             out.beginBlock("if (" + expression + " == null)");
-            out.line("generator.writeNull();");
+            out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(child.helperName() + "(generator, " + expression + ");");
+            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
             out.endBlock();
             return;
         }
@@ -226,13 +194,14 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names, writes.runtimeConfig());
+                CodecWriteEmitter.emit(out, child, expression, generator, null, backend.backend(), this.names, writes.runtimeConfig());
                 return;
             case RUNTIME:
-                writeRuntimeValue(out, expression);
+                out.line(STREAMING_IO + ".writeNode(" + generator + ", " + expression
+                        + ", " + writes.runtimeConfig() + ");");
                 return;
             case NUMBER:
-                out.line("generator.writeNumber(" + expression + ");");
+                out.line(generator + ".writeNumber(" + expression + ");");
                 return;
             case ENUM:
             case CHARACTER:
