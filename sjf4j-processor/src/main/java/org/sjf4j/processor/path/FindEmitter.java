@@ -14,7 +14,6 @@ import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
