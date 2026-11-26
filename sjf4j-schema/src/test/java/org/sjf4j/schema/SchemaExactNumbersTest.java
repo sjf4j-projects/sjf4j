@@ -1,8 +1,6 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.NodeConfig;
-import org.sjf4j.binding.BinderFactory;
 
 import java.io.StringReader;
 import java.math.BigDecimal;
@@ -19,13 +17,10 @@ class SchemaExactNumbersTest {
     private static final BigDecimal UPPER = new BigDecimal("0.123456789123456790");
 
     @Test
-    void schemaBinderUsesSelectedProviderAndFixedPrecision() {
-        assertSame(NodeConfig.EXACT_NUMBERS, SchemaBinderHolder.BINDER.config());
-        assertEquals(BinderFactory.jsonProvider().create(NodeConfig.DEFAULT).getClass(),
-                SchemaBinderHolder.BINDER.getClass());
+    void schemaDocumentsAndLiteralsUseFixedPrecision() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"minimum\":" + DECIMAL + "}");
         assertEquals(EXACT, schema.getNode("minimum"));
-        assertEquals(EXACT, JsonSchema.readJsonValue(JsonSchema.writeJsonValue(EXACT)));
+        assertEquals(EXACT, SchemaSupport.readJsonValue(SchemaSupport.writeJsonValue(EXACT)));
         ObjectSchema exponent = (ObjectSchema) JsonSchema.fromJson("{\"minimum\":1.23e-400}");
         assertEquals(0, new BigDecimal("1.23e-400").compareTo(
                 assertInstanceOf(BigDecimal.class, exponent.getNode("minimum"))));

@@ -4,8 +4,6 @@ package org.sjf4j.schema;
 import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
-import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.node.NodeMapper;
 
 
@@ -64,17 +62,7 @@ public interface JsonSchema {
      * The returned value is not compiled yet.
      */
     static JsonSchema fromJson(String json) {
-        return (JsonSchema) SchemaBinderHolder.BINDER.readNode(json, JsonSchema.class);
-    }
-
-    /** Parses a schema JSON value using exact generic numeric reads. */
-    static Object readJsonValue(String json) {
-        return SchemaBinderHolder.BINDER.readNode(json, Object.class);
-    }
-
-    /** Serializes a schema document or literal for compiled schema snapshots. */
-    static String writeJsonValue(Object node) {
-        return SchemaBinderHolder.BINDER.writeNodeAsString(node);
+        return SchemaSupport.readSchema(json);
     }
 
     /**
@@ -87,13 +75,4 @@ public interface JsonSchema {
         return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false, NodeConfig.DEFAULT);
     }
 
-}
-
-/** Lazily initializes the schema-owned binder without exposing it as public API. */
-final class SchemaBinderHolder {
-
-    static final Binder<?, ?> BINDER =
-            BinderFactory.jsonProvider().create(NodeConfig.EXACT_NUMBERS);
-
-    private SchemaBinderHolder() {}
 }

@@ -3,7 +3,7 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
+import org.sjf4j.schema.SchemaSupport;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -311,7 +311,7 @@ final class SchemaMethodGenerator {
     private String compileBoolean(SchemaResourceResolver.Snapshot snapshot) {
         String literal = snapshot.documents[0].trim();
         if (!"true".equals(literal) && !"false".equals(literal)) {
-            Object parsed = Sjf4j.global().fromJson(literal);
+            Object parsed = SchemaSupport.readJsonValue(literal);
             if (!JsonType.of(parsed).isObject()) return null;
             JsonObject os = Nodes.toJsonObject(parsed);
             if (os.size() != 1 || os.getString("$ref") == null) return null;

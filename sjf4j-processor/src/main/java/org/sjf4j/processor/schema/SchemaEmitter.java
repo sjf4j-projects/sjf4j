@@ -1,6 +1,6 @@
 package org.sjf4j.processor.schema;
 
-import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.SchemaSupport;
 import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
@@ -768,9 +768,9 @@ final class SchemaEmitter {
                 // Decode each immutable schema literal once per generated validator.
                 // JSON equality remains Nodes.equals (not Java Map/List equals).
                 String field = generated.names().field("JSON_LITERAL");
-                String json = JsonSchema.writeJsonValue(literal);
+                String json = SchemaSupport.writeJsonValue(literal);
                 generated.addField(out -> out.line("private static final Object " + field
-                        + " = org.sjf4j.schema.JsonSchema.readJsonValue("
+                        + " = org.sjf4j.schema.SchemaSupport.readJsonValue("
                         + javaLiteral(json) + ");"));
                 expected = field;
             }
