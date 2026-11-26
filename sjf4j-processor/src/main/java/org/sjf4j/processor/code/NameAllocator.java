@@ -102,6 +102,8 @@ public final class NameAllocator {
 
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
+            // Java ignores identifier-ignorable characters during name resolution.
+            if (Character.isIdentifierIgnorable(c)) continue;
 
             if (out.length() == 0) {
                 if (Character.isJavaIdentifierStart(c)) {

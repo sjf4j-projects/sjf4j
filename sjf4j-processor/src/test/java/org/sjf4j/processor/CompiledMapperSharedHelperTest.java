@@ -48,9 +48,9 @@ class CompiledMapperSharedHelperTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertEquals(3, occurrences(generated, "_mapAddressDto("), generated);
+        assertEquals(3, occurrences(generated, "_mapAddressToAddressDto("), generated);
         assertTrue(generated.contains("newAddress("), generated);
-        assertFalse(generated.contains("_mapAddressDto2("), generated);
+        assertFalse(generated.contains("_mapAddressToAddressDto2("), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> addressType = loader.loadClass("fixture.Address");
@@ -110,7 +110,7 @@ class CompiledMapperSharedHelperTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertEquals(3, occurrences(generated, "_mapAddressDto("), generated);
+        assertEquals(3, occurrences(generated, "_mapAddressToAddressDto("), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> sourceType = loader.loadClass("fixture.Source");
@@ -168,7 +168,7 @@ class CompiledMapperSharedHelperTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertEquals(3, occurrences(generated, "_mapTargetKey("), generated);
+        assertEquals(3, occurrences(generated, "_mapSourceKeyToTargetKey("), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> sourceKeyType = loader.loadClass("fixture.SourceKey");

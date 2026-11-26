@@ -66,17 +66,17 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("generator.nativeGenerator()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
-            assertTrue(generated.contains("_writeString(g,"), backend);
+            assertTrue(generated.contains("_writeString(nativeGenerator,"), backend);
             assertTrue(generated.contains("private static void _writeStringMemberIncludeNulls("), backend);
             assertFalse(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
             assertTrue(compiled.generatedSource("fixture/OmitBinder_Impl.java")
                     .contains("private static void _writeStringMemberOmitNulls("), backend);
             assertFalse(generated.contains("boolean includeNulls)"), backend);
             assertTrue(generated.contains("if (value == null)"), backend);
-            assertTrue(generated.contains("g.writeString(value);"), backend);
-            assertTrue(generated.contains("_writeStringMemberIncludeNulls(g,"), backend);
-            assertTrue(generated.contains("_writeList(generator, property0);"), backend);
-            assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
+            assertTrue(generated.contains("nativeGenerator.writeString(value);"), backend);
+            assertTrue(generated.contains("_writeStringMemberIncludeNulls(nativeGenerator,"), backend);
+            assertTrue(generated.contains("_writeAnimalList(generator, animals);"), backend);
+            assertTrue(generated.contains("_writeObjectMap(generator, extras);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("this.config.includeNulls"), backend);

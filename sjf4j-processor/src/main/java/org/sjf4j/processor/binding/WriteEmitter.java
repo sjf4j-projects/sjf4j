@@ -389,12 +389,12 @@ final class WriteEmitter {
         }
         // Native JSON backends pass their existing generator directly.
         out.beginBlock("private static void " + stringHelper() + "(" + generator
-                + " g, String value) throws java.io.IOException");
+                + " nativeGenerator, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
-        out.line("g." + writeNull + "();");
+        out.line("nativeGenerator." + writeNull + "();");
         out.endBlock(" else {");
         out.indent();
-        out.line("g." + writeString + "(value);");
+        out.line("nativeGenerator." + writeString + "(value);");
         out.endBlock();
         out.endBlock();
 
@@ -408,10 +408,10 @@ final class WriteEmitter {
                 : "tools.jackson.core.io.SerializedString";
         String nameMethod = jackson2 ? "writeFieldName" : "writeName";
         out.beginBlock("private static void " + helper + "(" + generator
-                + " g, " + nameType + " name, String value) throws java.io.IOException");
+                + " nativeGenerator, " + nameType + " name, String value) throws java.io.IOException");
         if (!includeNulls) out.beginBlock("if (value != null)");
-        out.line("g." + nameMethod + "(name);");
-        out.line("g.writeString(value);");
+        out.line("nativeGenerator." + nameMethod + "(name);");
+        out.line("nativeGenerator.writeString(value);");
         if (!includeNulls) out.endBlock();
         out.endBlock();
     }

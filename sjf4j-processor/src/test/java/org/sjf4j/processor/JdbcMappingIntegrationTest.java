@@ -66,7 +66,7 @@ class JdbcMappingIntegrationTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(source.contains("MappingSupport.resolve("), source);
-        assertTrue(source.contains("rs.getString(idx_name)"), source);
+        assertTrue(source.contains("rs.getString(nameIndex)"), source);
     }
 
     @Test
@@ -116,7 +116,7 @@ class JdbcMappingIntegrationTest {
         assertTrue(source.contains("MappingSupport.resolve("), source);
         assertTrue(source.contains("userRows("), source); // Detection is by signature, not name.
         assertTrue(source.contains("return rowSet -> {"), source);
-        assertTrue(source.contains("getString(idx_userName)"), source);
+        assertTrue(source.contains("getString(userNameIndex)"), source);
         assertFalse(source.contains("ThreadLocal"), source);
         assertFalse(source.contains("Cache"), source);
     }

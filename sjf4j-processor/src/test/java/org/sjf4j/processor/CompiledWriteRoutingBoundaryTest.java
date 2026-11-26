@@ -22,7 +22,7 @@ class CompiledWriteRoutingBoundaryTest {
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
                             + " @Write String writeString(String value) throws java.io.IOException; "
-                            + " @Write String writeNamedG(String g) throws java.io.IOException; "
+                            + " @Write String writeNamedG(String nativeGenerator) throws java.io.IOException; "
                             + " @Write String writeArray(int[] value) throws java.io.IOException; "
                             + " @Write String writeObject(org.sjf4j.JsonObject value) throws java.io.IOException; "
                             + " @Write String writeJsonArray(org.sjf4j.JsonArray value) throws java.io.IOException; "
@@ -38,7 +38,7 @@ class CompiledWriteRoutingBoundaryTest {
             } else {
                 assertTrue(generated.contains("private static void _writeString("),
                         backend + ": missing native String helper");
-                assertTrue(generated.contains(" g, String value)"),
+                assertTrue(generated.contains(" nativeGenerator, String value)"),
                         backend + ": String helper must accept the native generator");
                 assertFalse(generated.contains("_writeString(generator,"),
                         backend + ": helper must not reacquire the generator");

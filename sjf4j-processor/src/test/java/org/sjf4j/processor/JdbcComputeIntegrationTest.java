@@ -34,7 +34,7 @@ class JdbcComputeIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(source.contains("rs.getTimestamp(idx_created)"), source);
+        assertTrue(source.contains("rs.getTimestamp(createdIndex)"), source);
         assertTrue(source.contains("this.toInstant("), source);
     }
 

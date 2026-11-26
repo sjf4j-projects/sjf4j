@@ -73,7 +73,7 @@ class CompiledFastjson2UnifiedWriteTest {
         assertTrue(generated.contains("StreamingIO.writeNode(generator,"), generated);
         assertFalse(generated.contains("StructuralWriteEmitter"), generated);
         // A OneOf/codec/dynamic descendant must not force its parent to Runtime.
-        assertTrue(generated.contains("_writeListUtf8(generator, property0);"), generated);
+        assertTrue(generated.contains("_writeAnimalListUtf8(generator, animals);"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> modelType = loader.loadClass("fixture.Model");
