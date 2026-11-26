@@ -54,7 +54,7 @@ public final class Formats {
 
     private static boolean scanIpv4(String value, int start, byte[] bytes, int offset) {
         int len = value.length();
-        for (int octet = 0; octet < 4; octet++) {
+        for (int octet = 0; ; octet++) {
             if (start >= len) return false;
             int end = start;
             int number = 0;
@@ -72,7 +72,6 @@ public final class Formats {
             if (end >= len || value.charAt(end) != '.') return false;
             start = end + 1;
         }
-        return false;
     }
 
     private static boolean scanIpv6(String value, byte[] bytes) {

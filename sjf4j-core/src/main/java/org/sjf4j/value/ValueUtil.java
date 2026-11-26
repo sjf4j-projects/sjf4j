@@ -43,7 +43,8 @@ public final class ValueUtil {
             byte[] bytes = Formats.parseIpv6(literal);
             // Preserve JDK behavior for IPv4-mapped IPv6 addresses.
             InetAddress address = InetAddress.getByAddress(bytes);
-            if (scope == null || !(address instanceof Inet6Address)) return address;
+            if (scope == null) return address;
+            if (!(address instanceof Inet6Address)) throw new IllegalArgumentException();
 
             boolean numeric = true;
             for (int i = 0; i < scope.length(); i++) {
