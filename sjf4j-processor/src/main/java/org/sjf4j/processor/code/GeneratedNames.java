@@ -6,7 +6,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
 
 /**
@@ -76,21 +75,11 @@ public final class GeneratedNames {
     /** Creates an independent local namespace with source parameters reserved. */
     public NameAllocator locals(ExecutableElement method) {
         Asserts.notNull(method, "method");
-        NameAllocator locals = new NameAllocator();
-        for (VariableElement parameter : method.getParameters()) {
-            locals.reserve(parameter.getSimpleName().toString());
-        }
-        return locals;
+        return NameAllocator.forMethod(method);
     }
 
     /** Creates an independent local namespace for a synthetic helper method. */
     public NameAllocator helperLocals(String... parameterNames) {
-        NameAllocator locals = new NameAllocator();
-        if (parameterNames != null) {
-            for (String parameter : parameterNames) {
-                locals.reserve(parameter);
-            }
-        }
-        return locals;
+        return NameAllocator.forParameters(parameterNames);
     }
 }

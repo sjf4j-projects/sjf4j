@@ -1,6 +1,8 @@
 package org.sjf4j.processor.code;
 
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,6 +16,30 @@ import java.util.Set;
 public final class NameAllocator {
 
     private final Set<String> used = new HashSet<>();
+
+    /** Creates a local namespace with the declared parameters reserved. */
+    public static NameAllocator forMethod(ExecutableElement method) {
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : method.getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
+        }
+        return names;
+    }
+
+    /** Creates a local namespace for a synthetic helper. */
+    public static NameAllocator forParameters(String... parameters) {
+        NameAllocator names = new NameAllocator();
+        if (parameters != null) {
+            for (String parameter : parameters) names.reserve(parameter);
+        }
+        return names;
+    }
+
+    /** Reserves the identifiers already allocated in another namespace. */
+    public NameAllocator reserveAll(NameAllocator other) {
+        used.addAll(other.used);
+        return this;
+    }
 
     /**
      * Reserves an existing Java identifier.

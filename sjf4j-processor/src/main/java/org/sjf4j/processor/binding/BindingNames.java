@@ -1,5 +1,9 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameAllocator;
+
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.code.GeneratedNames;
 
 import javax.lang.model.type.TypeMirror;
@@ -106,40 +110,26 @@ final class BindingNames {
         return allocated;
     }
 
+    NameAllocator propertyLocals(String... reserved) {
+        // These package roots can occur in generated static expressions.
+        return generated.memberSafeHelperLocals(reserved)
+                .reserve("java").reserve("javax").reserve("org").reserve("com")
+                .reserve("tools").reserve("jakarta");
+    }
+
     static String simpleType(TypeMirror type) {
-        String erased = type.toString();
-        int generic = erased.indexOf('<');
-        if (generic >= 0) erased = erased.substring(0, generic);
-        int dot = Math.max(erased.lastIndexOf('.'), erased.lastIndexOf('$'));
-        return erased.substring(dot + 1).replace("[]", "Array");
+        return NameHints.simpleType(type);
     }
 
     static String fieldType(TypeMirror type) {
-        return upperSnake(simpleType(type));
+        return NameHints.upperSnake(simpleType(type));
     }
 
     static String upperSnake(String text) {
-        StringBuilder name = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (!Character.isLetterOrDigit(c)) {
-                if (name.length() != 0 && name.charAt(name.length() - 1) != '_') name.append('_');
-                continue;
-            }
-            if (Character.isUpperCase(c) && i > 0
-                    && name.length() > 0 && name.charAt(name.length() - 1) != '_'
-                    && (Character.isLowerCase(text.charAt(i - 1))
-                        || Character.isDigit(text.charAt(i - 1)))) {
-                name.append('_');
-            }
-            name.append(Character.toUpperCase(c));
-        }
-        return name.length() == 0 ? "VALUE" : name.toString();
+        return NameHints.upperSnake(text);
     }
 
     static String lowerType(TypeMirror type) {
-        String simple = simpleType(type);
-        return simple.isEmpty() ? "value"
-                : Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
+        return NameHints.lowerCamel(simpleType(type));
     }
 }

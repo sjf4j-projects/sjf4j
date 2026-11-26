@@ -1,5 +1,7 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.code.JavaWriter;
 
 import java.util.Collections;
@@ -60,7 +62,7 @@ final class Jackson3NativeReadEmitter {
     }
 
     String helperName(BindingValue value) {
-        return names.helper(value, "jackson3NativeRead", names.primaryHelper(value) + "Native");
+        return names.helper(value, "jackson3NativeRead", "read" + NameHints.type(value.type()) + "Native");
     }
 
     String matcherFieldName(BindingValue value) {

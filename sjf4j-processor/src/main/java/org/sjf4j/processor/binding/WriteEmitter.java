@@ -6,7 +6,6 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
-import javax.lang.model.element.VariableElement;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -145,7 +144,7 @@ final class WriteEmitter {
         BindingSource.beginOverride(out, plan.method());
         String source = BindingSource.parameterName(plan, 0);
 
-        NameAllocator names = methodNames(plan);
+        NameAllocator names = NameAllocator.forMethod(plan.method().declaration());
 
         if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
@@ -434,13 +433,4 @@ final class WriteEmitter {
         return owner + '.' + access.memberName();
     }
 
-    private NameAllocator methodNames(BindingPlan plan) {
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter :
-                plan.method().declaration().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
-    }
 }

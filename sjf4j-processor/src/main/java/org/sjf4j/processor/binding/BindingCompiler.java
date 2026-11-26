@@ -1,5 +1,7 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -1246,9 +1248,7 @@ final class BindingCompiler {
     }
 
     private String helperSuggestion(BindingPlan.Direction direction, TypeMirror type) {
-        TypeElement element = context.types.typeElement(type);
-        String simple = element == null ? "Value" : element.getSimpleName().toString();
-        return direction == BindingPlan.Direction.READ_FROM ? "_read" + simple : "_write" + simple;
+        return (direction == BindingPlan.Direction.READ_FROM ? "read" : "write") + NameHints.type(type);
     }
 
     private TypeMirror requiredType(String name) {

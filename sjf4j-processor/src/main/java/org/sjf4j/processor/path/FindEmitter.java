@@ -108,8 +108,7 @@ final class FindEmitter {
                 "> result, org.sjf4j.node.NodeWalker.Access access)");
         out.line("if (current == null) return;");
 
-        NameAllocator names = new NameAllocator()
-                .reserve("root").reserve("current").reserve("result").reserve("access");
+        NameAllocator names = NameAllocator.forParameters("root", "current", "result", "access");
         // Classify once per visited node and reuse that shape for the selector
         // and the recursive descent. The null check above also guards the selector.
         String shape = names.newName("shape");

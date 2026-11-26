@@ -8,7 +8,6 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 /** Emits direct concrete-parser binding code. */
@@ -64,7 +63,7 @@ final class ReadEmitter {
 
         BindingSource.beginOverride(out, plan.method());
         String input = BindingSource.parameterName(plan, 0);
-        NameAllocator names = methodNames(plan);
+        NameAllocator names = NameAllocator.forMethod(plan.method().declaration());
         String parser = names.newName("parser");
 
         out.beginBlock("try (" + backend.parserType() + " " + parser
@@ -906,12 +905,4 @@ final class ReadEmitter {
         return owner + '.' + access.memberName() + " = " + expression + ";";
     }
 
-    private NameAllocator methodNames(BindingPlan plan) {
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().declaration().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
-    }
 }

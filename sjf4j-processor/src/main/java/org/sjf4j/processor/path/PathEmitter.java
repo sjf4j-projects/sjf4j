@@ -15,7 +15,6 @@ import org.sjf4j.processor.path.PathPlan.Step;
 import org.sjf4j.processor.path.PathPlan.Creation;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
@@ -865,13 +864,7 @@ final class PathEmitter {
     private NameAllocator names(
             ExecutableElement method) {
 
-        NameAllocator names = new NameAllocator();
-
-        for (VariableElement parameter : method.getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
+        return NameAllocator.forMethod(method);
     }
 
     /*

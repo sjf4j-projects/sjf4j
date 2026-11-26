@@ -15,7 +15,6 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.mapping.CreatorResolver;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,10 +68,7 @@ public final class JdbcEmitter {
         JdbcPlan plan = method.plan();
         String rs = plan.inputParameter().getSimpleName().toString();
         String type = plan.rowType().toString();
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
+        NameAllocator names = NameAllocator.forMethod(plan.method());
         String result = names.newName("result");
         String rowMapper = names.newName("rowMapper");
         String metadata = names.newName("metadata");
@@ -126,14 +122,8 @@ public final class JdbcEmitter {
     private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method,
                                     String helperName) {
         JdbcPlan plan = method.plan();
-        NameAllocator names = new NameAllocator();
-        if (helperName == null) {
-            for (VariableElement parameter : plan.method().getParameters()) {
-                names.reserve(parameter.getSimpleName().toString());
-            }
-        } else {
-            names.reserve("metadata");
-        }
+        NameAllocator names = helperName == null ? NameAllocator.forMethod(plan.method())
+                : NameAllocator.forParameters("metadata");
 
         String metadata = helperName == null
                 ? plan.inputParameter().getSimpleName().toString() : "metadata";
@@ -222,11 +212,7 @@ public final class JdbcEmitter {
             return;
         }
         JdbcPlan plan = method.plan();
-        NameAllocator names = new NameAllocator();
-
-        for (VariableElement parameter : plan.method().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
+        NameAllocator names = NameAllocator.forMethod(plan.method());
 
         String resultSet = plan.inputParameter().getSimpleName().toString();
 
