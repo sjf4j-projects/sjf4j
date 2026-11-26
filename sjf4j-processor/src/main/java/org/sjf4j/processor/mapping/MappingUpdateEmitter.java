@@ -10,26 +10,22 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
-import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.type.TypeSystem;
 
 import java.util.Map;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 /** Emits assignment and collection/object update policies, delegating structural writes. */
 final class MappingUpdateEmitter {
 
-    private final CompilationContext context;
     private final TypeSystem types;
     private final MappingReadEmitter sourceReads;
     private final MappingWriteEmitter writes;
     private final MappingEmitter.ConversionWriter conversions;
 
-    MappingUpdateEmitter(CompilationContext context, MappingReadEmitter sourceReads,
+    MappingUpdateEmitter(TypeSystem types, MappingReadEmitter sourceReads,
                          MappingWriteEmitter writes, MappingEmitter.ConversionWriter conversions) {
-        this.context = context;
-        this.types = context.types;
+        this.types = types;
         this.sourceReads = sourceReads;
         this.writes = writes;
         this.conversions = conversions;
@@ -52,31 +48,9 @@ final class MappingUpdateEmitter {
         MappingCompiler.Value mapped =
                 assignment.value();
 
-        if (!plan.update() ||
-                mapped.kind() !=
-                        MappingCompiler.Value.Kind.READ ||
-                mapped.conversion().kind() !=
-                        ConverterResolver.Conversion.Kind.CONTAINER ||
-                types.nodeKind(
-                        destination.type()) !=
-                        NodeKind.OBJECT_MAP) {
+        if (assignment.kind() != MappingCompiler.Assignment.Kind.DIRECT_MAP_UPDATE) return false;
 
-            return false;
-        }
-
-        NodeAccess access =
-                destination.propertyAccess();
-
-        if (!access.readable()) {
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "object update target '" +
-                            destination.expression() +
-                            "' must be readable");
-
-            return true;
-        }
+        NodeAccess access = destination.propertyAccess();
 
         String source =
                 sourceReads.emitRead(
@@ -189,14 +163,12 @@ final class MappingUpdateEmitter {
             MappingCompiler.CompiledMethod compiled,
             MappingCompiler.Assignment assignment,
             String target,
-            String value,
-            GeneratedClass generated) {
+            String value) {
 
         TargetPlan destination =
                 assignment.target();
 
-        if (destination.kind() ==
-                TargetPlan.Kind.PATH) {
+        if (assignment.kind() == MappingCompiler.Assignment.Kind.PATH) {
 
             writes.emitPathWrite(
                     out,
@@ -214,8 +186,7 @@ final class MappingUpdateEmitter {
                 compiled,
                 assignment,
                 target,
-                value,
-                generated);
+                value);
     }
 
     private void emitPropertyAssignment(
@@ -244,30 +215,20 @@ final class MappingUpdateEmitter {
 
         boolean ignoreNull = plan.policy().nulls == NullValuePolicy.IGNORE;
 
-        NodeKind kind = types.nodeKind(targetType);
-
-        if (plan.update() && types.isArrayNode(kind)) {
+        if (assignment.kind() == MappingCompiler.Assignment.Kind.ARRAY_UPDATE) {
 
             ArrayPolicy arrayPolicy = plan.arrayPolicy(rule);
 
             emitArrayUpdate(out, names, destination, target, value,
-                    arrayPolicy, ignoreNull, generated, plan);
+                    arrayPolicy, ignoreNull);
 
             return;
         }
 
-        if (plan.update() && MappingEmissionSupport.isMapLike(kind)) {
+        if (assignment.kind() == MappingCompiler.Assignment.Kind.OBJECT_UPDATE) {
 
             ObjectPolicy objectPolicy = plan.objectPolicy(rule);
-
-            if (kind != NodeKind.OBJECT_MAP && objectPolicy != ObjectPolicy.PUT) {
-                MappingEmissionSupport.error(context, plan.method(), generated, "ObjectPolicy." + objectPolicy + " requires a Map target");
-
-                return;
-            }
-
-            emitObjectUpdate(out, names, destination, target, value,
-                    objectPolicy, ignoreNull, generated, plan);
+            emitObjectUpdate(out, names, destination, target, value, objectPolicy, ignoreNull);
 
             return;
         }
@@ -287,57 +248,10 @@ final class MappingUpdateEmitter {
     }
 
     private void emitArrayUpdate(JavaWriter out, NameAllocator names, TargetPlan destination,
-                                 String target, String value, ArrayPolicy policy, boolean ignoreNull,
-                                 GeneratedClass generated, MappingPlan plan) {
+                                 String target, String value, ArrayPolicy policy, boolean ignoreNull) {
         NodeAccess access = destination.propertyAccess();
 
-        if (!access.readable()) {
-            MappingEmissionSupport.error(context, plan.method(), generated, "array update target '" + destination.expression() + "' must be readable");
-
-            return;
-        }
-
         NodeKind existingKind = types.nodeKind(access.readType());
-
-        if (existingKind ==
-                NodeKind.ARRAY_SET &&
-                policy == ArrayPolicy.SET) {
-
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "ArrayPolicy.SET requires an indexed target");
-
-            return;
-        }
-
-        if (access.readType()
-                .getKind() ==
-                TypeKind.ARRAY &&
-                policy == ArrayPolicy.ADD) {
-
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "ArrayPolicy." +
-                            policy +
-                            " cannot update a Java array in place");
-
-            return;
-        }
-
-        if (types.writeElementType(
-                access.readType()) == null) {
-
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "array update target '" +
-                            destination.expression() +
-                            "' element type is not writable");
-
-            return;
-        }
 
         value = materialize(
                 out,
@@ -408,9 +322,7 @@ final class MappingUpdateEmitter {
                 existing,
                 value,
                 existingKind,
-                policy,
-                plan,
-                generated);
+                policy);
 
         out.endBlock();
 
@@ -423,33 +335,7 @@ final class MappingUpdateEmitter {
             String target,
             String value,
             NodeKind targetKind,
-            ArrayPolicy policy,
-            MappingPlan plan,
-            GeneratedClass generated) {
-
-        if (targetKind ==
-                NodeKind.ARRAY_SET &&
-                policy == ArrayPolicy.SET) {
-
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "ArrayPolicy.SET requires an indexed target");
-
-            return;
-        }
-
-        if (targetKind ==
-                NodeKind.ARRAY_ARRAY &&
-                policy == ArrayPolicy.ADD) {
-
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "ArrayPolicy.ADD cannot grow a Java array");
-
-            return;
-        }
+            ArrayPolicy policy) {
 
         if (policy == ArrayPolicy.ADD) {
             out.line(
@@ -605,23 +491,10 @@ final class MappingUpdateEmitter {
             String target,
             String value,
             ObjectPolicy policy,
-            boolean ignoreNull,
-            GeneratedClass generated,
-            MappingPlan plan) {
+            boolean ignoreNull) {
 
         NodeAccess access =
                 destination.propertyAccess();
-
-        if (!access.readable()) {
-            MappingEmissionSupport.error(context,
-                    plan.method(),
-                    generated,
-                    "object update target '" +
-                            destination.expression() +
-                            "' must be readable");
-
-            return;
-        }
 
         if (ignoreNull) {
             out.beginBlock(

@@ -1,11 +1,7 @@
 package org.sjf4j.processor.mapping;
 
-import org.sjf4j.NodeKind;
 import org.sjf4j.processor.access.NodeAccess;
-import org.sjf4j.processor.code.GeneratedClass;
-import org.sjf4j.processor.CompilationContext;
 
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;
 
 /** Small source-generation helpers shared by mapping emitters. */
@@ -50,21 +46,5 @@ final class MappingEmissionSupport {
         }
     }
 
-    static boolean isMapLike(NodeKind kind) {
-        switch (kind) {
-            case OBJECT_MAP:
-            case OBJECT_JSON_OBJECT:
-            case OBJECT_JOJO:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    static void error(CompilationContext context, ExecutableElement method, GeneratedClass generated, String message) {
-        generated.invalidate();
-        context.error(method, generated.originName() + ": " + message);
-    }
 
 }

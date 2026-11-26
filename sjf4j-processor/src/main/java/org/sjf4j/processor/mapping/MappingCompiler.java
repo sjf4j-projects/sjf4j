@@ -2,6 +2,8 @@ package org.sjf4j.processor.mapping;
 
 import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.mapping.ArrayPolicy;
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
@@ -141,7 +143,9 @@ public final class MappingCompiler {
 
             if (value == null) return null;
 
-            assignments.add(new Assignment(target, value, rule));
+            Assignment assignment = compileAssignment(plan, target, value, rule, generated);
+            if (assignment == null) return null;
+            assignments.add(assignment);
 
             if (target.kind() == TargetPlan.Kind.PATH &&
                     target.steps().get(0).segment() instanceof PathSegment.Name) {
@@ -180,13 +184,82 @@ public final class MappingCompiler {
              */
             if (value == null) continue;
 
-            assignments.add(new Assignment(TargetPlan.property(name, targetAccess), value, null));
+            Assignment assignment = compileAssignment(plan, TargetPlan.property(name, targetAccess),
+                    value, null, generated);
+            if (assignment == null) return null;
+            assignments.add(assignment);
         }
 
         List<DynamicSource> dynamicSources =
                 compileDynamicSources(plan, targetType, constructorArguments, assignments);
 
         return CompiledMethod.object(plan, targetType, creation, constructorArguments, assignments, dynamicSources);
+    }
+
+    /** Select and validate the assignment strategy before any source is emitted. */
+    private Assignment compileAssignment(MappingPlan plan, TargetPlan target, Value value,
+                                         MappingPlan.Rule rule, GeneratedClass generated) {
+        Assignment.Kind strategy = Assignment.Kind.REPLACE;
+        if (target.kind() == TargetPlan.Kind.PATH) {
+            // Explicit paths are writes, not implicit in-place container updates.
+            strategy = Assignment.Kind.PATH;
+        } else if (plan.update()) {
+            NodeKind kind = types.nodeKind(target.type());
+            NodeAccess access = target.propertyAccess();
+            if (types.isArrayNode(kind)) {
+                ArrayPolicy policy = plan.arrayPolicy(rule);
+                if (!access.readable()) {
+                    error(plan.method(), generated,
+                            "array update target '" + target.expression() + "' must be readable");
+                    return null;
+                }
+                NodeKind existingKind = types.nodeKind(access.readType());
+                if (existingKind == NodeKind.ARRAY_SET && policy == ArrayPolicy.SET) {
+                    error(plan.method(), generated, "ArrayPolicy.SET requires an indexed target");
+                    return null;
+                }
+                if (access.readType().getKind() == TypeKind.ARRAY && policy == ArrayPolicy.ADD) {
+                    error(plan.method(), generated, "ArrayPolicy.ADD cannot update a Java array in place");
+                    return null;
+                }
+                if (types.writeElementType(access.readType()) == null) {
+                    error(plan.method(), generated,
+                            "array update target '" + target.expression() + "' element type is not writable");
+                    return null;
+                }
+                if (!validateArrayContents(plan, existingKind, policy, generated)) return null;
+                strategy = Assignment.Kind.ARRAY_UPDATE;
+            } else if (kind == NodeKind.OBJECT_MAP || kind == NodeKind.OBJECT_JSON_OBJECT
+                    || kind == NodeKind.OBJECT_JOJO) {
+                ObjectPolicy policy = plan.objectPolicy(rule);
+                if (kind != NodeKind.OBJECT_MAP && policy != ObjectPolicy.PUT) {
+                    error(plan.method(), generated, "ObjectPolicy." + policy + " requires a Map target");
+                    return null;
+                }
+                if (!access.readable()) {
+                    error(plan.method(), generated,
+                            "object update target '" + target.expression() + "' must be readable");
+                    return null;
+                }
+                strategy = kind == NodeKind.OBJECT_MAP && value.kind() == Value.Kind.READ
+                        && value.conversion().kind() == ConverterResolver.Conversion.Kind.CONTAINER
+                        ? Assignment.Kind.DIRECT_MAP_UPDATE : Assignment.Kind.OBJECT_UPDATE;
+            }
+        }
+        return new Assignment(strategy, target, value, rule);
+    }
+
+    private boolean validateArrayContents(MappingPlan plan, NodeKind kind,
+                                          ArrayPolicy policy, GeneratedClass generated) {
+        if (kind == NodeKind.ARRAY_SET && policy == ArrayPolicy.SET) {
+            error(plan.method(), generated, "ArrayPolicy.SET requires an indexed target");
+            return false;
+        }
+        if (kind == NodeKind.ARRAY_ARRAY && policy == ArrayPolicy.ADD) {
+            error(plan.method(), generated, "ArrayPolicy.ADD cannot grow a Java array");
+            return false;
+        }
+        return true;
     }
 
     /*
@@ -379,6 +452,17 @@ public final class MappingCompiler {
                         "cannot resolve root mapping from " + sourceType + " to " + plan.targetType());
 
                 return null;
+            }
+        }
+
+        if (plan.update()) {
+            NodeKind targetKind = types.nodeKind(plan.targetType());
+            if (types.isArrayNode(targetKind)) {
+                if (types.writeElementType(plan.targetType()) == null) {
+                    error(plan.method(), generated, "root array update target element type is not writable");
+                    return null;
+                }
+                if (!validateArrayContents(plan, targetKind, plan.policy().arrays, generated)) return null;
             }
         }
 
@@ -1029,15 +1113,25 @@ public final class MappingCompiler {
 
     static final class Assignment {
 
+        enum Kind {
+            PATH, REPLACE, ARRAY_UPDATE, OBJECT_UPDATE, DIRECT_MAP_UPDATE
+        }
+
+        private final Kind kind;
         private final TargetPlan target;
         private final Value value;
 
         private final MappingPlan.Rule rule;
 
-        Assignment(TargetPlan target, Value value, MappingPlan.Rule rule) {
+        Assignment(Kind kind, TargetPlan target, Value value, MappingPlan.Rule rule) {
+            this.kind = kind;
             this.target = target;
             this.value = value;
             this.rule = rule;
+        }
+
+        Kind kind() {
+            return kind;
         }
 
         TargetPlan target() {
