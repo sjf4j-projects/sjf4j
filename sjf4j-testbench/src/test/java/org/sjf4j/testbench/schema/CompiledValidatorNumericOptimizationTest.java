@@ -33,6 +33,9 @@ class CompiledValidatorNumericOptimizationTest {
             {"type":"integer","multipleOf":18446744073709551616}
             """;
 
+    private static final String THREE = "{\"type\":\"number\",\"multipleOf\":3}";
+    private static final String TENTH = "{\"type\":\"number\",\"multipleOf\":0.1}";
+
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(INTEGER) boolean primitiveInt(int value);
@@ -47,6 +50,11 @@ class CompiledValidatorNumericOptimizationTest {
         @ValidJsonSchema(DECIMAL_LITERAL) boolean literal(BigDecimal value);
         @ValidJsonSchema(HUGE_MULTIPLE) boolean hugeDivisor(long value);
         @ValidJsonSchema(HUGE_MULTIPLE) boolean hugeBigInteger(BigInteger value);
+        @ValidJsonSchema(THREE) boolean floatingDouble(double value);
+        @ValidJsonSchema(THREE) boolean floatingFloat(float value);
+        @ValidJsonSchema(THREE) boolean dynamicMultiple(Object value);
+        @ValidJsonSchema(TENTH) boolean decimalDouble(double value);
+        @ValidJsonSchema(TENTH) boolean decimalFloat(float value);
     }
 
     @Test
@@ -97,6 +105,33 @@ class CompiledValidatorNumericOptimizationTest {
         }
         assertTrue(direct.literal(new BigDecimal("2.750")));
         assertFalse(direct.literal(new BigDecimal("3.25")));
+    }
+
+    @Test
+    void floatingMultiplesMatchRuntimeAndExactDecimalRemainder() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        SchemaPlan ref = JsonSchema.fromJson(THREE).createPlan();
+        BigDecimal divisor = BigDecimal.valueOf(3);
+        for (double n : new double[]{-12, -12.5, -0.0, 0.3, 6, Math.nextDown(6.0),
+                Math.nextDown(0x1.0p53), 0x1.0p53, Math.nextUp(0x1.0p53),
+                1e20, 3e20, Double.MIN_VALUE}) {
+            boolean expected = new BigDecimal(Double.toString(n)).remainder(divisor).signum() == 0;
+            assertEquals(expected, ref.isValid(n), "runtime double " + n);
+            assertEquals(expected, direct.floatingDouble(n), "compiled double " + n);
+            assertEquals(expected, direct.dynamicMultiple(n), "dynamic double " + n);
+        }
+        for (float n : new float[]{-12, -12.5f, -0.0f, 0.3f, 6, Math.nextUp(6.0f),
+                Math.nextDown(0x1.0p24f), 0x1.0p24f, Math.nextUp(0x1.0p24f),
+                1000000064f, Float.MIN_VALUE}) {
+            boolean expected = new BigDecimal(Float.toString(n)).remainder(divisor).signum() == 0;
+            assertEquals(expected, ref.isValid(n), "runtime float " + n);
+            assertEquals(expected, direct.floatingFloat(n), "compiled float " + n);
+            assertEquals(expected, direct.dynamicMultiple(n), "dynamic float " + n);
+        }
+        assertTrue(direct.decimalDouble(0.3d));
+        assertTrue(direct.decimalFloat(0.3f));
+        assertFalse(direct.decimalDouble(0.31d));
+        assertFalse(direct.decimalFloat(0.31f));
     }
 
     @Test

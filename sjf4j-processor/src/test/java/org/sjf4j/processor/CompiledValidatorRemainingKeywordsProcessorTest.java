@@ -37,7 +37,8 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String output = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(output.contains("private static final BigDecimal"), output);
-        assertTrue(output.contains(".remainder("), output);
+        assertTrue(output.contains("Numbers.isMultipleOf("), output);
+        assertTrue(output.contains(", 0L)"), output);
         assertFalse(output.contains(".isValid("), output);
     }
 

@@ -466,6 +466,34 @@ public final class Numbers {
         return new BigDecimal(number.toString());
     }
 
+    /**
+     * Tests divisibility using decimal numeric semantics.
+     *
+     * @param number finite numeric value
+     * @param divisor positive decimal divisor
+     * @param divisorLong exact positive long value of divisor, or zero if it
+     *                    is fractional or outside the long range
+     */
+    public static boolean isMultipleOf(Number number, BigDecimal divisor, long divisorLong) {
+        if (divisorLong > 0L) {
+            if (isIntegralType(number)
+                    && (!(number instanceof BigInteger) || ((BigInteger) number).bitLength() <= 63)) {
+                return number.longValue() % divisorLong == 0;
+            }
+            if (isFloatingType(number)) {
+                double value = number.doubleValue();
+                long limit = exactFloatingIntegerLimit(number);
+                // Within this range an integral floating value has the same
+                // integer decimal representation as its lossless long cast.
+                // Do not divide in floating point: the quotient may round.
+                if (value >= -limit && value <= limit) {
+                    return value == Math.rint(value) && (long) value % divisorLong == 0;
+                }
+            }
+        }
+        return normalizeDecimal(number).remainder(divisor).signum() == 0;
+    }
+
     private static long exactFloatingIntegerLimit(Number number) {
         return number instanceof Float ? 1L << 24 : 1L << 53;
     }

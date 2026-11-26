@@ -924,15 +924,16 @@ final class SchemaEmitter {
             }
         }
         if (check.multipleOf != null) {
-            Long exactDivisor = nativeInteger ? exactLong(check.multipleOf) : null;
-            if (exactDivisor != null && exactDivisor > 0L) {
+            Long exactDivisor = exactLong(check.multipleOf);
+            if (nativeInteger && exactDivisor != null && exactDivisor > 0L) {
                 if (exactDivisor > 1L) {
                     lines.add("if (" + number + " % " + exactDivisor + "L != 0) " + fail(onFailure, check.multipleOfDiagnostic));
                 }
             } else {
-                lines.add("if (org.sjf4j.util.Numbers.normalizeDecimal(" + number
-                        + ").remainder(" + decimalConstantRef(check.multipleOf)
-                        + ").signum() != 0) " + fail(onFailure, check.multipleOfDiagnostic));
+                long divisorLong = exactDivisor != null && exactDivisor > 0L ? exactDivisor : 0L;
+                lines.add("if (!org.sjf4j.util.Numbers.isMultipleOf(" + number
+                        + ", " + decimalConstantRef(check.multipleOf)
+                        + ", " + divisorLong + "L)) " + fail(onFailure, check.multipleOfDiagnostic));
             }
         }
     }

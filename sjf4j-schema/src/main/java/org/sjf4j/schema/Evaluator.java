@@ -17,7 +17,6 @@ import org.sjf4j.exception.NodeException;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -332,7 +331,6 @@ public interface Evaluator {
         final URI schemaUri;
         final Number multipleOf;
         final BigDecimal divisor;
-        final boolean isIntegerDivisor;
         final long divisorLong;
         /**
          * Creates evaluator for multipleOf divisor.
@@ -347,9 +345,9 @@ public interface Evaluator {
                         "invalid 'multipleOf' keyword: value must be > 0", keywordPs, schemaUri));
             // Only use long arithmetic when the divisor fits exactly.
             // Larger integer divisors must keep the BigDecimal path.
-            this.isIntegerDivisor = divisor.scale() <= 0
-                    && divisor.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) <= 0;
-            this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
+            this.divisorLong = divisor.scale() <= 0
+                    && divisor.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) <= 0
+                    ? divisor.longValueExact() : 0L;
         }
 
         /**
@@ -362,27 +360,10 @@ public interface Evaluator {
                 return true;
             }
             Number node = Nodes.toNumber(instance.raw());
-            // A semantic integer is not necessarily representable as long:
-            // BigInteger, BigDecimal and even a large integral double may exceed
-            // 64 bits. Restrict the remainder fast path to lossless integers.
-            if (isIntegerDivisor && Numbers.isIntegralType(node)
-                    && (!(node instanceof BigInteger)
-                        || ((BigInteger) node).bitLength() <= 63)) {
-                long v = node.longValue();
-                if (v % divisorLong != 0) {
-                    ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
-                    return false;
-                }
-            } else {
-                // A rounded floating-point quotient can look integral even when
-                // the original number is not a multiple. Use decimal remainder.
-                BigDecimal v = Numbers.normalizeDecimal(node);
-                if (v.remainder(divisor).signum() != 0) {
-                    ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
-                    return false;
-                }
+            if (!Numbers.isMultipleOf(node, divisor, divisorLong)) {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
+                        ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
+                return false;
             }
             return true;
         }

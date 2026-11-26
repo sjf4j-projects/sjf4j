@@ -167,6 +167,15 @@ public class SchemaValidationTest {
         assertFalse(three.isValid(Double.MIN_VALUE));
         assertTrue(three.isValid(6L));
         assertFalse(three.isValid(7L));
+        assertTrue(three.isValid(12.0d));
+        assertTrue(three.isValid(-12.0f));
+        assertFalse(three.isValid(12.5d));
+        assertFalse(three.isValid(-12.5f));
+        assertFalse(three.isValid(Math.nextDown(6.0d)));
+        assertFalse(three.isValid(Math.nextUp(6.0f)));
+        assertTrue(three.isValid(-0.0d));
+        assertTrue(three.isValid(9007199254740990d));
+        assertFalse(three.isValid(9007199254740992d));
 
         SchemaPlan tenth = JsonSchema.fromNode(
                 Collections.singletonMap("multipleOf", new BigDecimal("0.1"))).createPlan();
