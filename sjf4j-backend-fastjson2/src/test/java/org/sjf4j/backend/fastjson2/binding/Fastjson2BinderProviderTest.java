@@ -44,12 +44,18 @@ class Fastjson2BinderProviderTest {
                 exact.readNode("9223372036854775808", Number.class));
         assertEquals(new java.math.BigDecimal("1.23e-400"),
                 exact.readNode("1.23e-400", Number.class));
-        try (Fastjson2Parser parser = exact.createParser("0.1", false)) {
+        Fastjson2Binder ordinaryCopy = exact.withExactNumbers(false);
+        Fastjson2Binder exactCopy = ordinary.withExactNumbers(true);
+        assertEquals(1L, ordinaryCopy.readNode("1", Number.class));
+        assertEquals(1, exactCopy.readNode("1", Number.class));
+        assertInstanceOf(Double.class, ordinaryCopy.readNode("1.0e+3", Number.class));
+        assertEquals(new java.math.BigDecimal("0.1"), exact.readNode("0.1", Number.class));
+        try (Fastjson2Parser parser = ordinaryCopy.createParser("0.1")) {
             parser.start();
             assertEquals(0.1d, parser.readNumber());
             parser.end();
         }
-        try (Fastjson2Parser parser = ordinary.createParser("0.1", true)) {
+        try (Fastjson2Parser parser = exactCopy.createParser("0.1")) {
             parser.start();
             assertEquals(new java.math.BigDecimal("0.1"), parser.readNumber());
             parser.end();

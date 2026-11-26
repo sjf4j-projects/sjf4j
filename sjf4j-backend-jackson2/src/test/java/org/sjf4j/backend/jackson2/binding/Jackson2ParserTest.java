@@ -29,6 +29,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson2ParserTest {
 
     @Test
+    void exactNumbersRetainsDecimalAfterNativeInspection() throws Exception {
+        String literal = "0.123456789123456789";
+        java.math.BigDecimal expected = new java.math.BigDecimal(literal);
+        Jackson2Binder binder = new Jackson2Binder(org.sjf4j.NodeConfig.EXACT_NUMBERS);
+        for (boolean utf8 : new boolean[]{false, true}) {
+            for (boolean raw : new boolean[]{false, true}) {
+                JsonParser nativeParser = utf8
+                        ? new JsonFactory().createParser(literal.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        : new JsonFactory().createParser(literal);
+                try (Jackson2Parser parser = inspectDecimal(binder, nativeParser, literal)) {
+                    assertEquals(expected, raw ? parser.readRaw() : parser.readNumber());
+                    parser.end();
+                }
+            }
+        }
+    }
+
+    private static Jackson2Parser inspectDecimal(Jackson2Binder binder,
+                                                   JsonParser parser, String literal) throws Exception {
+        assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_FLOAT, parser.nextToken());
+        assertEquals(Double.parseDouble(literal), parser.getDoubleValue());
+        return binder.createParser(parser);
+    }
+
+    @Test
     void nativeArrayTraversalHandsTokensBackToScalarAndRawReaders() throws Exception {
         try (Jackson2Parser reader = parser("[7,null,\"Ada\",{\"id\":2},[true,null]]")) {
             JsonParser nativeParser = reader.nativeParser();

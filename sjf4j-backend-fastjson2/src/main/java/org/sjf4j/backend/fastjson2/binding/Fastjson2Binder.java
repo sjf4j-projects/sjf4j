@@ -110,6 +110,8 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a streaming reader that wraps the supplied Fastjson2 reader.
+     * In exact mode the supplied reader must already have an exact numeric
+     * context; this method does not mutate caller-owned reader settings.
      * @param reader the Fastjson2 reader
      * @return a SJF4J streaming reader
      */
@@ -121,8 +123,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
                     || context.isEnabled(JSONReader.Feature.UseLongForInts)
                     || !(context.isEnabled(JSONReader.Feature.UseBigDecimalForDoubles)
                     || context.isEnabled(JSONReader.Feature.UseBigDecimalForFloats))) {
-                throw new org.sjf4j.exception.BindingException(
-                        "native Fastjson2 reader context does not support exactNumbers");
+                throw new BindingException("native Fastjson2 reader context does not support exactNumbers");
             }
         }
         return new Fastjson2Parser(reader);

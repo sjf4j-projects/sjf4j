@@ -30,6 +30,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3ParserTest {
 
     @Test
+    void exactNumbersRetainsDecimalAfterNativeInspection() throws Exception {
+        String literal = "0.123456789123456789";
+        java.math.BigDecimal expected = new java.math.BigDecimal(literal);
+        Jackson3Binder binder = new Jackson3Binder(org.sjf4j.NodeConfig.EXACT_NUMBERS);
+        for (boolean utf8 : new boolean[]{false, true}) {
+            for (boolean raw : new boolean[]{false, true}) {
+                JsonParser nativeParser = utf8
+                        ? new JsonFactory().createParser(ObjectReadContext.empty(), literal.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        : new JsonFactory().createParser(ObjectReadContext.empty(), literal);
+                try (Jackson3Parser parser = inspectDecimal(binder, nativeParser, literal)) {
+                    assertEquals(expected, raw ? parser.readRaw() : parser.readNumber());
+                    parser.end();
+                }
+            }
+        }
+    }
+
+    private static Jackson3Parser inspectDecimal(Jackson3Binder binder,
+                                                   JsonParser parser, String literal) throws Exception {
+        assertEquals(JsonToken.VALUE_NUMBER_FLOAT, parser.nextToken());
+        assertEquals(Double.parseDouble(literal), parser.getDoubleValue());
+        return binder.createParser(parser);
+    }
+
+    @Test
     void readsCharsDirectlyWithUtf8AndPrefetchedTokens() throws Exception {
         String json = "[\"A\",\"\\n\",\"é\",\"😀\",null,\"\",12]";
         for (boolean utf8 : new boolean[]{false, true}) {

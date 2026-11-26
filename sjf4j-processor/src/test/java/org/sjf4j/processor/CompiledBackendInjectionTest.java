@@ -105,6 +105,34 @@ class CompiledBackendInjectionTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
+    void injectedExactBinderDoesNotOverrideCompiledDefaultNumericPolicy() throws Exception {
+        for (String backend : new String[]{"JACKSON2", "JACKSON3", "GSON", "FASTJSON2", "JSONP", "SIMPLE"}) {
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Binder.java", "package fixture; import org.sjf4j.annotation.binding.*; "
+                    + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                    + "@Read Number read(String input); }"), CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            Binder<?, ?> exact;
+            switch (backend) {
+                case "JACKSON2": exact = new Jackson2Binder(NodeConfig.EXACT_NUMBERS); break;
+                case "JACKSON3": exact = new Jackson3Binder(NodeConfig.EXACT_NUMBERS); break;
+                case "GSON": exact = new GsonBinder(NodeConfig.EXACT_NUMBERS); break;
+                case "FASTJSON2": exact = new Fastjson2Binder(NodeConfig.EXACT_NUMBERS); break;
+                case "JSONP": exact = new JsonpBinder(NodeConfig.EXACT_NUMBERS); break;
+                default: exact = new SimpleJsonBinder(NodeConfig.EXACT_NUMBERS);
+            }
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                Class binderType = loader.loadClass("fixture.Binder");
+                Object bound = CompiledInstances.create(binderType, exact);
+                assertEquals(0.1d, binderType.getMethod("read", String.class).invoke(bound, "0.1"));
+                assertEquals(new java.math.BigDecimal("0.1"), exact.readNode("0.1", Number.class));
+                assertTrue(exact.config().exactNumbers);
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void injectedBinderCannotOverrideCompiledNullAndValueFormatSemantics() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bean.java",

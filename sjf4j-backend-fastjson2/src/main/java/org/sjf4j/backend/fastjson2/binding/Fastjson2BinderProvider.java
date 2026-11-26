@@ -12,7 +12,7 @@ import org.sjf4j.util.Asserts;
 /**
  * Service provider for Fastjson2 JSON binding, selected below Gson and above
  * JSON-P by default. {@link #of(JSONReader.Context, JSONWriter.Context)} uses
- * the supplied settings; each binder copies the read context for numeric policy isolation.
+ * the supplied settings; each binder copies one read context for its numeric policy.
  */
 public final class Fastjson2BinderProvider implements BinderProvider {
 

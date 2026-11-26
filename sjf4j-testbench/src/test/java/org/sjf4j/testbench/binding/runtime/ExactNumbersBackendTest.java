@@ -85,7 +85,7 @@ class ExactNumbersBackendTest {
     }
 
     @Test
-    void typedAndUntypedFieldsAndPolicyOverride() throws Exception {
+    void typedAndUntypedFieldsAndSeparateBinderPolicies() throws Exception {
         String json = "{\"number\":" + DECIMAL + ",\"raw\":" + DECIMAL
                 + ",\"map\":{\"n\":" + DECIMAL + "},\"numbers\":[" + DECIMAL + "]"
                 + ",\"primitive\":1.25,\"boxed\":1.25,\"decimal\":" + DECIMAL + ",\"count\":7}";
@@ -99,19 +99,17 @@ class ExactNumbersBackendTest {
             assertEquals(Double.valueOf(1.25), value.boxed);
             assertDecimal(DECIMAL, value.decimal);
             assertEquals(7, value.count);
-            try (StreamingParser parser = binder.createParser("1.25", false)) {
+            try (StreamingParser parser = binder.createParser(DECIMAL)) {
                 parser.start();
-                assertFalse(parser.exactNumbers());
-                assertInstanceOf(Double.class, parser.readNumber());
+                assertDecimal(DECIMAL, parser.readNumber());
                 parser.end();
             }
         }
         for (Binder<?, ?> binder : backends(NodeConfig.DEFAULT)) {
             assertInstanceOf(Double.class, binder.readNode("1.25", Number.class));
-            try (StreamingParser parser = binder.createParser(DECIMAL, true)) {
+            try (StreamingParser parser = binder.createParser("1.25")) {
                 parser.start();
-                assertTrue(parser.exactNumbers());
-                assertDecimal(DECIMAL, parser.readNumber());
+                assertInstanceOf(Double.class, parser.readNumber());
                 parser.end();
             }
             assertInstanceOf(Double.class, binder.readNode("1.25", Number.class));
