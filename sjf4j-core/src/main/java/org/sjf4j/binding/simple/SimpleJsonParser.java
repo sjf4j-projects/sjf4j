@@ -42,7 +42,12 @@ public final class SimpleJsonParser extends StreamingParser {
      * Creates reader over input characters.
      */
     public SimpleJsonParser(Reader input) {
-        super(Backend.SIMPLE);
+        this(input, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public SimpleJsonParser(Reader input, boolean exactNumbers) {
+        super(Backend.SIMPLE, exactNumbers);
         this.reader = input;
         this.inputBuffer = new char[BUFFER_SIZE];
     }
@@ -51,7 +56,12 @@ public final class SimpleJsonParser extends StreamingParser {
      * Creates reader over input string.
      */
     public SimpleJsonParser(String input) {
-        super(Backend.SIMPLE);
+        this(input, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public SimpleJsonParser(String input, boolean exactNumbers) {
+        super(Backend.SIMPLE, exactNumbers);
         if (input.length() <= BUFFER_SIZE) {
             this.reader = null;
             this.inputBuffer = input.toCharArray();
@@ -683,8 +693,8 @@ public final class SimpleJsonParser extends StreamingParser {
     private static final int NUMBER_BUFFER_INITIAL_SIZE = 32;
     /** Do not retain an input-sized array after parsing an exceptional numeric value. */
     private static final int NUMBER_BUFFER_RETAIN_CAP = 1024;
-    // Keep aligned with the known Numbers.parseNumber() 100-character limit for generic reads.
-    // Explicit BigInteger/BigDecimal reads intentionally remain unrestricted.
+    // Keep the historical Numbers.parseNumber() limit for default generic reads.
+    // Exact generic reads and explicit BigInteger/BigDecimal reads remain unrestricted.
     private static final int MAX_GENERIC_NUMBER_LENGTH = 100;
     private final char[] inputBuffer;
     private int inputPos;
@@ -807,7 +817,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true, MAX_GENERIC_NUMBER_LENGTH);
+            _scanNumber(true, exactNumbers ? Integer.MAX_VALUE : MAX_GENERIC_NUMBER_LENGTH);
             Number value;
             if (!numberFraction && !numberExponent && !numberOverflow) {
                 // _scanNumber has already decoded the entire integral literal.
@@ -816,8 +826,11 @@ public final class SimpleJsonParser extends StreamingParser {
                 } else {
                     value = numberValue;
                 }
+            } else if (exactNumbers && (numberFraction || numberExponent)) {
+                value = new BigDecimal(numberBuffer, 0, numberLength);
             } else {
-                value = Numbers.parseNumber(new String(numberBuffer, 0, numberLength));
+                String text = new String(numberBuffer, 0, numberLength);
+                value = exactNumbers ? Numbers.parseNumberExact(text) : Numbers.parseNumber(text);
             }
             _checkValueEnd();
             return value;

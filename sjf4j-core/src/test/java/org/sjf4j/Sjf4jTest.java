@@ -30,6 +30,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Slf4j
 public class Sjf4jTest {
 
+    @Test
+    void exactNumbersIsCopiedAndDoesNotChangeGlobalRuntime() {
+        Sjf4j exact = Sjf4j.builder().jsonProvider(SIMPLE_JSON).exactNumbers(true).build();
+        Sjf4j copy = Sjf4j.builder(exact).build();
+        Sjf4j ordinary = Sjf4j.builder(exact).exactNumbers(false).build();
+        assertTrue(exact.nodeConfig().exactNumbers);
+        assertTrue(copy.nodeConfig().exactNumbers);
+        assertFalse(ordinary.nodeConfig().exactNumbers);
+        assertFalse(Sjf4j.global().nodeConfig().exactNumbers);
+        assertEquals(new java.math.BigDecimal("0.123456789123456789"),
+                copy.fromJson("0.123456789123456789", Number.class));
+        assertEquals(0.1d, ordinary.fromJson("0.1", Number.class));
+    }
+
     private static final BinderProvider SIMPLE_JSON =
             BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new);
 

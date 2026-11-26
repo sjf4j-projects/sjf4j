@@ -27,7 +27,12 @@ public final class SimpleJsonBinder extends Binder<SimpleJsonParser, SimpleJsonG
      */
     @Override
     public SimpleJsonParser createParser(Reader input) throws IOException {
-        return new SimpleJsonParser(input);
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public SimpleJsonParser createParser(Reader input, boolean exactNumbers) throws IOException {
+        return new SimpleJsonParser(input, exactNumbers);
     }
 
     /**
@@ -35,7 +40,12 @@ public final class SimpleJsonBinder extends Binder<SimpleJsonParser, SimpleJsonG
      */
     @Override
     public SimpleJsonParser createParser(String input) throws IOException {
-        return new SimpleJsonParser(Asserts.notNull(input, "input"));
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public SimpleJsonParser createParser(String input, boolean exactNumbers) throws IOException {
+        return new SimpleJsonParser(Asserts.notNull(input, "input"), exactNumbers);
     }
 
     /**

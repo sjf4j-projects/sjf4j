@@ -64,11 +64,27 @@ import java.time.ZonedDateTime;
 public abstract class StreamingParser implements Closeable {
 
     final Backend backend;
+    protected final boolean exactNumbers;
 
     private String currentName;
 
     public StreamingParser(Backend backend) {
+        this(backend, false);
+    }
+
+    /**
+     * Creates a parser with an immutable policy for generic numeric reads.
+     * Implementations that enable the policy must apply it to readNumber()
+     * and all raw container/value reads, not to explicit numeric target types.
+     */
+    public StreamingParser(Backend backend, boolean exactNumbers) {
         this.backend = backend;
+        this.exactNumbers = exactNumbers;
+    }
+
+    /** Returns the generic numeric read policy of this parser. */
+    public final boolean exactNumbers() {
+        return exactNumbers;
     }
 
     /**

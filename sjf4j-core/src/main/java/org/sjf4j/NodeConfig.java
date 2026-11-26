@@ -12,6 +12,8 @@ import java.util.Map;
  */
 public final class NodeConfig {
     public final boolean includeNulls;
+    /** Preserve decimal/exponent literals as BigDecimal for generic numeric reads. */
+    public final boolean exactNumbers;
     private final Class<?>[] valueFormatTypes;
     private final String[] valueFormats;
 
@@ -24,6 +26,9 @@ public final class NodeConfig {
     /** Default value formats with null-valued object members omitted. */
     public static final NodeConfig OMIT_NULLS = new NodeConfig(false);
 
+    /** Settings for exact generic numeric reads with null-valued members included. */
+    public static final NodeConfig EXACT_NUMBERS = new NodeConfig(true, true);
+
 
     /**
      * Creates settings without default value formats.
@@ -31,9 +36,19 @@ public final class NodeConfig {
      * @param includeNulls whether serialization includes null-valued object members
      */
     public NodeConfig(boolean includeNulls) {
+        this(includeNulls, false);
+    }
+
+    /**
+     * Creates settings without default value formats.
+     * @param includeNulls whether serialization includes null-valued object members
+     * @param exactNumbers whether generic numeric reads preserve decimal precision
+     */
+    public NodeConfig(boolean includeNulls, boolean exactNumbers) {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
         this.valueFormats = EMPTY_VALUE_FORMATS;
         this.includeNulls = includeNulls;
+        this.exactNumbers = exactNumbers;
     }
 
     /**
@@ -51,6 +66,16 @@ public final class NodeConfig {
      * @throws IllegalArgumentException if a default format uses a primitive type
      */
     public NodeConfig(Map<Class<?>, String> valueFormats, boolean includeNulls) {
+        this(valueFormats, includeNulls, false);
+    }
+
+    /**
+     * Creates settings with copied default formats and explicit read/write policies.
+     * @param valueFormats formats keyed by exact boxed value type
+     * @param includeNulls whether serialization includes null-valued object members
+     * @param exactNumbers whether generic numeric reads preserve decimal precision
+     */
+    public NodeConfig(Map<Class<?>, String> valueFormats, boolean includeNulls, boolean exactNumbers) {
         Asserts.notNull(valueFormats, "valueFormats");
         if (valueFormats.isEmpty()) {
             this.valueFormatTypes = EMPTY_VALUE_TYPES;
@@ -71,6 +96,7 @@ public final class NodeConfig {
             }
         }
         this.includeNulls = includeNulls;
+        this.exactNumbers = exactNumbers;
     }
 
     /**
