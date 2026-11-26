@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.annotation.mapping.ArrayPolicy;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.annotation.AnnotationValues;
@@ -125,7 +126,7 @@ public final class MapperMethodGenerator {
             String name = AnnotationValues.name(mirror);
 
             if (MAPPING.equals(name)) {
-                MappingPlan.Rule rule = rule(mirror, MappingPlan.WriteMode.STRICT);
+                MappingPlan.Rule rule = rule(mirror, TargetPlan.WriteMode.STRICT);
                 if (!validateRule(method, methodKind, rule, generated)) return null;
 
                 rules.add(rule);
@@ -134,7 +135,7 @@ public final class MapperMethodGenerator {
 
             if (MAPPINGS.equals(name)) {
                 for (AnnotationMirror nested : annotationArray(mirror, "value")) {
-                    MappingPlan.Rule rule = rule(nested, MappingPlan.WriteMode.STRICT);
+                    MappingPlan.Rule rule = rule(nested, TargetPlan.WriteMode.STRICT);
                     if (!validateRule(method, methodKind, rule, generated)) return null;
                     rules.add(rule);
                 }
@@ -143,7 +144,7 @@ public final class MapperMethodGenerator {
             }
 
             if (MAPPING_IF_PARENT_PRESENT.equals(name)) {
-                MappingPlan.Rule rule = rule(mirror, MappingPlan.WriteMode.IF_PARENT_PRESENT);
+                MappingPlan.Rule rule = rule(mirror, TargetPlan.WriteMode.IF_PARENT_PRESENT);
                 if (!validateRule(method, methodKind, rule, generated)) return null;
 
                 rules.add(rule);
@@ -151,7 +152,7 @@ public final class MapperMethodGenerator {
             }
 
             if (ENSURE_MAPPING.equals(name)) {
-                MappingPlan.Rule rule = rule(mirror, MappingPlan.WriteMode.ENSURE);
+                MappingPlan.Rule rule = rule(mirror, TargetPlan.WriteMode.ENSURE);
                 if (!validateRule(method, methodKind, rule, generated)) return null;
 
                 rules.add(rule);
@@ -163,7 +164,7 @@ public final class MapperMethodGenerator {
         return rules;
     }
 
-    private MappingPlan.Rule rule(AnnotationMirror annotation, MappingPlan.WriteMode mode) {
+    private MappingPlan.Rule rule(AnnotationMirror annotation, TargetPlan.WriteMode mode) {
         String target = stringValue(annotation, "target");
         String source = stringValue(annotation, "source");
         List<String> sources = stringArrayValue(annotation, "sources");
@@ -223,7 +224,7 @@ public final class MapperMethodGenerator {
         boolean targetPath = isPath(rule.target());
 
         if (rule.ignore()) {
-            if (rule.mode() != MappingPlan.WriteMode.STRICT) {
+            if (rule.mode() != TargetPlan.WriteMode.STRICT) {
                 error(method, generated, annotationSimpleName(rule.annotation()) + " does not support ignore");
 
                 return false;
@@ -242,7 +243,7 @@ public final class MapperMethodGenerator {
             }
         }
 
-        if (rule.mode() != MappingPlan.WriteMode.STRICT) {
+        if (rule.mode() != TargetPlan.WriteMode.STRICT) {
             if (!targetPath) {
                 error(method, generated, annotationSimpleName(rule.annotation()) +
                         " target must be a JSONPath or JSON Pointer");
@@ -301,7 +302,7 @@ public final class MapperMethodGenerator {
             return false;
         }
 
-        if (rule.mode() == MappingPlan.WriteMode.IF_PARENT_PRESENT) {
+        if (rule.mode() == TargetPlan.WriteMode.IF_PARENT_PRESENT) {
             for (int i = 1; i < segments.length; i++) {
                 PathSegment segment = segments[i];
                 if (!(segment instanceof PathSegment.Name) && !(segment instanceof PathSegment.Index)) {
@@ -313,7 +314,7 @@ public final class MapperMethodGenerator {
             }
         }
 
-        if (rule.mode() == MappingPlan.WriteMode.ENSURE) {
+        if (rule.mode() == TargetPlan.WriteMode.ENSURE) {
             for (int i = 1; i < segments.length; i++) {
                 if (!(segments[i] instanceof PathSegment.Name)) {
                     error(method, generated, "@EnsureMapping target path supports only name segments");

@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
@@ -132,7 +133,7 @@ public final class MappingCompiler {
 
             if (consumed.contains(rule.target())) continue;
 
-            Target target = resolveTarget(targetType, rule, generated, plan.method());
+            TargetPlan target = resolveTarget(targetType, rule, generated, plan.method());
 
             if (target == null) return null;
 
@@ -142,7 +143,7 @@ public final class MappingCompiler {
 
             assignments.add(new Assignment(target, value, rule));
 
-            if (target.kind() == Target.Kind.PATH &&
+            if (target.kind() == TargetPlan.Kind.PATH &&
                     target.steps().get(0).segment() instanceof PathSegment.Name) {
                 pathParents.add(((PathSegment.Name) target.steps().get(0).segment()).name);
             }
@@ -179,7 +180,7 @@ public final class MappingCompiler {
              */
             if (value == null) continue;
 
-            assignments.add(new Assignment(Target.property(name, targetAccess), value, null));
+            assignments.add(new Assignment(TargetPlan.property(name, targetAccess), value, null));
         }
 
         List<DynamicSource> dynamicSources =
@@ -744,7 +745,7 @@ public final class MappingCompiler {
      * --------------------------------------------------------------
      */
 
-    private Target resolveTarget(TypeMirror rootType, MappingPlan.Rule rule,
+    private TargetPlan resolveTarget(TypeMirror rootType, MappingPlan.Rule rule,
                                  GeneratedClass generated, ExecutableElement method) {
 
         if (!rule.targetPath()) {
@@ -762,7 +763,7 @@ public final class MappingCompiler {
                 return null;
             }
 
-            return Target.property(rule.target(), access);
+            return TargetPlan.property(rule.target(), access);
         }
 
         JsonPath path;
@@ -788,14 +789,14 @@ public final class MappingCompiler {
                 (i, last, segment) -> {
                     if (segment instanceof PathSegment.Name) return true;
                     if (segment instanceof PathSegment.Index) {
-                        if (rule.mode() == MappingPlan.WriteMode.ENSURE) {
+                        if (rule.mode() == TargetPlan.WriteMode.ENSURE) {
                             error(method, generated, "@EnsureMapping does not support index target segments");
                             return false;
                         }
                         return true;
                     }
                     if (segment instanceof PathSegment.Append && last &&
-                            rule.mode() == MappingPlan.WriteMode.STRICT) return true;
+                            rule.mode() == TargetPlan.WriteMode.STRICT) return true;
                     error(method, generated,
                             "unsupported target path segment at index " + i + " in '" + rule.target() + "'");
                     return false;
@@ -819,14 +820,14 @@ public final class MappingCompiler {
                         return null;
                     }
                     // Ensure may need to create and assign a missing intermediate OBNT node.
-                    if (rule.mode() == MappingPlan.WriteMode.ENSURE && !access.writable()) {
+                    if (rule.mode() == TargetPlan.WriteMode.ENSURE && !access.writable()) {
                         error(method, generated, "@EnsureMapping target path '" + rule.target() +
                                 "' contains a read-only intermediate segment");
                         return null;
                     }
                     return access.readType();
                 });
-        return resolved == null ? null : Target.path(rule.target(), rule.mode(), resolved);
+        return resolved == null ? null : TargetPlan.path(rule.target(), rule.mode(), resolved);
     }
 
     /*
@@ -1028,18 +1029,18 @@ public final class MappingCompiler {
 
     static final class Assignment {
 
-        private final Target target;
+        private final TargetPlan target;
         private final Value value;
 
         private final MappingPlan.Rule rule;
 
-        Assignment(Target target, Value value, MappingPlan.Rule rule) {
+        Assignment(TargetPlan target, Value value, MappingPlan.Rule rule) {
             this.target = target;
             this.value = value;
             this.rule = rule;
         }
 
-        Target target() {
+        TargetPlan target() {
             return target;
         }
 
@@ -1075,64 +1076,6 @@ public final class MappingCompiler {
 
         Set<String> excludedNames() {
             return excludedNames;
-        }
-    }
-
-    static final class Target {
-
-        enum Kind {
-            PROPERTY,
-            PATH
-        }
-
-        private final Kind kind;
-        private final String name;
-        private final TypeMirror type;
-        private final NodeAccess access;
-        private final MappingPlan.WriteMode mode;
-        private final ResolvedPath path;
-
-        private Target(Kind kind, String name, TypeMirror type, NodeAccess access,
-                       MappingPlan.WriteMode mode, ResolvedPath path) {
-            this.kind = kind;
-            this.name = name;
-            this.type = type;
-            this.access = access;
-            this.mode = mode;
-            this.path = path;
-        }
-
-        static Target property(String name, NodeAccess access) {
-            return new Target(Kind.PROPERTY, name, access.writeType(), access,
-                    MappingPlan.WriteMode.STRICT, null);
-        }
-
-        static Target path(String expression, MappingPlan.WriteMode mode, ResolvedPath path) {
-            return new Target(Kind.PATH, expression, path.resultType(), null, mode, path);
-        }
-
-        Kind kind() {
-            return kind;
-        }
-
-        String name() {
-            return name;
-        }
-
-        TypeMirror type() {
-            return type;
-        }
-
-        NodeAccess access() {
-            return access;
-        }
-
-        MappingPlan.WriteMode mode() {
-            return mode;
-        }
-
-        List<ResolvedStep> steps() {
-            return path == null ? Collections.emptyList() : path.steps();
         }
     }
 

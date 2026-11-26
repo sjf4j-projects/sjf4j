@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.annotation.mapping.ArrayPolicy;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.util.Asserts;
@@ -21,12 +22,6 @@ final class MappingPlan {
     enum Kind {
         CREATE,
         UPDATE
-    }
-
-    enum WriteMode {
-        STRICT,
-        IF_PARENT_PRESENT,
-        ENSURE
     }
 
     private final ExecutableElement method;
@@ -128,7 +123,7 @@ final class MappingPlan {
     static final class Rule {
 
         private final AnnotationMirror annotation;
-        private final WriteMode mode;
+        private final TargetPlan.WriteMode mode;
 
         private final String target;
 
@@ -146,7 +141,7 @@ final class MappingPlan {
         private final boolean arrayExplicit;
         private final boolean objectExplicit;
 
-        Rule(AnnotationMirror annotation, WriteMode mode, String target, String source,
+        Rule(AnnotationMirror annotation, TargetPlan.WriteMode mode, String target, String source,
              List<String> sources, String compute, String nestedMapper, boolean ignore,
              ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy, boolean arrayExplicit, boolean objectExplicit) {
             this.annotation = Asserts.notNull(annotation, "annotation");
@@ -167,7 +162,7 @@ final class MappingPlan {
             return annotation;
         }
 
-        WriteMode mode() {
+        TargetPlan.WriteMode mode() {
             return mode;
         }
 
