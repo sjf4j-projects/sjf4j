@@ -265,10 +265,44 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".validate("), generated);
-        // Generated fallback resources must be visible through the generated
-        // validator's defining loader, not SchemaLoader's parent loader.
+        // Inline schemas need no resource loader, even on the runtime fallback path.
+        assertFalse(generated.contains("SchemaLoader.Local("), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> model = loader.loadClass("fixture.Model");
+            Class<?> impl = loader.loadClass("fixture.Check_Impl");
+            Object validator = impl.getConstructor().newInstance();
+            org.sjf4j.schema.ValidationResult validated =
+                    (org.sjf4j.schema.ValidationResult) impl.getMethod("validate", model)
+                            .invoke(validator, model.getConstructor().newInstance());
+            assertTrue(validated.isValid());
+        }
+    }
+
+    @Test
+    void resourceFallbackRetainsDefiningLoader(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)
+            throws Exception {
+        java.nio.file.Path schema = directory.resolve("schema.json");
+        java.nio.file.Files.writeString(schema, "true");
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=true) public interface Check { "
+                        + "@ValidJsonSchema(ref=" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                schema.toUri().toString()) + ") "
+                        + "org.sjf4j.schema.ValidationResult validate(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        // Resource-backed schemas must still use the generated validator's
+        // defining loader rather than SchemaLoader's parent loader.
         assertTrue(generated.contains(".class.getClassLoader()"), generated);
         assertTrue(generated.contains("SchemaLoader.Local("), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> model = loader.loadClass("fixture.Model");
+            Class<?> impl = loader.loadClass("fixture.Check_Impl");
+            Object validator = impl.getConstructor().newInstance();
+            org.sjf4j.schema.ValidationResult validated =
+                    (org.sjf4j.schema.ValidationResult) impl.getMethod("validate", model)
+                            .invoke(validator, model.getConstructor().newInstance());
+            assertTrue(validated.isValid());
+        }
     }
 
     @Test
