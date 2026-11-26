@@ -50,7 +50,7 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
     @Override
     public SnakeParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions), config.exactNumbers);
+        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions));
     }
 
     @Override

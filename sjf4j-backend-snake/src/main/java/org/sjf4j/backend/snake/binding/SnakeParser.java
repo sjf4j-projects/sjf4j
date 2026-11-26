@@ -1,5 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -37,8 +38,6 @@ import java.util.Map;
 /** StreamingParser backed directly by SnakeYAML parser events. */
 public final class SnakeParser extends StreamingParser {
 
-    private final boolean exactNumbers;
-
     private static final Resolver RESOLVER = new Resolver();
     private static final String TAG_NULL = Tag.NULL.getValue();
     private static final String TAG_BOOLEAN = Tag.BOOL.getValue();
@@ -65,13 +64,7 @@ public final class SnakeParser extends StreamingParser {
      * @param parser the SnakeYAML parser
      */
     public SnakeParser(Parser parser) {
-        this(parser, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public SnakeParser(Parser parser, boolean exactNumbers) {
         super(Backend.SNAKE);
-        this.exactNumbers = exactNumbers;
         this.parser = Asserts.notNull(parser, "parser");
     }
 
@@ -239,7 +232,12 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
-        return _readNumber(exactNumbers);
+        return _readNumber(false);
+    }
+
+    @Override
+    public Number readNumberExact() throws IOException {
+        return _readNumber(true);
     }
 
     private Number _readNumber(boolean exact) throws IOException {
@@ -300,37 +298,37 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public Long readLong() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toLong(value);
     }
 
     @Override
     public Integer readInt() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toInt(value);
     }
 
     @Override
     public Short readShort() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toShort(value);
     }
 
     @Override
     public Byte readByte() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toByte(value);
     }
 
     @Override
     public Double readDouble() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toDouble(value);
     }
 
     @Override
     public Float readFloat() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toFloat(value);
     }
 
@@ -376,7 +374,7 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public BigInteger readBigInteger() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         return value == null ? null : Numbers.toBigInteger(value);
     }
 
@@ -472,10 +470,10 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
+    public Object readRaw(NodeConfig config) throws IOException {
         Token token = peekToken();
         if (token != Token.OBJECT_START && token != Token.ARRAY_START) {
-            return readRawScalar(token);
+            return readRawScalar(token, config.exactNumbers);
         }
 
         RawFrame root = startRawContainer(token);
@@ -495,7 +493,7 @@ public final class SnakeParser extends StreamingParser {
                     frame.object.put(name, child.value());
                     frames.push(child);
                 } else {
-                    frame.object.put(name, readRawScalar(token));
+                    frame.object.put(name, readRawScalar(token, config.exactNumbers));
                 }
             } else {
                 if (nextIfArrayEnd()) {
@@ -508,7 +506,7 @@ public final class SnakeParser extends StreamingParser {
                     frame.array.add(child.value());
                     frames.push(child);
                 } else {
-                    frame.array.add(readRawScalar(token));
+                    frame.array.add(readRawScalar(token, config.exactNumbers));
                 }
             }
         }
@@ -521,7 +519,7 @@ public final class SnakeParser extends StreamingParser {
     }
 
     private Number requireNumber() throws IOException {
-        Number value = _readNumber(false);
+        Number value = readNumber();
         if (value == null) {
             throw new IOException("expected number, but was null");
         }
@@ -662,7 +660,7 @@ public final class SnakeParser extends StreamingParser {
     private void skipScalar(ScalarEvent scalar) throws IOException {
         switch (scalarToken(scalar)) {
             case NUMBER:
-                parseNumber(scalar.getValue(), exactNumbers);
+                parseNumber(scalar.getValue(), false);
                 return;
             case BOOLEAN:
                 parseBoolean(scalar.getValue());
@@ -689,7 +687,7 @@ public final class SnakeParser extends StreamingParser {
         throw expected("container", token);
     }
 
-    private Object readRawScalar(Token token) throws IOException {
+    private Object readRawScalar(Token token, boolean exactNumbers) throws IOException {
         if (token != Token.STRING && token != Token.NUMBER
                 && token != Token.BOOLEAN && token != Token.NULL) {
             throw expected("value", token);

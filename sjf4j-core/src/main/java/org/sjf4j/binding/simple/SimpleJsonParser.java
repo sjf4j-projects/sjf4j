@@ -1,5 +1,6 @@
 package org.sjf4j.binding.simple;
 
+import org.sjf4j.NodeConfig;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.FastStringReader;
@@ -37,19 +38,12 @@ import java.util.Map;
 public final class SimpleJsonParser extends StreamingParser {
 
     private final Reader reader;
-    private final boolean exactNumbers;
 
     /**
      * Creates reader over input characters.
      */
     public SimpleJsonParser(Reader input) {
-        this(input, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public SimpleJsonParser(Reader input, boolean exactNumbers) {
         super(Backend.SIMPLE);
-        this.exactNumbers = exactNumbers;
         this.reader = input;
         this.inputBuffer = new char[BUFFER_SIZE];
     }
@@ -58,13 +52,7 @@ public final class SimpleJsonParser extends StreamingParser {
      * Creates reader over input string.
      */
     public SimpleJsonParser(String input) {
-        this(input, false);
-    }
-
-    /** Creates a parser with an explicit generic numeric read policy. */
-    public SimpleJsonParser(String input, boolean exactNumbers) {
         super(Backend.SIMPLE);
-        this.exactNumbers = exactNumbers;
         if (input.length() <= BUFFER_SIZE) {
             this.reader = null;
             this.inputBuffer = input.toCharArray();
@@ -521,7 +509,13 @@ public final class SimpleJsonParser extends StreamingParser {
     @Override
     public Number readNumber() throws IOException {
         if (nextIfNull()) return null;
-        return _readNumberValue();
+        return _readNumberValue(false);
+    }
+
+    @Override
+    public Number readNumberExact() throws IOException {
+        if (nextIfNull()) return null;
+        return _readNumberValue(true);
     }
 
     @Override
@@ -624,17 +618,17 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
+    public Object readRaw(NodeConfig config) throws IOException {
         if (nextIfNull()) return null;
         switch (peekToken()) {
             case OBJECT_START:
-                return _readRawObject();
+                return _readRawObject(config);
             case ARRAY_START:
-                return _readRawArray();
+                return _readRawArray(config);
             case STRING:
                 return _readStringValue();
             case NUMBER:
-                return _readNumberValue();
+                return _readNumberValue(config.exactNumbers);
             case BOOLEAN:
                 return readBooleanValue();
             default:
@@ -643,32 +637,32 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     @Override
-    public Map<String, Object> readRawObject() throws IOException {
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
         if (nextIfNull()) return null;
-        return _readRawObject();
+        return _readRawObject(config);
     }
 
     @Override
-    public List<Object> readRawArray() throws IOException {
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
         if (nextIfNull()) return null;
-        return _readRawArray();
+        return _readRawArray(config);
     }
 
-    private Map<String, Object> _readRawObject() throws IOException {
+    private Map<String, Object> _readRawObject(NodeConfig config) throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
         readObjectStart();
         String name;
         while ((name = nextName()) != null) {
-            value.put(name, readRaw());
+            value.put(name, readRaw(config));
         }
         return value;
     }
 
-    private List<Object> _readRawArray() throws IOException {
+    private List<Object> _readRawArray(NodeConfig config) throws IOException {
         List<Object> value = new ArrayList<>();
         readArrayStart();
         while (!nextIfArrayEnd()) {
-            value.add(readRaw());
+            value.add(readRaw(config));
         }
         return value;
     }
@@ -816,7 +810,7 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 
-    private Number _readNumberValue() throws IOException {
+    private Number _readNumberValue(boolean exactNumbers) throws IOException {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {

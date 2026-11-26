@@ -1,6 +1,7 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import com.alibaba.fastjson2.JSONReader;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.NameMatcher;
@@ -68,12 +69,22 @@ public final class Fastjson2Parser extends StreamingParser {
      * and arrays by ArrayList values. Nested containers are parsed by SJF4J.</p>
      */
     @Override
+    public Object readRaw(NodeConfig config) throws IOException {
+        return readRaw();
+    }
+
+    @Override
     public Object readRaw() throws IOException {
         try {
             return _readRaw();
         } finally {
             peeked = null;
         }
+    }
+
+    @Override
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
+        return readRawObject();
     }
 
     @Override
@@ -85,6 +96,11 @@ public final class Fastjson2Parser extends StreamingParser {
         } finally {
             peeked = null;
         }
+    }
+
+    @Override
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
+        return readRawArray();
     }
 
     @Override
@@ -254,6 +270,12 @@ public final class Fastjson2Parser extends StreamingParser {
     public Number readNumber() {
         peeked = null;
         return reader.readNumber();
+    }
+
+    /** Uses the native numeric policy fixed by Fastjson2Binder at reader creation. */
+    @Override
+    public Number readNumberExact() {
+        return readNumber();
     }
 
     @Override
