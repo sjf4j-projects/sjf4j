@@ -33,7 +33,7 @@ public final class MappingEmitter {
         this.sourceReads = new MappingReadEmitter(context);
         MappingWriteEmitter writes = new MappingWriteEmitter(context.types);
         this.valueEmitter = new MappingValueEmitter(context.types, sourceReads, conversions);
-        this.updates = new MappingUpdateEmitter(context, sourceReads, writes, conversions);
+        this.updates = new MappingUpdateEmitter(types, sourceReads, writes, conversions);
     }
 
     /**
@@ -82,14 +82,6 @@ public final class MappingEmitter {
             NodeKind targetKind = types.nodeKind(compiled.plan().targetType());
 
             if (types.isArrayNode(targetKind)) {
-                if (types.writeElementType(compiled.plan().targetType()) == null) {
-                    MappingEmissionSupport.error(context, compiled.plan().method(), generated,
-                            "root array update target element type is not writable");
-
-                    out.line("return;");
-                    return;
-                }
-
                 String value =
                         conversions.emit(
                                 out,
@@ -114,9 +106,7 @@ public final class MappingEmitter {
                                         .targetType(),
                                 value),
                         targetKind,
-                        compiled.plan().policy().arrays,
-                        compiled.plan(),
-                        generated);
+                        compiled.plan().policy().arrays);
 
             } else if (targetKind ==
                     NodeKind.OBJECT_MAP) {
@@ -205,8 +195,7 @@ public final class MappingEmitter {
                     compiled,
                     assignment,
                     target,
-                    value,
-                    generated);
+                    value);
 
             if (presentOnly) {
                 out.endBlock();
