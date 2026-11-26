@@ -8,11 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Breaking Changes
-- Removed `CompiledInstances.create(Class<T>, NodeConfig)` and generated `_Impl(NodeConfig)` constructors. Compiled APIs now use compile-time settings; use `CompiledInstances.create(type)` and explicit annotation options where applicable. Runtime APIs still support `NodeConfig`.
-- Backend Binder injection remains supported, but `CompiledInstances.create(Class<T>, B)` now accepts `Binder` instead of an unconstrained type parameter. This changes the erased JVM parameter type from `Object` to `Binder` and is binary-incompatible with existing callers.
+### Added
+- Added `exactNumbers` support for Runtime and Compiled binding.
 
-**Migration:** Update calls to removed APIs, regenerate compiled implementations, and cleanly recompile affected applications and dependent JARs against the new SJF4J version (including the annotation processor). Previously compiled callers of the removed or changed overloads or constructors may fail with `NoSuchMethodError` until rebuilt.
+### Changed
+- JSON Schema now preserves exact numeric precision by default.
+- Refactored the annotation processor and optimized generated code.
+
+### Fixed
+- Improved JSON Schema numeric and format validation.
+- Fixed nullable numeric mappings and temporal codec initialization.
+
+### Breaking Changes
+- Removed `NodeConfig` injection from Compiled APIs and `@Write.includeNulls`.
+- Changed backend injection to accept `Binder` and updated the streaming parser SPI.
 
 
 ## [1.5.2] - 2026.11.23
