@@ -25,6 +25,9 @@ final class OfficialCaseReport {
         int failed;
         int compileErrors;
         int executionErrors;
+        int directTests;
+        int fallbackTests;
+        int blockedTests;
     }
 
     private final String selection;
@@ -110,9 +113,18 @@ final class OfficialCaseReport {
         CategoryStats c = categories.get(category);
         if (c == null) throw new IllegalStateException("Unknown category " + category);
         switch (mode) {
-            case "DIRECT": c.directGroups.add(spec.key()); break;
-            case "FALLBACK": c.fallbackGroups.add(spec.key()); break;
-            case "COMPILE_ERROR": c.blockedGroups.add(spec.key()); break;
+            case "DIRECT":
+                c.directGroups.add(spec.key());
+                c.directTests++;
+                break;
+            case "FALLBACK":
+                c.fallbackGroups.add(spec.key());
+                c.fallbackTests++;
+                break;
+            case "COMPILE_ERROR":
+                c.blockedGroups.add(spec.key());
+                c.blockedTests++;
+                break;
             default: throw new IllegalArgumentException("Unknown mode " + mode);
         }
         int[] fileCounts = byFile.computeIfAbsent(spec.file, unused -> new int[4]);
@@ -152,6 +164,7 @@ final class OfficialCaseReport {
 
         Map<String, Object> categoryRows = new LinkedHashMap<>();
         int directGroups = 0, fallbackGroups = 0, blockedGroups = 0;
+        int directTests = 0, fallbackTests = 0, blockedTests = 0;
         for (Map.Entry<String, CategoryStats> entry : categories.entrySet()) {
             CategoryStats c = entry.getValue();
             Map<String, Object> row = new LinkedHashMap<>();
@@ -165,10 +178,16 @@ final class OfficialCaseReport {
             row.put("directGroups", c.directGroups.size());
             row.put("fallbackGroups", c.fallbackGroups.size());
             row.put("blockedGroups", c.blockedGroups.size());
+            row.put("directTests", c.directTests);
+            row.put("fallbackTests", c.fallbackTests);
+            row.put("blockedTests", c.blockedTests);
             categoryRows.put(entry.getKey(), row);
             directGroups += c.directGroups.size();
             fallbackGroups += c.fallbackGroups.size();
             blockedGroups += c.blockedGroups.size();
+            directTests += c.directTests;
+            fallbackTests += c.fallbackTests;
+            blockedTests += c.blockedTests;
         }
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -187,6 +206,9 @@ final class OfficialCaseReport {
         summary.put("directGroups", directGroups);
         summary.put("fallbackGroups", fallbackGroups);
         summary.put("blockedGroups", blockedGroups);
+        summary.put("directTests", directTests);
+        summary.put("fallbackTests", fallbackTests);
+        summary.put("blockedTests", blockedTests);
         summary.put("categories", categoryRows);
         summary.put("files", files);
         List<Map<String, Object>> gaps = new ArrayList<>();
@@ -208,13 +230,22 @@ final class OfficialCaseReport {
         mapper.writerWithDefaultPrettyPrinter().writeValue(
                 output.resolve("details.json").toFile(), details);
 
-        System.out.printf(
-                "JSON Schema Compiled [REQUIRED] [%s]: %d/%d passed, %d failed, %d compile-blocked, "
-                        + "%d execution errors; groups direct=%d fallback=%d blocked=%d; "
-                        + "%d of %d assertions accounted for%n",
-                selection, passed, expectedTests, failed, compileErrors, executionErrors,
-                directGroups, fallbackGroups, blockedGroups,
-                details.size(), expectedTests);
+        int unaccounted = expectedTests - details.size();
+        System.out.println("==========================================================");
+        System.out.printf(" JSON Schema Compiled [REQUIRED] [%s]%n", selection);
+        System.out.println("==========================================================");
+        System.out.printf("Files: %d, Groups: %d%n", expectedFiles, expectedGroups);
+        System.out.printf("%-16s %9s %9s%n", "Mode", "Groups", "Cases");
+        System.out.printf("%-16s %9d %9d%n", "DIRECT", directGroups, directTests);
+        System.out.printf("%-16s %9d %9d%n", "FALLBACK", fallbackGroups, fallbackTests);
+        System.out.printf("%-16s %9d %9d%n", "COMPILE_ERROR", blockedGroups, blockedTests);
+        System.out.printf("%-16s %9d %9d%n", "UNACCOUNTED",
+                expectedGroups - directGroups - fallbackGroups - blockedGroups, unaccounted);
+        System.out.printf("%-16s %9d %9d%n", "TOTAL", expectedGroups, expectedTests);
+        System.out.printf("Passed: %d/%d  Failed: %d  Compile errors: %d  Execution errors: %d  Unaccounted: %d%n",
+                passed, expectedTests, failed, compileErrors, executionErrors, unaccounted);
+        System.out.println("Report: " + output.resolve("summary.json").toAbsolutePath());
+        System.out.println("==========================================================");
     }
 
     synchronized int recordedTests() {

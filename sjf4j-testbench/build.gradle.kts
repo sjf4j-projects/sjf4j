@@ -315,6 +315,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialCompiledTest.class")
     testLogging {
+        showStandardStreams = true
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
