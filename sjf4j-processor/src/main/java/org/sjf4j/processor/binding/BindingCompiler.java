@@ -14,7 +14,6 @@ import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
-import org.sjf4j.processor.code.GeneratedNames;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
@@ -48,7 +47,7 @@ import java.util.Set;
 final class BindingCompiler {
 
     private final CompilationContext context;
-    private final GeneratedNames names;
+    private final BindingNames names;
     private final CompiledMetadata metadata;
     private final Backend backend;
     private final StandardCreatorResolver creators;
@@ -58,13 +57,13 @@ final class BindingCompiler {
     private final TypeMirror linkedHashSetType;
     private final TypeMirror linkedHashMapType;
 
-    private final Map<String, BindingValue> cache = new LinkedHashMap<>();
+    private final Map<BindingKey, BindingValue> cache = new LinkedHashMap<>();
     private final List<BindingValue> helpers = new ArrayList<>();
     // A mapped OneOf subtype may inline a non-public compile-time String
     // constant; no field access is emitted for that special case.
     private final Set<String> inlineOneOfSubtypes = new HashSet<>();
 
-    BindingCompiler(CompilationContext context, GeneratedNames names,
+    BindingCompiler(CompilationContext context, BindingNames names,
                     CompiledMetadata metadata, Backend backend) {
         this.context = context;
         this.names = names;
@@ -106,11 +105,10 @@ final class BindingCompiler {
         }
 
         TypeMirror type = context.types.concrete(inputType);
-        String key = direction.name() + ':' + type.toString()
-                + ':' + valueFormat + ':' + valuePattern
-                // The mapped OneOf constant-inlining plan must not be reused
-                // for direct @Write bindings of the same POJO type.
-                + (inlineOneOfSubtypes.contains(type.toString()) ? ":oneOfInline" : "");
+        // Mapped OneOf constant-inlining plans must not be reused for direct
+        // bindings of the same POJO. Interface-level options are fixed here.
+        BindingKey key = new BindingKey(direction, type.toString(), valueFormat, valuePattern,
+                inlineOneOfSubtypes.contains(type.toString()));
         BindingValue existing = cache.get(key);
 
         if (existing != null) return existing;
@@ -168,7 +166,7 @@ final class BindingCompiler {
             if ((value.helperRequired() || kind == BindingValue.Kind.ONE_OF)
                     && !(backend == Backend.FASTJSON2 && direction == BindingPlan.Direction.WRITE_TO)) {
                 // Fastjson2 generates UTF-8/UTF-16-specific methods instead.
-                value.helperName(names.helperMethod(helperSuggestion(direction, type)));
+                names.primaryHelper(value, helperSuggestion(direction, type));
             }
             helpers.add(value);
         }
@@ -790,7 +788,7 @@ final class BindingCompiler {
         TypeMirror type = context.types.concrete(propertyType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
                 false);
-        result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
+        names.primaryHelper(result, helperSuggestion(owner.direction(), type));
         if (owner.direction() == BindingPlan.Direction.READ_FROM) {
             result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
             if (!compileOneOfRead(result, annotation, method, generated)) return null;
@@ -1032,7 +1030,7 @@ final class BindingCompiler {
         TypeMirror type = context.types.concrete(argType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
                 false);
-        result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
+        names.primaryHelper(result, helperSuggestion(owner.direction(), type));
         result.oneOfCreator(context.typeUtils.erasure(owner.type()).toString(), index);
         if (!compileOneOfRead(result, annotation, method, generated)) return null;
         helpers.add(result);

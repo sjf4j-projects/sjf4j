@@ -42,7 +42,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(this.names.primaryHelper(value) + "(" + generator + ", " + expression + ");");
             out.endBlock();
             return;
         }
@@ -56,7 +56,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     /** All structural helpers share the (generator, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private void " + this.names.primaryHelper(value) + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
         if (StructuralWriteEmitter.needsNativeGenerator(value, backend.backend())) {
@@ -126,7 +126,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(generator, " + expression + ");");
+            out.line(this.names.primaryHelper(value) + "(generator, " + expression + ");");
             return;
         }
         String method = gson() ? "value" : "write";
@@ -182,7 +182,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(this.names.primaryHelper(child) + "(" + generator + ", " + expression + ");");
             out.endBlock();
             return;
         }

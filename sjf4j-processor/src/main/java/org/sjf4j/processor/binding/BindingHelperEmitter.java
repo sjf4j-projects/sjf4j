@@ -69,7 +69,7 @@ final class BindingHelperEmitter {
                         + discriminator + " = new "
                         + "org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher("
                         + JavaWriter.stringLiteral(value.oneOfKey()) + ");"));
-        generated.addHelper(value.helperName(), out -> reads.emitOneOfReadHelper(out, value));
+        generated.addHelper(names.primaryHelper(value), out -> reads.emitOneOfReadHelper(out, value));
         for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
             BindingValue compiled = value.oneOfSubtypes().get(i).compiled;
             int index = i;

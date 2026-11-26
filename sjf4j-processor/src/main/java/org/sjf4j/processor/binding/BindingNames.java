@@ -26,6 +26,27 @@ final class BindingNames {
         this.generated = generated;
     }
 
+    void primaryHelper(BindingValue value, String suggestion) {
+        helper(value, "primary", suggestion);
+    }
+
+    String primaryHelper(BindingValue value) {
+        return require(value, "helper:primary");
+    }
+
+    String preparedName(BindingValue value, int index) {
+        return require(value, "field:prepared:" + index);
+    }
+
+    private String require(BindingValue value, String role) {
+        Map<String, String> owned = values.get(value);
+        String allocated = owned == null ? null : owned.get(role);
+        if (allocated == null) {
+            throw new IllegalStateException("Name not allocated for " + value.type() + ": " + role);
+        }
+        return allocated;
+    }
+
     String field(BindingValue value, String role, String suggestion) {
         return name(value, "field:" + role, suggestion, false);
     }
