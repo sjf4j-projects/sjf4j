@@ -82,4 +82,9 @@ public final class GeneratedNames {
     public NameAllocator helperLocals(String... parameterNames) {
         return NameAllocator.forParameters(parameterNames);
     }
+
+    /** Local names derived from properties must not shadow generated metadata. */
+    public NameAllocator memberSafeHelperLocals(String... parameterNames) {
+        return helperLocals(parameterNames).reserveAll(members);
+    }
 }
