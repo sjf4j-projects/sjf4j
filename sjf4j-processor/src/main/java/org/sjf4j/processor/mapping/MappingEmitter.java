@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.processor.code.MethodSignature;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
@@ -14,8 +15,6 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -2722,51 +2721,9 @@ public final class MappingEmitter {
         }
     }
 
-    private String option(
-            MappingPlan plan,
-            String name,
-            String defaultValue) {
-
-        AnnotationMirror options =
-                plan.options();
-
-        if (options == null) return defaultValue;
-
-        Map<? extends ExecutableElement,
-                ? extends AnnotationValue> values =
-                context.elements
-                        .getElementValuesWithDefaults(
-                                options);
-
-        for (Map.Entry<? extends ExecutableElement,
-                ? extends AnnotationValue> entry :
-                values.entrySet()) {
-
-            if (!entry.getKey()
-                    .getSimpleName()
-                    .contentEquals(name)) {
-
-                continue;
-            }
-
-            Object raw =
-                    entry.getValue()
-                            .getValue();
-
-            if (raw instanceof
-                    VariableElement) {
-
-                return ((VariableElement) raw)
-                        .getSimpleName()
-                        .toString();
-            }
-
-            return raw == null
-                    ? defaultValue
-                    : raw.toString();
-        }
-
-        return defaultValue;
+    private String option(MappingPlan plan, String name, String defaultValue) {
+        return AnnotationValues.text(
+                AnnotationValues.withDefaults(context.elements, plan.options(), name), defaultValue);
     }
 
     private String sizeExpression(String owner, NodeAccess.Kind kind) {

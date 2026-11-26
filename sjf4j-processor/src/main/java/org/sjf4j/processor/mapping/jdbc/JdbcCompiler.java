@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.path.PathSegment;
@@ -17,7 +18,6 @@ import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.value.ValueCodec;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -933,23 +933,9 @@ public final class JdbcCompiler {
      * JdbcMappingOptions member names, not on nested enum implementation types.
      */
     private boolean optionEquals(ExecutableElement method, String memberName, String expected) {
-        for (AnnotationMirror mirror : method.getAnnotationMirrors()) {
-            if (!JDBC_OPTIONS.equals(mirror.getAnnotationType().toString())) continue;
-
-            Map<? extends ExecutableElement, ? extends AnnotationValue> values =
-                    context.elements.getElementValuesWithDefaults(mirror);
-
-            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : values.entrySet()) {
-                if (!entry.getKey().getSimpleName().contentEquals(memberName)) continue;
-
-                Object value = entry.getValue().getValue();
-                if (value instanceof VariableElement) return ((VariableElement) value).getSimpleName().contentEquals(expected);
-
-                return expected.equals(String.valueOf(value));
-            }
-        }
-
-        return false;
+        AnnotationMirror mirror = AnnotationValues.find(method, JDBC_OPTIONS);
+        return expected.equals(AnnotationValues.text(
+                AnnotationValues.withDefaults(context.elements, mirror, memberName), null));
     }
 
     /*

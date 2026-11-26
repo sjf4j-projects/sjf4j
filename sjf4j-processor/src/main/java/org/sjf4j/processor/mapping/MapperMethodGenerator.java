@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
@@ -11,7 +12,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
@@ -19,7 +19,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -105,7 +104,7 @@ public final class MapperMethodGenerator {
 
         if (rules == null) return null;
 
-        AnnotationMirror options = findAnnotation(method, MAPPING_OPTIONS);
+        AnnotationMirror options = AnnotationValues.find(method, MAPPING_OPTIONS);
         return new MappingPlan(method, methodType, kind, targetType, targetParameter,
                 sources, sourceTypes, rules, options);
     }
@@ -121,7 +120,7 @@ public final class MapperMethodGenerator {
         List<MappingPlan.Rule> rules = new ArrayList<>();
 
         for (AnnotationMirror mirror : method.getAnnotationMirrors()) {
-            String name = annotationName(mirror);
+            String name = AnnotationValues.name(mirror);
 
             if (MAPPING.equals(name)) {
                 MappingPlan.Rule rule = rule(mirror, MappingPlan.WriteMode.STRICT);
@@ -171,8 +170,8 @@ public final class MapperMethodGenerator {
         boolean ignore = booleanValue(annotation, "ignore", false);
         String arrayPolicy = enumValue(annotation, "array");
         String objectPolicy = enumValue(annotation, "object");
-        boolean arrayExplicit = hasExplicitValue(annotation, "array");
-        boolean objectExplicit = hasExplicitValue(annotation, "object");
+        boolean arrayExplicit = AnnotationValues.explicit(annotation, "array") != null;
+        boolean objectExplicit = AnnotationValues.explicit(annotation, "object") != null;
 
         return new MappingPlan.Rule(annotation, mode, target, source, sources, compute,
                 nestedMapper, ignore, arrayPolicy, objectPolicy, arrayExplicit, objectExplicit);
@@ -343,48 +342,13 @@ public final class MapperMethodGenerator {
      * --------------------------------------------------------------
      */
 
-    private AnnotationMirror findAnnotation(Element element, String annotationName) {
-        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-            if (annotationName.equals(annotationName(mirror))) return mirror;
-        }
-
-        return null;
-    }
-
-    private String annotationName(AnnotationMirror mirror) {
-        Element element = mirror.getAnnotationType().asElement();
-
-        if (!(element instanceof TypeElement)) return "";
-
-        return ((TypeElement) element).getQualifiedName().toString();
-    }
-
     private String annotationSimpleName(AnnotationMirror mirror) {
         Element element = mirror.getAnnotationType().asElement();
         return element == null ? "@Mapping" : "@" + element.getSimpleName();
     }
 
-    private AnnotationValue value(AnnotationMirror mirror, String name) {
-        Map<? extends ExecutableElement, ? extends AnnotationValue> values =
-                context.elements.getElementValuesWithDefaults(mirror);
-
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : values.entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals(name)) return entry.getValue();
-        }
-
-        return null;
-    }
-
-    private boolean hasExplicitValue(AnnotationMirror mirror, String name) {
-        for (ExecutableElement member : mirror.getElementValues().keySet()) {
-            if (member.getSimpleName().contentEquals(name)) return true;
-        }
-
-        return false;
-    }
-
     private String stringValue(AnnotationMirror mirror, String name) {
-        AnnotationValue value = value(mirror, name);
+        AnnotationValue value = AnnotationValues.withDefaults(context.elements, mirror, name);
 
         if (value == null) return "";
 
@@ -393,7 +357,7 @@ public final class MapperMethodGenerator {
     }
 
     private boolean booleanValue(AnnotationMirror mirror, String name, boolean defaultValue) {
-        AnnotationValue value = value(mirror, name);
+        AnnotationValue value = AnnotationValues.withDefaults(context.elements, mirror, name);
 
         if (value == null) return defaultValue;
 
@@ -403,7 +367,7 @@ public final class MapperMethodGenerator {
 
     @SuppressWarnings("unchecked")
     private List<String> stringArrayValue(AnnotationMirror mirror, String name) {
-        AnnotationValue value = value(mirror, name);
+        AnnotationValue value = AnnotationValues.withDefaults(context.elements, mirror, name);
 
         if (value == null) return new ArrayList<>();
 
@@ -425,7 +389,7 @@ public final class MapperMethodGenerator {
 
     @SuppressWarnings("unchecked")
     private List<AnnotationMirror> annotationArray(AnnotationMirror mirror, String name) {
-        AnnotationValue value = value(mirror, name);
+        AnnotationValue value = AnnotationValues.withDefaults(context.elements, mirror, name);
 
         if (value == null) return new ArrayList<>();
 
@@ -446,15 +410,7 @@ public final class MapperMethodGenerator {
     }
 
     private String enumValue(AnnotationMirror mirror, String name) {
-        AnnotationValue value = value(mirror, name);
-
-        if (value == null) return null;
-
-        Object raw = value.getValue();
-
-        if (raw instanceof VariableElement) return ((VariableElement) raw).getSimpleName().toString();
-
-        return raw == null ? null : raw.toString();
+        return AnnotationValues.text(AnnotationValues.withDefaults(context.elements, mirror, name), null);
     }
 
     /*
