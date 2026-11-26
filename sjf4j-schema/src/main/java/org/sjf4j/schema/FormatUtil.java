@@ -1,6 +1,8 @@
 package org.sjf4j.schema;
 
 import com.ibm.icu.text.IDNA;
+import org.sjf4j.util.Formats;
+
 import java.net.IDN;
 import java.net.URI;
 
@@ -290,7 +292,7 @@ final class FormatUtil {
             // JDK URI parser accepts leading zeroes which RFC 3986 forbids.
             int lastColon = literal.lastIndexOf(':');
             if (lastColon >= 0 && literal.indexOf('.', lastColon + 1) >= 0
-                    && !FormatValidator._validateIpv4(literal.substring(lastColon + 1))) return false;
+                    && !Formats.isIpv4(literal.substring(lastColon + 1))) return false;
             if (end == hostPort.length() - 1) return true;
             return hostPort.charAt(end + 1) == ':' && _isUriPort(hostPort, end + 2);
         }

@@ -1,8 +1,12 @@
 package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Formats;
 
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 /**
@@ -14,43 +18,46 @@ public final class ValueUtil {
 
     /**
      * Parses a numeric IPv4 or IPv6 literal without performing hostname resolution.
+     * IPv6 brackets and scope IDs are accepted here for Java address compatibility,
+     * but are not part of the strict literal grammar in {@link Formats}.
      *
      * @throws BindingException if the input is not a valid IP address literal
      */
     public static InetAddress parseInetAddress(String raw) {
         try {
-            if (raw.isEmpty() || raw.length() > 128) throw new IllegalArgumentException();
-            if (raw.indexOf(':') >= 0) {
-                int start = raw.charAt(0) == '[' ? 1 : 0;
-                char first = raw.charAt(start);
-                if (first != ':' && !(first >= '0' && first <= '9')
-                        && !(first >= 'a' && first <= 'f')
-                        && !(first >= 'A' && first <= 'F')) {
-                    throw new IllegalArgumentException();
-                }
-                // JDK 8+ parses colon-containing IP literals or rejects them without DNS.
-                return InetAddress.getByName(raw);
+            if (raw == null || raw.isEmpty() || raw.length() > 128) throw new IllegalArgumentException();
+            if (raw.indexOf(':') < 0) return InetAddress.getByAddress(Formats.parseIpv4(raw));
+
+            String literal = raw;
+            if (raw.charAt(0) == '[') {
+                if (raw.charAt(raw.length() - 1) != ']') throw new IllegalArgumentException();
+                literal = raw.substring(1, raw.length() - 1);
             }
-            String[] parts = raw.split("\\.", -1);
-            if (parts.length != 4) throw new IllegalArgumentException();
-            byte[] bytes = new byte[4];
-            for (int i = 0; i < 4; i++) {
-                String part = parts[i];
-                if (part.isEmpty() || part.length() > 3
-                        || (part.length() > 1 && part.charAt(0) == '0')) {
-                    throw new IllegalArgumentException();
-                }
-                int value = 0;
-                for (int j = 0; j < part.length(); j++) {
-                    char c = part.charAt(j);
-                    if (c < '0' || c > '9') throw new IllegalArgumentException();
-                    value = value * 10 + c - '0';
-                }
-                if (value > 255) throw new IllegalArgumentException();
-                bytes[i] = (byte) value;
+            int percent = literal.indexOf('%');
+            String scope = null;
+            if (percent >= 0) {
+                scope = literal.substring(percent + 1);
+                if (scope.isEmpty() || scope.indexOf('%') >= 0) throw new IllegalArgumentException();
+                literal = literal.substring(0, percent);
             }
-            return InetAddress.getByAddress(bytes);
-        } catch (UnknownHostException | IllegalArgumentException e) {
+            byte[] bytes = Formats.parseIpv6(literal);
+            // Preserve JDK behavior for IPv4-mapped IPv6 addresses.
+            InetAddress address = InetAddress.getByAddress(bytes);
+            if (scope == null || !(address instanceof Inet6Address)) return address;
+
+            boolean numeric = true;
+            for (int i = 0; i < scope.length(); i++) {
+                char ch = scope.charAt(i);
+                if (ch < '0' || ch > '9') {
+                    numeric = false;
+                    break;
+                }
+            }
+            if (numeric) return Inet6Address.getByAddress(null, bytes, Integer.parseInt(scope));
+            NetworkInterface network = NetworkInterface.getByName(scope);
+            if (network == null) throw new IllegalArgumentException();
+            return Inet6Address.getByAddress(null, bytes, network);
+        } catch (UnknownHostException | SocketException | IllegalArgumentException e) {
             throw new BindingException("invalid InetAddress '" + raw + "'", e);
         }
     }
