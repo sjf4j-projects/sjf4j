@@ -40,13 +40,13 @@ class CompiledMapperDirectReadInliningTest {
         String createBody = methodBody(generated, "Target create(");
         assertTrue(createBody.contains("target.text = source.text();"), createBody);
         assertTrue(createBody.contains("target.count = source.count();"), createBody);
-        assertFalse(createBody.contains("sourceValue"), createBody);
+        assertFalse(createBody.contains("textSource"), createBody);
 
         String updateBody = methodBody(generated, "void update(");
         assertTrue(updateBody.contains("target.count = source.count();"), updateBody);
-        assertFalse(updateBody.contains("int sourceValue"), updateBody);
+        assertFalse(updateBody.contains("int countSource"), updateBody);
         assertEquals(1, count(updateBody, "source.text()"), updateBody);
-        assertTrue(updateBody.contains("if (sourceValue != null)"), updateBody);
+        assertTrue(updateBody.contains("if (textSource != null)"), updateBody);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> sourceType = loader.loadClass("fixture.Source");

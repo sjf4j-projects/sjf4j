@@ -7,7 +7,6 @@ import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
@@ -31,10 +30,7 @@ final class BindingSource {
         out.endBlock();
 
         // Keep catch identifiers distinct from interface parameter names.
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().declaration().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
+        NameAllocator names = NameAllocator.forMethod(plan.method().declaration());
         String failure = names.newName("failure");
 
         out.beginBlock("catch (org.sjf4j.exception.BindingException " + failure + ")");

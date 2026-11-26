@@ -125,4 +125,60 @@ class CompiledBinderNamingTest {
             }
         }
     }
+    @Test
+    void propertyLocalsAvoidTemplateMetadataAndNormalizedNameCollisions() throws Exception {
+        for (String backend : new String[]{"JACKSON2", "JACKSON3", "FASTJSON2", "GSON", "JSONP"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Bean.java",
+                    "package fixture; import org.sjf4j.annotation.node.*; "
+                    + "public class Bean { "
+                    + "public final String parser; public final String value; "
+                    + "@NodeProperty(\"first-name\") public final String first; "
+                    + "@NodeProperty(\"first_name\") public final String second; "
+                    + "public String item; public String nativeGenerator; "
+                    + "public String uuidValueInfo; public java.util.UUID uuid; "
+                    + "@NodeCreator public Bean(String parser, String value, "
+                    + "@NodeProperty(\"first-name\") String first, "
+                    + "@NodeProperty(\"first_name\") String second) { "
+                    + "this.parser=parser; this.value=value; this.first=first; this.second=second; } }");
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*; "
+                    + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                    + "@Read Bean read(String parser) throws java.io.IOException; "
+                    + "@Write String write(Bean nativeGenerator) throws java.io.IOException; }");
+            NavigatorTestCompiler.Result first = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(first.success, backend + ": " + first.diagnostics());
+            String generated = first.generatedSource("fixture/Binder_Impl.java");
+            assertTrue(generated.contains("String firstName = "), generated);
+            assertTrue(generated.contains("String firstName2 = "), generated);
+            assertTrue(generated.contains("String parser2 = "), generated);
+            assertTrue(generated.contains("String value2 = "), generated);
+            assertFalse(generated.contains("String arg0 = "), generated);
+            assertFalse(generated.contains("String property0 = "), generated);
+            NavigatorTestCompiler.Result second = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(second.success, second.diagnostics());
+            org.junit.jupiter.api.Assertions.assertEquals(generated,
+                    second.generatedSource("fixture/Binder_Impl.java"));
+        }
+    }
+
+    @Test
+    void structuralHelperHintsIncludeTypeArgumentsAndNativeSuffixBeforeNumbering() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Child.java", "package fixture; public class Child { public String name; }");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.JACKSON3) public interface Binder { "
+                + "default void _readChild() {} default void _readChildNative() {} "
+                + "@Read Child read(byte[] source) throws java.io.IOException; "
+                + "@Read java.util.List<Child> readList(byte[] source) throws java.io.IOException; "
+                + "@Read Child[] readArray(String source) throws java.io.IOException; }");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("_readChildNative2("), generated);
+        assertTrue(generated.contains("_readChildListNative("), generated);
+        assertTrue(generated.contains("_readChildArray("), generated);
+        assertFalse(generated.contains("_readChild2Native("), generated);
+    }
 }

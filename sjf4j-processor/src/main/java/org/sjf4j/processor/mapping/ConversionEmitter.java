@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.code.JavaExpressions;
@@ -105,12 +107,9 @@ public final class ConversionEmitter
 
         for (SharedConversion candidate : candidates.values()) {
             if (candidate.occurrences < 2) continue;
-            String type = candidate.conversion.targetType().toString();
-            int generic = type.indexOf('<');
-            if (generic >= 0) type = type.substring(0, generic);
-            int separator = Math.max(type.lastIndexOf('.'), type.lastIndexOf('$'));
-            String simple = type.substring(separator + 1).replace("[]", "Array");
-            candidate.name = generated.names().helperMethod("map" + simple);
+            candidate.name = generated.names().helperMethod("map"
+                    + NameHints.type(candidate.conversion.sourceType()) + "To"
+                    + NameHints.type(candidate.conversion.targetType()));
             sharedConversions.put(candidate.signature, candidate);
         }
 
@@ -182,7 +181,7 @@ public final class ConversionEmitter
 
         StringWriter source = new StringWriter();
         try (JavaWriter out = new JavaWriter(source, "", "_Signature")) {
-            NameAllocator locals = new NameAllocator().reserve("source");
+            NameAllocator locals = NameAllocator.forParameters("source");
             String result = emitStructural(out, locals, conversion, "source", false);
             out.line("return " + result + ";");
         } catch (IOException e) {
@@ -364,7 +363,7 @@ public final class ConversionEmitter
 
         if (field == null) throw new IllegalStateException("imported mapper was not prepared: " + type);
 
-        return field + "." + method.getSimpleName() + "(" + source + ")";
+        return "this." + field + "." + method.getSimpleName() + "(" + source + ")";
     }
 
     /*

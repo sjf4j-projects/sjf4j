@@ -29,10 +29,10 @@ class CompiledMapperPrimitiveNullTest {
         int multiEnd = generated.indexOf("\n    }", multiStart);
         assertTrue(multiEnd > multiStart, generated);
         String multiBody = generated.substring(multiStart, multiEnd);
-        assertTrue(multiBody.contains("boolean sourceValue"), multiBody);
+        assertTrue(multiBody.contains("boolean flagSource"), multiBody);
         assertTrue(multiBody.contains("= false;"), multiBody);
         assertFalse(multiBody.contains("java.lang.Boolean.valueOf("), multiBody);
-        assertFalse(multiBody.contains("java.lang.Boolean sourceValue"), multiBody);
+        assertFalse(multiBody.contains("java.lang.Boolean flagSource"), multiBody);
 
         try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
             Class<?> profile = loader.loadClass("fixture.Profile");
@@ -146,7 +146,7 @@ class CompiledMapperPrimitiveNullTest {
                         "-Xlint:cast", "-Xlint:unchecked", "-Werror");
         assertTrue(compilation.success, compilation.diagnostics());
         String generated = compilation.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(generated.contains("constructorValue"), generated);
+        assertTrue(generated.contains("ageRaw"), generated);
 
         try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
             Class<?> mapperClass = loader.loadClass("fixture.Mapper_Impl");

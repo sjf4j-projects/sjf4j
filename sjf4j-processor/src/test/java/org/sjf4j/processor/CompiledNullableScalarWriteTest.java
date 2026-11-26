@@ -49,7 +49,7 @@ class CompiledNullableScalarWriteTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains("this.config.includeNulls"), backend);
-            assertFalse(generated.matches("(?s).*\\bitem = property\\d+;.*"), backend + ": " + generated);
+            assertFalse(generated.matches("(?s).*\\bitem = [a-zA-Z_$][a-zA-Z0-9_$]*;.*"), backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");

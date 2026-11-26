@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.processor.mapping.target.TargetAccessEmitter;
@@ -15,7 +17,6 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.mapping.CreatorResolver;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,10 +70,7 @@ public final class JdbcEmitter {
         JdbcPlan plan = method.plan();
         String rs = plan.inputParameter().getSimpleName().toString();
         String type = plan.rowType().toString();
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
+        NameAllocator names = NameAllocator.forMethod(plan.method());
         String result = names.newName("result");
         String rowMapper = names.newName("rowMapper");
         String metadata = names.newName("metadata");
@@ -126,14 +124,8 @@ public final class JdbcEmitter {
     private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method,
                                     String helperName) {
         JdbcPlan plan = method.plan();
-        NameAllocator names = new NameAllocator();
-        if (helperName == null) {
-            for (VariableElement parameter : plan.method().getParameters()) {
-                names.reserve(parameter.getSimpleName().toString());
-            }
-        } else {
-            names.reserve("metadata");
-        }
+        NameAllocator names = helperName == null ? NameAllocator.forMethod(plan.method())
+                : NameAllocator.forParameters("metadata");
 
         String metadata = helperName == null
                 ? plan.inputParameter().getSimpleName().toString() : "metadata";
@@ -222,11 +214,7 @@ public final class JdbcEmitter {
             return;
         }
         JdbcPlan plan = method.plan();
-        NameAllocator names = new NameAllocator();
-
-        for (VariableElement parameter : plan.method().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
+        NameAllocator names = NameAllocator.forMethod(plan.method());
 
         String resultSet = plan.inputParameter().getSimpleName().toString();
 
@@ -697,11 +685,22 @@ public final class JdbcEmitter {
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < sourceColumns.size(); i++) {
             String name = sourceColumns.get(i);
-            String index = names.newName("idx_" + name);
+            String index = names.newName(columnHint(name) + "Index");
             out.line("int " + index + " = " + resolved + "[" + i + "];");
             result.put(name, index);
         }
         return result;
+    }
+
+    /** Do not shadow package qualifiers used by generated static calls. */
+    private static String columnHint(String column) {
+        String hint = NameHints.lowerCamel(column);
+        switch (hint) {
+            case "java": case "javax": case "org": case "com": case "tools": case "jakarta":
+                return hint + "Column";
+            default:
+                return hint;
+        }
     }
 
     private String emitConsumedColumns(
@@ -1092,7 +1091,7 @@ public final class JdbcEmitter {
             String getter) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1120,7 +1119,7 @@ public final class JdbcEmitter {
             String wrapperType) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(columnHint(read.column()) + "Raw");
 
         out.line(
                 primitiveType +
@@ -1158,7 +1157,7 @@ public final class JdbcEmitter {
         }
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1183,7 +1182,7 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(columnHint(read.column()) + "Raw");
 
         out.line(
                 "java.lang.String " +
@@ -1220,7 +1219,7 @@ public final class JdbcEmitter {
                     read.column());
 
             String value =
-                    names.newName("value_" + read.column());
+                    names.newName(columnHint(read.column()));
 
             out.line(
                     "char " +
@@ -1233,7 +1232,7 @@ public final class JdbcEmitter {
         }
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 "java.lang.Character " +
@@ -1296,10 +1295,10 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(columnHint(read.column()) + "Raw");
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 "java.lang.String " +
@@ -1333,7 +1332,7 @@ public final class JdbcEmitter {
             String column) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 "java.lang.Object " +
@@ -1355,7 +1354,7 @@ public final class JdbcEmitter {
             String column) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1378,8 +1377,8 @@ public final class JdbcEmitter {
                                       String column) {
         ValueCodecMetadata codec = read.codec();
         String rawType = codec.rawType.toString();
-        String raw = names.newName("raw_" + read.column());
-        String value = names.newName("value_" + read.column());
+        String raw = names.newName(columnHint(read.column()) + "Raw");
+        String value = names.newName(columnHint(read.column()));
 
         // Read the declared wire type directly; never route through NodeMapper.
         // String is supported by every JDBC driver, whereas getObject(index,
@@ -1391,7 +1390,7 @@ public final class JdbcEmitter {
         } else if ("java.math.BigDecimal".equals(rawType)) {
             expression = resultSet + ".getBigDecimal(" + column + ")";
         } else if ("java.math.BigInteger".equals(rawType)) {
-            String decimal = names.newName("decimal_" + read.column());
+            String decimal = names.newName(columnHint(read.column()) + "Decimal");
             out.line("java.math.BigDecimal " + decimal + " = "
                     + resultSet + ".getBigDecimal(" + column + ");");
             expression = decimal + " == null ? null : " + decimal + ".toBigIntegerExact()";
@@ -1421,10 +1420,10 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(columnHint(read.column()) + "Raw");
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(columnHint(read.column()));
 
         out.line(
                 "java.lang.Object " +

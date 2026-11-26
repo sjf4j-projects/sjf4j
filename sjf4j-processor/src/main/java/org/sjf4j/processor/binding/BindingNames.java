@@ -1,5 +1,9 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameAllocator;
+
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.code.GeneratedNames;
 
 import javax.lang.model.type.TypeMirror;
@@ -21,6 +25,8 @@ final class BindingNames {
     private final Map<BindingValue, Map<String, String>> values = new IdentityHashMap<>();
     private final Map<String, String> enums = new LinkedHashMap<>();
     private final Map<String, String> shared = new HashMap<>();
+    private final Map<BindingProperty, String> creatorLocals = new IdentityHashMap<>();
+    private final Map<BindingProperty, String> pendingFlags = new IdentityHashMap<>();
 
     BindingNames(GeneratedNames generated) {
         this.generated = generated;
@@ -106,40 +112,55 @@ final class BindingNames {
         return allocated;
     }
 
+    NameAllocator propertyLocals(String... reserved) {
+        // These package roots can occur in generated static expressions.
+        return generated.memberSafeHelperLocals(reserved)
+                .reserve("java").reserve("javax").reserve("org").reserve("com")
+                .reserve("tools").reserve("jakarta");
+    }
+
+    /** Allocate all creator locals before emitting any assignment. */
+    void prepareCreatorLocals(BindingValue value) {
+        NameAllocator locals = propertyLocals("parser", "nativeParser", "value", "seen",
+                "name", "nameIndex", "expectedNameIndex", "prefixNames", "prefixValues",
+                "prefixSize", "prefixIndex", "prefixRaw", "discriminator", "unknownName", "dynamic");
+        for (BindingProperty property : value.properties()) {
+            if (property.creatorIndex() < 0 && property.pendingIndex() < 0) continue;
+            String hint = NameHints.lowerCamel(property.name());
+            creatorLocals.put(property, locals.newName(hint));
+        }
+        for (BindingProperty property : value.properties()) {
+            if (property.pendingIndex() >= 0) {
+                pendingFlags.put(property, locals.newName(NameHints.lowerCamel(property.name()) + "Present"));
+            }
+        }
+    }
+
+    String creatorLocal(BindingProperty property) {
+        String name = creatorLocals.get(property);
+        if (name == null) throw new IllegalStateException("Creator local not allocated: " + property.name());
+        return name;
+    }
+
+    String pendingFlag(BindingProperty property) {
+        String name = pendingFlags.get(property);
+        if (name == null) throw new IllegalStateException("Pending flag not allocated: " + property.name());
+        return name;
+    }
+
     static String simpleType(TypeMirror type) {
-        String erased = type.toString();
-        int generic = erased.indexOf('<');
-        if (generic >= 0) erased = erased.substring(0, generic);
-        int dot = Math.max(erased.lastIndexOf('.'), erased.lastIndexOf('$'));
-        return erased.substring(dot + 1).replace("[]", "Array");
+        return NameHints.simpleType(type);
     }
 
     static String fieldType(TypeMirror type) {
-        return upperSnake(simpleType(type));
+        return NameHints.upperSnake(simpleType(type));
     }
 
     static String upperSnake(String text) {
-        StringBuilder name = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (!Character.isLetterOrDigit(c)) {
-                if (name.length() != 0 && name.charAt(name.length() - 1) != '_') name.append('_');
-                continue;
-            }
-            if (Character.isUpperCase(c) && i > 0
-                    && name.length() > 0 && name.charAt(name.length() - 1) != '_'
-                    && (Character.isLowerCase(text.charAt(i - 1))
-                        || Character.isDigit(text.charAt(i - 1)))) {
-                name.append('_');
-            }
-            name.append(Character.toUpperCase(c));
-        }
-        return name.length() == 0 ? "VALUE" : name.toString();
+        return NameHints.upperSnake(text);
     }
 
     static String lowerType(TypeMirror type) {
-        String simple = simpleType(type);
-        return simple.isEmpty() ? "value"
-                : Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
+        return NameHints.lowerCamel(simpleType(type));
     }
 }

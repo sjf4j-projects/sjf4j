@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.processor.mapping.target.TargetAccessEmitter;
 import org.sjf4j.NodeKind;
@@ -55,8 +57,9 @@ final class MappingWriteEmitter {
                     step.segment();
 
             String child =
-                    names.newName(
-                            "parent");
+                    names.newName(segment instanceof PathSegment.Name
+                            ? NameHints.lowerCamel(((PathSegment.Name) segment).name) + "Target"
+                            : "parent");
 
             String index =
                     null;

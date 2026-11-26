@@ -62,9 +62,9 @@ class CompiledCodecRawIOTest {
                         backend + ": native POJO writer was lost");
             }
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
-                assertTrue(generated.contains(" g = generator.nativeGenerator();"),
+                assertTrue(generated.contains(" nativeGenerator = generator.nativeGenerator();"),
                         backend + ": mixed native POJO path missing");
-                assertTrue(generated.contains("_writeString(g, (String) rawValue);"),
+                assertTrue(generated.contains("_writeString(nativeGenerator, (String) rawValue);"),
                         backend + ": shared Jackson codec string helper missing");
             }
 
@@ -137,7 +137,7 @@ class CompiledCodecRawIOTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("private static void _writeString("), backend);
-            assertTrue(generated.contains("_writeString(g, (String) rawValue);"), backend);
+            assertTrue(generated.contains("_writeString(nativeGenerator, (String) rawValue);"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");

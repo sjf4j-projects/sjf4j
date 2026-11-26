@@ -8,7 +8,6 @@ import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 /** Emits direct concrete-parser binding code. */
@@ -64,7 +63,7 @@ final class ReadEmitter {
 
         BindingSource.beginOverride(out, plan.method());
         String input = BindingSource.parameterName(plan, 0);
-        NameAllocator names = methodNames(plan);
+        NameAllocator names = NameAllocator.forMethod(plan.method().declaration());
         String parser = names.newName("parser");
 
         out.beginBlock("try (" + backend.parserType() + " " + parser
@@ -409,18 +408,21 @@ final class ReadEmitter {
             emitObjectStart(out);
         }
 
+        names.prepareCreatorLocals(value);
         int argCount = value.creator().parameterTypes().size();
+        String[] argumentNames = new String[argCount];
         int pendingCount = 0;
         for (BindingProperty property : value.properties()) {
             if (property.creatorIndex() >= 0) {
-                out.line(property.value().type() + " arg" + property.creatorIndex() + " = "
+                String local = names.creatorLocal(property);
+                argumentNames[property.creatorIndex()] = local;
+                out.line(property.value().type() + " " + local + " = "
                         + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
             } else if (property.pendingIndex() >= 0) {
-                int index = property.pendingIndex();
                 pendingCount++;
-                out.line(property.value().type() + " pending" + index + " = "
+                out.line(property.value().type() + " " + names.creatorLocal(property) + " = "
                         + (property.value().primitive() ? primitiveDefault(property.value()) : "null") + ";");
-                out.line("boolean pending" + index + "Present = false;");
+                out.line("boolean " + names.pendingFlag(property) + " = false;");
             }
         }
         if (argCount != 0) {
@@ -444,7 +446,7 @@ final class ReadEmitter {
                 }
                 if (!matches) continue;
                 if (property.value().kind() != BindingValue.Kind.STRING) throw new AssertionError("Compiled discriminator creator argument must be String");
-                out.line("arg" + index + " = String.valueOf(discriminator);");
+                out.line(names.creatorLocal(property) + " = String.valueOf(discriminator);");
                 out.line(argCount <= 64 ? "seen |= (1L << " + index + ");"
                         : "seen[" + index + "] = true;");
             }
@@ -484,7 +486,7 @@ final class ReadEmitter {
         }
         for (int i = 0; i < argCount; i++) {
             if (i != 0) creation.append(", ");
-            creation.append("arg").append(i);
+            creation.append(argumentNames[i]);
         }
         creation.append(')');
         if (pendingCount == 0) {
@@ -495,9 +497,8 @@ final class ReadEmitter {
         out.line(value.type() + " value = " + creation + ";");
         for (BindingProperty property : value.properties()) {
             if (property.pendingIndex() < 0) continue;
-            int index = property.pendingIndex();
-            out.beginBlock("if (pending" + index + "Present)");
-            out.line(assignment(property.access(), "value", "pending" + index));
+            out.beginBlock("if (" + names.pendingFlag(property) + ")");
+            out.line(assignment(property.access(), "value", names.creatorLocal(property)));
             out.endBlock();
         }
         out.line("return value;");
@@ -636,8 +637,8 @@ final class ReadEmitter {
         if (index < 0) {
             int pending = property.pendingIndex();
             if (pending >= 0) {
-                out.line("pending" + pending + " = " + expression + ";");
-                out.line("pending" + pending + "Present = true;");
+                out.line(names.creatorLocal(property) + " = " + expression + ";");
+                out.line(names.pendingFlag(property) + " = true;");
             } else {
                 out.line(assignment(property.access(), owner, expression));
             }
@@ -652,7 +653,7 @@ final class ReadEmitter {
                 + ");");
         out.endBlock();
         out.line(wide ? flag + " = true;" : "seen |= (1L << " + index + ");");
-        out.line("arg" + index + " = " + expression + ";");
+        out.line(names.creatorLocal(property) + " = " + expression + ";");
     }
 
     private void emitArray(JavaWriter out, BindingValue value) {
@@ -906,12 +907,4 @@ final class ReadEmitter {
         return owner + '.' + access.memberName() + " = " + expression + ";";
     }
 
-    private NameAllocator methodNames(BindingPlan plan) {
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().declaration().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
-    }
 }

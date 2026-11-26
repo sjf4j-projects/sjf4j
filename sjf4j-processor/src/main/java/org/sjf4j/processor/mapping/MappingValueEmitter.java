@@ -4,6 +4,8 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.processor.code.NameHints;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.type.TypeSystem;
 
 /** Emits a resolved source value and delegates its conversion or computation. */
@@ -65,7 +67,7 @@ final class MappingValueEmitter {
                 if (nullableParent && read.steps().size() <= 1) {
                     // A qualified multi-source root/property read needs only
                     // one guard. Read the leaf and convert in that same block.
-                    String converted = names.newName("converted");
+                    String converted = names.newName(convertedHint(read));
                     out.line(JavaExpressions.boxedType(types, value.type()) + " " + converted + " = null;");
                     out.beginBlock("if (" + read.root().getSimpleName() + " != null)");
                     String source = sourceReads.emitRead(out, names, read, true, primitiveDirect);
@@ -89,7 +91,7 @@ final class MappingValueEmitter {
                         primitiveDirect, null, reached);
 
                 if (reached != null) {
-                    String converted = names.newName("converted");
+                    String converted = names.newName(convertedHint(read));
                     out.line(JavaExpressions.boxedType(types, value.type()) + " " + converted + " = null;");
                     out.beginBlock("if (" + reached + ")");
                     String expression = conversions.emit(out, names, plan,
@@ -116,4 +118,11 @@ final class MappingValueEmitter {
         }
     }
 
+    private static String convertedHint(MappingCompiler.Read read) {
+        if (read.steps().isEmpty()) return "converted";
+        PathSegment segment = read.steps().get(read.steps().size() - 1).segment();
+        return segment instanceof PathSegment.Name
+                ? NameHints.lowerCamel(((PathSegment.Name) segment).name) + "Converted"
+                : "converted";
+    }
 }

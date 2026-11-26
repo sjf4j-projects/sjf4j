@@ -20,7 +20,7 @@ class CompiledGsonJsonpRootScalarTest {
             sources.put("fixture/Binder.java", "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
                     + "@Write String writeString(String value) throws java.io.IOException; "
-                    + "@Write String writeInt(int g) throws java.io.IOException; "
+                    + "@Write String writeInt(int nativeGenerator) throws java.io.IOException; "
                     + "@Write String writeBoolean(boolean value) throws java.io.IOException; "
                     + "@Write String writeFloat(Float value) throws java.io.IOException; "
                     + "@Write String writeBoxed(Integer item) throws java.io.IOException; "
@@ -40,8 +40,8 @@ class CompiledGsonJsonpRootScalarTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("g2 = generator.nativeGenerator();"), backend);
-            assertTrue(generated.contains("_writeString(g, value);"), backend);
+            assertTrue(generated.contains("nativeGenerator2 = generator.nativeGenerator();"), backend);
+            assertTrue(generated.contains("_writeString(nativeGenerator, value);"), backend);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> impl = loader.loadClass("fixture.Binder_Impl");
                 Class<?> choice = loader.loadClass("fixture.Choice");

@@ -47,7 +47,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             return;
         }
 
-        String nativeGenerator = names.newName("g");
+        String nativeGenerator = names.newName("nativeGenerator");
         if (StructuralWriteEmitter.needsNativeValue(value, backend.backend(), false)) {
             out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
         }
@@ -60,7 +60,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
         if (StructuralWriteEmitter.needsNativeGenerator(value, backend.backend())) {
-            out.line(generatorType() + " g = generator.nativeGenerator();");
+            out.line(generatorType() + " nativeGenerator = generator.nativeGenerator();");
         }
         structures.emitHelperBody(out, value);
         out.endBlock();
@@ -74,27 +74,27 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void startObject(JavaWriter out) {
-        out.line("g." + (gson() ? "beginObject" : "writeStartObject") + "();");
+        out.line("nativeGenerator." + (gson() ? "beginObject" : "writeStartObject") + "();");
     }
 
     @Override
     public void endObject(JavaWriter out) {
-        out.line("g." + (gson() ? "endObject" : "writeEnd") + "();");
+        out.line("nativeGenerator." + (gson() ? "endObject" : "writeEnd") + "();");
     }
 
     @Override
     public void startArray(JavaWriter out) {
-        out.line("g." + (gson() ? "beginArray" : "writeStartArray") + "();");
+        out.line("nativeGenerator." + (gson() ? "beginArray" : "writeStartArray") + "();");
     }
 
     @Override
     public void endArray(JavaWriter out) {
-        out.line("g." + (gson() ? "endArray" : "writeEnd") + "();");
+        out.line("nativeGenerator." + (gson() ? "endArray" : "writeEnd") + "();");
     }
 
     @Override
     public void writeNull(JavaWriter out) {
-        out.line("g." + (gson() ? "nullValue" : "writeNull") + "();");
+        out.line("nativeGenerator." + (gson() ? "nullValue" : "writeNull") + "();");
     }
 
     @Override
@@ -104,7 +104,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeDynamicName(JavaWriter out, String expression) {
-        out.line("g." + (gson() ? "name" : "writeKey") + "(" + expression + ");");
+        out.line("nativeGenerator." + (gson() ? "name" : "writeKey") + "(" + expression + ");");
     }
 
     @Override
@@ -120,7 +120,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeValue(JavaWriter out, BindingValue child, String expression) {
-        emitValue(out, child, expression, "generator", "g", null);
+        emitValue(out, child, expression, "generator", "nativeGenerator", null);
     }
 
     @Override
@@ -142,13 +142,13 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                 out.line("generator.writeNumber(" + expression + ");");
                 return;
             case ENUM:
-                out.line("g." + method + "(" + expression + ".name());");
+                out.line("nativeGenerator." + method + "(" + expression + ".name());");
                 return;
             case STRING:
-                out.line("g." + method + "(" + expression + ");");
+                out.line("nativeGenerator." + method + "(" + expression + ");");
                 return;
             case CHARACTER:
-                out.line("g." + method + "(" + expression + ".toString());");
+                out.line("nativeGenerator." + method + "(" + expression + ".toString());");
                 return;
             case BOOLEAN:
             case BYTE:
@@ -166,7 +166,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                 } else if (value.kind() == BindingValue.Kind.FLOAT) {
                     arg += ".doubleValue()";
                 }
-                out.line("g." + method + "(" + arg + ");");
+                out.line("nativeGenerator." + method + "(" + arg + ");");
                 return;
             default:
                 throw new AssertionError(value.kind());

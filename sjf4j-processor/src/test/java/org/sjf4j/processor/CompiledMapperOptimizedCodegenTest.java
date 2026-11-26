@@ -46,7 +46,7 @@ class CompiledMapperOptimizedCodegenTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(generated.contains("int sourceValue"), generated);
+        assertTrue(generated.contains("int quantitySource"), generated);
         assertTrue(generated.contains("= source.quantity();"), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
@@ -105,7 +105,7 @@ class CompiledMapperOptimizedCodegenTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(generated.contains("NodeMapper.toString("), generated);
-        assertFalse(generated.contains("NodeMapper.to(sourceValue, java.lang.String.class"), generated);
+        assertFalse(generated.contains("NodeMapper.to(valueSource, java.lang.String.class"), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> sourceClass = loader.loadClass("fixture.Source");

@@ -6,7 +6,6 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
-import javax.lang.model.element.VariableElement;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -145,7 +144,7 @@ final class WriteEmitter {
         BindingSource.beginOverride(out, plan.method());
         String source = BindingSource.parameterName(plan, 0);
 
-        NameAllocator names = methodNames(plan);
+        NameAllocator names = NameAllocator.forMethod(plan.method().declaration());
 
         if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
@@ -390,12 +389,12 @@ final class WriteEmitter {
         }
         // Native JSON backends pass their existing generator directly.
         out.beginBlock("private static void " + stringHelper() + "(" + generator
-                + " g, String value) throws java.io.IOException");
+                + " nativeGenerator, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
-        out.line("g." + writeNull + "();");
+        out.line("nativeGenerator." + writeNull + "();");
         out.endBlock(" else {");
         out.indent();
-        out.line("g." + writeString + "(value);");
+        out.line("nativeGenerator." + writeString + "(value);");
         out.endBlock();
         out.endBlock();
 
@@ -409,10 +408,10 @@ final class WriteEmitter {
                 : "tools.jackson.core.io.SerializedString";
         String nameMethod = jackson2 ? "writeFieldName" : "writeName";
         out.beginBlock("private static void " + helper + "(" + generator
-                + " g, " + nameType + " name, String value) throws java.io.IOException");
+                + " nativeGenerator, " + nameType + " name, String value) throws java.io.IOException");
         if (!includeNulls) out.beginBlock("if (value != null)");
-        out.line("g." + nameMethod + "(name);");
-        out.line("g.writeString(value);");
+        out.line("nativeGenerator." + nameMethod + "(name);");
+        out.line("nativeGenerator.writeString(value);");
         if (!includeNulls) out.endBlock();
         out.endBlock();
     }
@@ -434,13 +433,4 @@ final class WriteEmitter {
         return owner + '.' + access.memberName();
     }
 
-    private NameAllocator methodNames(BindingPlan plan) {
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter :
-                plan.method().declaration().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
-    }
 }

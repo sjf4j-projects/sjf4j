@@ -1,5 +1,7 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -159,7 +161,7 @@ final class Fastjson2WriteEmitter {
 
     private String fastjsonHelperName(BindingValue value, FastjsonMode mode) {
         return writes.naming().helper(value, "write:" + mode.suffix,
-                "write" + BindingNames.simpleType(value.type()) + mode.suffix);
+                "write" + NameHints.type(value.type()) + mode.suffix);
     }
 
     private String fastjsonNameExpr(String name, FastjsonMode mode) {
