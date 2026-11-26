@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
 import org.sjf4j.path.PathSegment;
@@ -162,7 +164,7 @@ final class MappingReadEmitter {
             MappingCompiler.Value value = arguments.get(i).value();
             MappingCompiler.Read read = value.read();
             boolean primitive = isDirectPrimitiveRead(plan, value, true);
-            String local = names.newName("sourceValue");
+            String local = names.newName(NameHints.lowerCamel(arguments.get(i).name()) + "Source");
             locals[i - start] = local;
 
             out.line((primitive ? read.type().toString() : JavaExpressions.boxedType(types, read.type())) +
@@ -322,7 +324,9 @@ final class MappingReadEmitter {
 
             boolean last = step == read.steps().get(read.steps().size() - 1);
             String value = last && finalName != null
-                    ? finalName : names.newName("sourceValue");
+                    ? finalName : names.newName(segment instanceof PathSegment.Name
+                            ? NameHints.lowerCamel(((PathSegment.Name) segment).name) + "Source"
+                            : "elementSource");
 
             boolean parentPrimitive =
                     currentType.getKind()

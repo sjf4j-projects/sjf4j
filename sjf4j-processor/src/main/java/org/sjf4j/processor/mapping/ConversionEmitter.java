@@ -363,7 +363,7 @@ public final class ConversionEmitter
 
         if (field == null) throw new IllegalStateException("imported mapper was not prepared: " + type);
 
-        return field + "." + method.getSimpleName() + "(" + source + ")";
+        return "this." + field + "." + method.getSimpleName() + "(" + source + ")";
     }
 
     /*

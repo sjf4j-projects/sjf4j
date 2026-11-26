@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.processor.mapping.target.TargetAccessEmitter;
@@ -683,7 +685,7 @@ public final class JdbcEmitter {
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < sourceColumns.size(); i++) {
             String name = sourceColumns.get(i);
-            String index = names.newName("idx_" + name);
+            String index = names.newName(NameHints.lowerCamel(name) + "Index");
             out.line("int " + index + " = " + resolved + "[" + i + "];");
             result.put(name, index);
         }
@@ -1078,7 +1080,7 @@ public final class JdbcEmitter {
             String getter) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1106,7 +1108,7 @@ public final class JdbcEmitter {
             String wrapperType) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()) + "Raw");
 
         out.line(
                 primitiveType +
@@ -1144,7 +1146,7 @@ public final class JdbcEmitter {
         }
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1169,7 +1171,7 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()) + "Raw");
 
         out.line(
                 "java.lang.String " +
@@ -1206,7 +1208,7 @@ public final class JdbcEmitter {
                     read.column());
 
             String value =
-                    names.newName("value_" + read.column());
+                    names.newName(NameHints.lowerCamel(read.column()));
 
             out.line(
                     "char " +
@@ -1219,7 +1221,7 @@ public final class JdbcEmitter {
         }
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 "java.lang.Character " +
@@ -1282,10 +1284,10 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()) + "Raw");
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 "java.lang.String " +
@@ -1319,7 +1321,7 @@ public final class JdbcEmitter {
             String column) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 "java.lang.Object " +
@@ -1341,7 +1343,7 @@ public final class JdbcEmitter {
             String column) {
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 read.targetType() +
@@ -1364,8 +1366,8 @@ public final class JdbcEmitter {
                                       String column) {
         ValueCodecMetadata codec = read.codec();
         String rawType = codec.rawType.toString();
-        String raw = names.newName("raw_" + read.column());
-        String value = names.newName("value_" + read.column());
+        String raw = names.newName(NameHints.lowerCamel(read.column()) + "Raw");
+        String value = names.newName(NameHints.lowerCamel(read.column()));
 
         // Read the declared wire type directly; never route through NodeMapper.
         // String is supported by every JDBC driver, whereas getObject(index,
@@ -1377,7 +1379,7 @@ public final class JdbcEmitter {
         } else if ("java.math.BigDecimal".equals(rawType)) {
             expression = resultSet + ".getBigDecimal(" + column + ")";
         } else if ("java.math.BigInteger".equals(rawType)) {
-            String decimal = names.newName("decimal_" + read.column());
+            String decimal = names.newName(NameHints.lowerCamel(read.column()) + "Decimal");
             out.line("java.math.BigDecimal " + decimal + " = "
                     + resultSet + ".getBigDecimal(" + column + ");");
             expression = decimal + " == null ? null : " + decimal + ".toBigIntegerExact()";
@@ -1407,10 +1409,10 @@ public final class JdbcEmitter {
             String column) {
 
         String raw =
-                names.newName("raw_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()) + "Raw");
 
         String value =
-                names.newName("value_" + read.column());
+                names.newName(NameHints.lowerCamel(read.column()));
 
         out.line(
                 "java.lang.Object " +

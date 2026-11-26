@@ -1,5 +1,9 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.code.NameAllocator;
+
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 
@@ -115,6 +119,9 @@ final class StructuralWriteEmitter {
     }
 
     private void emitPojo(JavaWriter out, BindingValue value) {
+        NameAllocator locals = names.propertyLocals("generator", "nativeGenerator", "value",
+                "memberCount", "entry", "dynamicValue", "item", "element", "codecValue",
+                "rawValue", "encoded");
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         int index = 0;
@@ -131,7 +138,7 @@ final class StructuralWriteEmitter {
             }
             if (!child.primitive()) {
                 // Evaluate a getter once, including when null properties are omitted.
-                String propertyVar = "property" + index;
+                String propertyVar = locals.newName(NameHints.lowerCamel(property.name()));
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
                 expr = propertyVar;
                 if (!stringMember && (nonNullScalar(child) || child.helperRequired()

@@ -25,6 +25,8 @@ final class BindingNames {
     private final Map<BindingValue, Map<String, String>> values = new IdentityHashMap<>();
     private final Map<String, String> enums = new LinkedHashMap<>();
     private final Map<String, String> shared = new HashMap<>();
+    private final Map<BindingProperty, String> creatorLocals = new IdentityHashMap<>();
+    private final Map<BindingProperty, String> pendingFlags = new IdentityHashMap<>();
 
     BindingNames(GeneratedNames generated) {
         this.generated = generated;
@@ -115,6 +117,35 @@ final class BindingNames {
         return generated.memberSafeHelperLocals(reserved)
                 .reserve("java").reserve("javax").reserve("org").reserve("com")
                 .reserve("tools").reserve("jakarta");
+    }
+
+    /** Allocate all creator locals before emitting any assignment. */
+    void prepareCreatorLocals(BindingValue value) {
+        NameAllocator locals = propertyLocals("parser", "nativeParser", "value", "seen",
+                "name", "nameIndex", "expectedNameIndex", "prefixNames", "prefixValues",
+                "prefixSize", "prefixIndex", "prefixRaw", "discriminator", "unknownName", "dynamic");
+        for (BindingProperty property : value.properties()) {
+            if (property.creatorIndex() < 0 && property.pendingIndex() < 0) continue;
+            String hint = NameHints.lowerCamel(property.name());
+            creatorLocals.put(property, locals.newName(hint));
+        }
+        for (BindingProperty property : value.properties()) {
+            if (property.pendingIndex() >= 0) {
+                pendingFlags.put(property, locals.newName(NameHints.lowerCamel(property.name()) + "Present"));
+            }
+        }
+    }
+
+    String creatorLocal(BindingProperty property) {
+        String name = creatorLocals.get(property);
+        if (name == null) throw new IllegalStateException("Creator local not allocated: " + property.name());
+        return name;
+    }
+
+    String pendingFlag(BindingProperty property) {
+        String name = pendingFlags.get(property);
+        if (name == null) throw new IllegalStateException("Pending flag not allocated: " + property.name());
+        return name;
     }
 
     static String simpleType(TypeMirror type) {

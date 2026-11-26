@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.code.NameHints;
+
 import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.NodeKind;
@@ -341,7 +343,7 @@ public final class MappingEmitter {
                         // converters may produce a boxed result. Evaluate it
                         // exactly once: an expression-valued converter must not
                         // be invoked twice by the null/default branch.
-                        String raw = names.newName("constructorValue");
+                        String raw = names.newName(NameHints.lowerCamel(argument.name()) + "Raw");
                         out.line(JavaExpressions.boxedType(types, argument.value().type()) + " " + raw +
                                 " = " + values[i] + ";");
                         values[i] = "(" + raw + " == null ? " +
