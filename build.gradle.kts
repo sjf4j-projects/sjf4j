@@ -50,7 +50,7 @@ subprojects {
 // Read only top-level findings and analysis diagnostics. Streaming avoids
 // building another large in-memory XML tree for generated testbench classes.
 fun readSpotBugsCounts(report: File): LongArray {
-    // P1, P2, P3, other priorities, analysis errors, missing classes.
+    // Critical (1-4), High (5-9), Medium (10-14), Low (15-20), analysis errors, missing classes.
     val counts = LongArray(6)
     val factory = XMLInputFactory.newFactory().apply {
         setProperty(XMLInputFactory.SUPPORT_DTD, false)
@@ -70,8 +70,15 @@ fun readSpotBugsCounts(report: File): LongArray {
                         } else if (depth == 2) {
                             when (reader.localName) {
                                 "BugInstance" -> {
-                                    val priority = reader.getAttributeValue(null, "priority").toInt()
-                                    counts[if (priority in 1..3) priority - 1 else 3]++
+                                    val rank = reader.getAttributeValue(null, "rank")?.toIntOrNull()
+                                    val severity = when (rank) {
+                                        in 1..4 -> 0
+                                        in 5..9 -> 1
+                                        in 10..14 -> 2
+                                        in 15..20 -> 3
+                                        else -> error("Missing or invalid SpotBugs rank: $rank")
+                                    }
+                                    counts[severity]++
                                 }
                                 "Errors" -> {
                                     counts[4] = reader.getAttributeValue(null, "errors").toLong()
@@ -115,17 +122,20 @@ val spotbugsSummary = tasks.register("spotbugsSummary") {
         val scans = spotbugsScans.map { it.get() }.sortedBy { it.path }
         val taskWidth = maxOf("TOTAL".length, "Task".length, scans.maxOfOrNull { it.path.length } ?: 0)
         val summary = buildString {
+            val columns = listOf("Findings", "Critical", "High", "Medium", "Low", "Errors", "Missing")
+            val widths = listOf(10, 8, 7, 7, 7, 7, 7)
+            val separator = "-".repeat(taskWidth + widths.sum() + 2 * (columns.size + 1) + "Status".length)
             fun row(name: String, values: List<String>, status: String = "") {
                 appendLine(name.padEnd(taskWidth) + "  " +
-                        values.zip(listOf(10, 7, 9, 7, 6, 7, 7))
+                        values.zip(widths)
                             .joinToString("  ") { (value, width) -> value.padStart(width) } +
                         "  " + status)
             }
-            val empty = List(7) { "-" }
-            appendLine("SpotBugs summary")
+            val empty = List(columns.size) { "-" }
+            appendLine("SpotBugs summary (severity by rank)")
             appendLine()
-            row("Task", listOf("Findings", "P1", "P2", "P3", "Other", "Errors", "Missing"), "Status")
-            appendLine("-".repeat(taskWidth + 80))
+            row("Task", columns, "Status")
+            appendLine(separator)
             for (task in scans) {
                 val state = task.state
                 if (state.noSource) {
@@ -161,11 +171,13 @@ val spotbugsSummary = tasks.register("spotbugsSummary") {
                     appendLine("    HTML: unavailable (scan/report incomplete)")
                 }
             }
-            appendLine("-".repeat(taskWidth + 80))
+            appendLine(separator)
             row("TOTAL", listOf(totals.take(4).sum().toString()) + totals.map { it.toString() })
             appendLine()
             appendLine("Reports parsed: $parsed; no source: $noSource; incomplete: $incomplete.")
-            appendLine("Totals include parsed XML reports only. P1/P2/P3 are SpotBugs priorities, not security severity.")
+            appendLine("Totals include parsed XML reports only.")
+            appendLine("Severity by SpotBugs rank: Critical 1-4; High 5-9; Medium 10-14; Low 15-20.")
+            appendLine("All confidence levels are included; rank is not a security severity score.")
             appendLine("Analysis diagnostics and incomplete reports require review; check the individual task logs.")
         }
         val output = spotbugsSummaryFile.get().asFile

@@ -33,7 +33,7 @@ jobs:
         run: |
           if [[ -f build/reports/spotbugs/summary.txt ]]; then
             {
-              echo '### SpotBugs summary'
+              echo '### SpotBugs summary (severity by rank)'
               echo
               echo '~~~text'
               cat build/reports/spotbugs/summary.txt
@@ -51,9 +51,3 @@ jobs:
             build/reports/spotbugs/
             **/build/reports/spotbugs/
           if-no-files-found: error
-
-# Verify native write generation changes with the full independent scan.
-
-# Run the independent analysis for compiled validator emission changes.
-
-# Verify processor dead-code cleanup with full SpotBugs analysis.
