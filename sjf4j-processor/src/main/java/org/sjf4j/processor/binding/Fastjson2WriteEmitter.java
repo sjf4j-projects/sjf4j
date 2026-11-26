@@ -208,7 +208,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
             BindingProperty property = owner.properties().get(index);
-            String field = WriteEmitter.compiledNameField(owner, index);
+            String field = writes.compiledNameField(owner, index);
             if (fixedRawName(property.name())) {
                 int length = property.name().length();
                 String args = field + ".rawName0";

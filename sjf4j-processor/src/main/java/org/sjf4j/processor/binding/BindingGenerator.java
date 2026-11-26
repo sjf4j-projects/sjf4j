@@ -58,8 +58,9 @@ public final class BindingGenerator {
 
         configureBackendBinder(generated, backend, exactNumbers);
 
+        BindingNames bindingNames = new BindingNames(generated.names());
         BindingCompiler compiler = new BindingCompiler(
-                context, generated.names(), context.metadata, backend.backend());
+                context, bindingNames, context.metadata, backend.backend());
         List<BindingCompiler.CompiledMethod> compiled =
                 new ArrayList<BindingCompiler.CompiledMethod>(plans.size());
 
@@ -73,8 +74,7 @@ public final class BindingGenerator {
 
         if (!generated.isValid()) return;
 
-        BindingEmitter emitter = new BindingEmitter(context, backend,
-                new BindingNames(generated.names()), includeNulls, exactNumbers);
+        BindingEmitter emitter = new BindingEmitter(context, backend, bindingNames, includeNulls, exactNumbers);
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);

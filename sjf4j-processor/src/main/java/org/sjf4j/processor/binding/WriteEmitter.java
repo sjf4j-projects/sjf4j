@@ -122,7 +122,7 @@ final class WriteEmitter {
         for (BindingProperty property : value.properties()) {
             String hint = BindingNames.fieldType(value.type()) + "_" + BindingNames.upperSnake(property.name());
             int position = index++;
-            value.preparedName(position, names.field(value, "prepared:" + position, hint));
+            names.field(value, "prepared:" + position, hint);
         }
     }
 
@@ -136,8 +136,8 @@ final class WriteEmitter {
         }
     }
 
-    static String compiledNameField(BindingValue value, int index) {
-        return value.preparedName(index);
+    String compiledNameField(BindingValue value, int index) {
+        return names.preparedName(value, index);
     }
 
     void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
@@ -262,7 +262,7 @@ final class WriteEmitter {
         if (fastjson2 != null) {
             fastjson2.registerHelpers(generated, value);
         } else {
-            generated.addHelper(value.helperName(), out -> emitHelper(out, value));
+            generated.addHelper(names.primaryHelper(value), out -> emitHelper(out, value));
         }
     }
 

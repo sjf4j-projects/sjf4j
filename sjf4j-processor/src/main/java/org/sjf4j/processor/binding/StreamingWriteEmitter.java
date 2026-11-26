@@ -32,7 +32,7 @@ final class StreamingWriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName()
+        out.beginBlock("private void " + names.primaryHelper(value)
                 + "(" + backend.generatorType() + " generator, "
                 + value.type() + " value) throws java.io.IOException");
         switch (value.kind()) {
@@ -105,7 +105,7 @@ final class StreamingWriteEmitter {
 
             out.line("generator.writeName(" +
                     (backend.usesCompiledNames()
-                            ? WriteEmitter.compiledNameField(value, index)
+                            ? writes.compiledNameField(value, index)
                             : JavaWriter.stringLiteral(property.name())) +
                     ");");
             index++;
@@ -172,7 +172,7 @@ final class StreamingWriteEmitter {
                 return;
             }
             // All remaining helpers use the same (generator, value) convention.
-            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(names.primaryHelper(value) + "(" + generator + ", " + expression + ");");
             return;
         }
 
