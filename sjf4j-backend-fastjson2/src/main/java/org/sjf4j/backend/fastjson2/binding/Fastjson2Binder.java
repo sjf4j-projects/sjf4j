@@ -77,6 +77,8 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
      * Selects the native numeric policy for a compiled read operation.
      * Called only during generated binder construction; never changes an
      * existing context or the caller's Binder. Other native settings are retained.
+     * @param exactNumbers whether to use exact numeric representations
+     * @return this binder if its policy already matches, otherwise a configured copy
      */
     public Fastjson2Binder forCompiledRead(boolean exactNumbers) {
         if (config.exactNumbers == exactNumbers
