@@ -15,7 +15,9 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.Sjf4j;
+import org.sjf4j.NodeConfig;
+import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.BinderFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +36,8 @@ public class SchemaBenchmark {
 //        Main.main(new String[]{SchemaBenchmark.class.getName()});
         Main.main(new String[]{SchemaBenchmark.class.getName() + ".schema_validate_array"});
     }
+
+    private static final Binder<?, ?> JSON = BinderFactory.jsonProvider().create(NodeConfig.EXACT_NUMBERS);
 
     private static final String OBJECT_SCHEMA_JSON =
             "{" +
@@ -134,8 +138,8 @@ public class SchemaBenchmark {
             JsonSchema numberSchemaDoc = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
             numberSchema = numberSchemaDoc.createPlan();
 
-            objectNode = Sjf4j.global().fromJson(OBJECT_NODE_JSON);
-            arrayNode = Sjf4j.global().fromJson(ARRAY_NODE_JSON);
+            objectNode = JSON.readNode(OBJECT_NODE_JSON, Object.class);
+            arrayNode = JSON.readNode(ARRAY_NODE_JSON, Object.class);
             stringNode = "alice@example.com";
             numberNode = 84;
         }

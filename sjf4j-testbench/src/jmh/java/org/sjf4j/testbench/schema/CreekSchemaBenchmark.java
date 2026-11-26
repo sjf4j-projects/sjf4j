@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.schema;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.OutputFormat;
@@ -31,11 +32,14 @@ import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
 
 import org.sjf4j.testbench.model.creek.ModelState;
+import org.sjf4j.testbench.model.creek.PolyTypeB;
 import org.sjf4j.testbench.model.creek.TestModel;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -48,8 +52,9 @@ import java.util.concurrent.TimeUnit;
  * compare POJO validation with validation of an equivalent Map.
  *
  * <p>All fixtures, including the compiled schema and JSON bytes, are prepared and
- * checked outside the measured methods. Format assertions are disabled, matching
- * the Creek benchmark.
+ * checked outside the measured methods. Generic JSON numbers preserve exact decimals;
+ * typed POJO fields retain their declared Java types. Format assertions are disabled,
+ * matching the Creek benchmark.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -60,7 +65,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class CreekSchemaBenchmark {
 
-    private static final ObjectMapper JACKSON = new ObjectMapper();
+    private static final ObjectMapper JACKSON = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
     private SchemaPlan plan;
     private TestModel model;
@@ -86,7 +92,7 @@ public class CreekSchemaBenchmark {
                     .createPlan(new org.sjf4j.schema.SchemaRegistry(SchemaDialect.DRAFT_2020_12));
             networkntSchema = com.networknt.schema.SchemaRegistry
                     .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
-                    .getSchema(schema);
+                    .getSchema(JACKSON.readTree(schema));
             networkntSchema.initializeValidators();
         }
 
@@ -95,6 +101,7 @@ public class CreekSchemaBenchmark {
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
         mapNode = JACKSON.readValue(jsonBytes, new TypeReference<Map<String, Object>>() {});
         jsonNode = JACKSON.readTree(jsonBytes);
+        verifyExactInputs();
 
         // Fail before measurement if the POJO/Map representations or JSON round trip
         // do not satisfy the exact schema used by the comparison project.
@@ -133,7 +140,28 @@ public class CreekSchemaBenchmark {
         CreekValidator.INSTANCE.requireValid(compiledModel);
     }
 
-    @CompiledBinder(backend = Backend.JACKSON2)
+    /** Both generic representations must preserve the decimal values in the JSON fixture. */
+    private void verifyExactInputs() {
+        requireExactDecimal(model.getDecimal(), mapNode.get("decimal"), jsonNode.get("decimal"));
+        List<?> mapTypes = (List<?>) mapNode.get("polymorphicTypes");
+        JsonNode jsonTypes = jsonNode.get("polymorphicTypes");
+        for (int i = 0; i < model.getPolymorphicTypes().size(); i++) {
+            if (model.getPolymorphicTypes().get(i) instanceof PolyTypeB poly) {
+                requireExactDecimal(BigDecimal.valueOf(poly.getNum()),
+                        ((Map<?, ?>) mapTypes.get(i)).get("num"), jsonTypes.get(i).get("num"));
+            }
+        }
+    }
+
+    private static void requireExactDecimal(BigDecimal expected, Object mapValue, JsonNode treeValue) {
+        if (!(mapValue instanceof BigDecimal decimal) || expected.compareTo(decimal) != 0
+                || treeValue == null || !treeValue.isBigDecimal()
+                || expected.compareTo(treeValue.decimalValue()) != 0) {
+            throw new IllegalStateException("Creek fixture lost exact decimal precision: " + expected);
+        }
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON2, exactNumbers = true)
     public interface CreekBinder {
         CreekBinder INSTANCE = CompiledInstances.create(CreekBinder.class);
 

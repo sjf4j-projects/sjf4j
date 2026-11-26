@@ -101,6 +101,7 @@ cat >"$META" <<EOF
 - Profile: $PROFILE
 - Group: $GROUP
 - Schema: classpath:/schema/creek-2020-12.json (Draft 2020-12)
+- Numeric input policy: exact generic JSON numbers (BigDecimal decimals; lossless integers); POJO fields retain their declared types
 - Cases expected: $EXPECTED
 - Full timing: 3 forks, 5 x 1s warmup, 5 x 1s measurement (other profiles use their own settings)
 - Full reporting: Best 2 Mean per method (drop slowest fork, average remaining two); raw JMH metrics are unchanged
