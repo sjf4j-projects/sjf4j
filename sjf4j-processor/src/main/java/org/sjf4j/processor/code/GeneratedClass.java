@@ -286,7 +286,7 @@ public final class GeneratedClass {
         if (backendBinderType != null) {
             out.blank();
             out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
-            out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\").withExactNumbers(false);");
+            out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
             for (Member initializer : constructorInitializers) initializer.write(out);
             out.endBlock();
         }

@@ -15,8 +15,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Base streaming binding for reading and writing one structured document.
@@ -36,13 +34,6 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     /** Returns this binder's immutable SJF4J node configuration. */
     public final NodeConfig config() {
         return config;
-    }
-
-    /** Copies the node configuration with a different generic number policy. */
-    protected final NodeConfig numberConfig(boolean exactNumbers) {
-        Map<Class<?>, String> formats = new LinkedHashMap<>();
-        config.copyValueFormatsTo(formats);
-        return new NodeConfig(formats, config.includeNulls, exactNumbers);
     }
 
     /*

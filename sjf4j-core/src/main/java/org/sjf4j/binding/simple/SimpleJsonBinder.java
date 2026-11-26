@@ -38,12 +38,6 @@ public final class SimpleJsonBinder extends Binder<SimpleJsonParser, SimpleJsonG
         return new SimpleJsonParser(Asserts.notNull(input, "input"), config.exactNumbers);
     }
 
-    /** Returns a binder configured for the requested generic numeric policy. */
-    public SimpleJsonBinder withExactNumbers(boolean exactNumbers) {
-        return config.exactNumbers == exactNumbers ? this
-                : new SimpleJsonBinder(numberConfig(exactNumbers));
-    }
-
     /**
      * Creates a binding writer to java.io.Writer.
      */

@@ -37,6 +37,7 @@ import java.util.Map;
 public final class SimpleJsonParser extends StreamingParser {
 
     private final Reader reader;
+    private final boolean exactNumbers;
 
     /**
      * Creates reader over input characters.
@@ -47,7 +48,8 @@ public final class SimpleJsonParser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public SimpleJsonParser(Reader input, boolean exactNumbers) {
-        super(Backend.SIMPLE, exactNumbers);
+        super(Backend.SIMPLE);
+        this.exactNumbers = exactNumbers;
         this.reader = input;
         this.inputBuffer = new char[BUFFER_SIZE];
     }
@@ -61,7 +63,8 @@ public final class SimpleJsonParser extends StreamingParser {
 
     /** Creates a parser with an explicit generic numeric read policy. */
     public SimpleJsonParser(String input, boolean exactNumbers) {
-        super(Backend.SIMPLE, exactNumbers);
+        super(Backend.SIMPLE);
+        this.exactNumbers = exactNumbers;
         if (input.length() <= BUFFER_SIZE) {
             this.reader = null;
             this.inputBuffer = input.toCharArray();
