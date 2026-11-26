@@ -195,8 +195,7 @@ final class MappingUpdateEmitter {
             MappingCompiler.CompiledMethod compiled,
             MappingCompiler.Assignment assignment,
             String target,
-            String value,
-            GeneratedClass generated) {
+            String value) {
 
         TargetPlan destination =
                 assignment.target();
