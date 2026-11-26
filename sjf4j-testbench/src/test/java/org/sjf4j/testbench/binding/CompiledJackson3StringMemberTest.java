@@ -58,17 +58,19 @@ public class CompiledJackson3StringMemberTest {
     void jackson3StaticStringMemberPreservesNullPolicy() throws Exception {
         Payload value = fixture();
         for (boolean includeNulls : new boolean[]{true, false}) {
-            Jackson3Writer writer3 = CompiledInstances.create(
-                    includeNulls ? Jackson3Writer.class : Jackson3OmitWriter.class,
-                    new Jackson3Binder(new NodeConfig(!includeNulls)));
+            Jackson3Binder backend3 = new Jackson3Binder(new NodeConfig(!includeNulls));
+            Jackson3Writer writer3 = includeNulls
+                    ? CompiledInstances.create(Jackson3Writer.class, backend3)
+                    : CompiledInstances.create(Jackson3OmitWriter.class, backend3);
             JsonNode actual = JSON.readTree(writer3.write(value));
             verifyNullPolicy(actual, includeNulls);
 
             // Jackson2 is deliberately unchanged: both backends must have
             // equivalent output semantics for the same native backend configuration.
-            Jackson2Writer writer2 = CompiledInstances.create(
-                    includeNulls ? Jackson2Writer.class : Jackson2OmitWriter.class,
-                    new Jackson2Binder(new NodeConfig(!includeNulls)));
+            Jackson2Binder backend2 = new Jackson2Binder(new NodeConfig(!includeNulls));
+            Jackson2Writer writer2 = includeNulls
+                    ? CompiledInstances.create(Jackson2Writer.class, backend2)
+                    : CompiledInstances.create(Jackson2OmitWriter.class, backend2);
             JsonNode jackson2 = JSON.readTree(writer2.write(value));
             assertEquals(jackson2, actual);
         }
