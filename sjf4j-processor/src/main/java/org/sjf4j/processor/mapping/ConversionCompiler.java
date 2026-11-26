@@ -80,7 +80,7 @@ public final class ConversionCompiler {
                 // Only runtime-unknown scalar leaves participate in lenient
                 // coercion; known Java types keep their compiled conversions.
                 if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN
-                        && plan.rawPolicy(context) == RawPolicy.LENIENT) {
+                        && plan.policy().raws == RawPolicy.LENIENT) {
                     return CompiledConversion.lenientScalar(conversion.sourceType(), conversion.targetType());
                 }
                 return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
@@ -576,7 +576,7 @@ public final class ConversionCompiler {
     private MappingPlan nestedPlan(MappingPlan parent, TypeMirror targetType) {
         return new MappingPlan(parent.method(), parent.methodType(), MappingPlan.Kind.CREATE,
                 targetType, null, parent.sources(), parent.sourceTypes(),
-                Collections.<MappingPlan.Rule>emptyList(), parent.options());
+                Collections.<MappingPlan.Rule>emptyList(), parent.policy());
     }
 
     /*

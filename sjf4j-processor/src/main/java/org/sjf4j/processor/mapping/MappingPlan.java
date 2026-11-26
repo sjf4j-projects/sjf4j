@@ -1,11 +1,10 @@
 package org.sjf4j.processor.mapping;
 
-import org.sjf4j.annotation.mapping.RawPolicy;
-import org.sjf4j.processor.CompilationContext;
+import org.sjf4j.annotation.mapping.ArrayPolicy;
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;
@@ -41,12 +40,12 @@ final class MappingPlan {
     private final List<TypeMirror> sourceTypes;
     private final List<Rule> rules;
 
-    private final AnnotationMirror options;
+    private final MappingPolicy policy;
 
     MappingPlan(ExecutableElement method, ExecutableType methodType, Kind kind,
                 TypeMirror targetType, VariableElement targetParameter,
                 List<VariableElement> sources, List<TypeMirror> sourceTypes,
-                List<Rule> rules, AnnotationMirror options) {
+                List<Rule> rules, MappingPolicy policy) {
         this.method = Asserts.notNull(method, "method");
         this.methodType = Asserts.notNull(methodType, "methodType");
         this.kind = Asserts.notNull(kind, "kind");
@@ -56,7 +55,7 @@ final class MappingPlan {
         this.sourceTypes = Collections.unmodifiableList(new ArrayList<TypeMirror>(sourceTypes));
         if (this.sources.size() != this.sourceTypes.size()) throw new IllegalArgumentException("sources and sourceTypes must have the same size");
         this.rules = Collections.unmodifiableList(new ArrayList<Rule>(rules));
-        this.options = options;
+        this.policy = Asserts.notNull(policy, "policy");
     }
 
     ExecutableElement method() {
@@ -114,26 +113,16 @@ final class MappingPlan {
         return rules;
     }
 
-    AnnotationMirror options() {
-        return options;
+    MappingPolicy policy() {
+        return policy;
     }
 
-    /**
-     * Resolves the method-level policy from the annotation mirror, including
-     * default values. Source-retained annotations are not reliably available
-     * through runtime annotation proxies in an annotation processor.
-     */
-    RawPolicy rawPolicy(CompilationContext context) {
-        if (options == null) return RawPolicy.STRICT;
-        for (java.util.Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
-                context.elements.getElementValuesWithDefaults(options).entrySet()) {
-            if (!entry.getKey().getSimpleName().contentEquals("raws")) continue;
-            Object value = entry.getValue().getValue();
-            if (value instanceof VariableElement) {
-                return RawPolicy.valueOf(((VariableElement) value).getSimpleName().toString());
-            }
-        }
-        return RawPolicy.STRICT;
+    ArrayPolicy arrayPolicy(Rule rule) {
+        return rule != null && rule.arrayExplicit() ? rule.arrayPolicy() : policy.arrays;
+    }
+
+    ObjectPolicy objectPolicy(Rule rule) {
+        return rule != null && rule.objectExplicit() ? rule.objectPolicy() : policy.objects;
     }
 
     static final class Rule {
@@ -151,15 +140,15 @@ final class MappingPlan {
 
         private final boolean ignore;
 
-        private final String arrayPolicy;
-        private final String objectPolicy;
+        private final ArrayPolicy arrayPolicy;
+        private final ObjectPolicy objectPolicy;
 
         private final boolean arrayExplicit;
         private final boolean objectExplicit;
 
         Rule(AnnotationMirror annotation, WriteMode mode, String target, String source,
              List<String> sources, String compute, String nestedMapper, boolean ignore,
-             String arrayPolicy, String objectPolicy, boolean arrayExplicit, boolean objectExplicit) {
+             ArrayPolicy arrayPolicy, ObjectPolicy objectPolicy, boolean arrayExplicit, boolean objectExplicit) {
             this.annotation = Asserts.notNull(annotation, "annotation");
             this.mode = Asserts.notNull(mode, "mode");
             this.target = Asserts.notNull(target, "target");
@@ -206,11 +195,11 @@ final class MappingPlan {
             return ignore;
         }
 
-        String arrayPolicy() {
+        ArrayPolicy arrayPolicy() {
             return arrayPolicy;
         }
 
-        String objectPolicy() {
+        ObjectPolicy objectPolicy() {
             return objectPolicy;
         }
 

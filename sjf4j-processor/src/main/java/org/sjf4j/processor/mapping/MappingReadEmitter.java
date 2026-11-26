@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.NullValuePolicy;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.NodeReadEmitter;
@@ -16,12 +17,10 @@ import javax.lang.model.type.TypeMirror;
 /** Emits source reads, presence guards and direct/adjacent read optimizations. */
 final class MappingReadEmitter {
 
-    private final CompilationContext context;
     private final TypeSystem types;
     private final NodeReadEmitter reads;
 
     MappingReadEmitter(CompilationContext context) {
-        this.context = context;
         this.types = context.types;
         this.reads = new NodeReadEmitter(types);
     }
@@ -215,7 +214,7 @@ final class MappingReadEmitter {
             if (!primitiveDirect) return null;
         } else {
             // Create mappings may explicitly request null-ignore behavior.
-            if ("IGNORE".equals(MappingEmissionSupport.option(context, plan, "nulls", "SET_TO_NULL"))) return null;
+            if (plan.policy().nulls == NullValuePolicy.IGNORE) return null;
             if (assignment.target().type().getKind().isPrimitive() && !primitiveDirect) {
                 return null;
             }

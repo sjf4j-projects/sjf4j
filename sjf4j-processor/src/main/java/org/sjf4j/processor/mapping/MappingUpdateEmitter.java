@@ -1,5 +1,8 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ArrayPolicy;
+import org.sjf4j.annotation.mapping.ObjectPolicy;
+import org.sjf4j.annotation.mapping.NullValuePolicy;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -82,23 +85,12 @@ final class MappingUpdateEmitter {
                         MappingEmissionSupport.rootKnownNonNull(plan));
 
         boolean ignoreNull =
-                "IGNORE".equals(
-                        MappingEmissionSupport.option(context,
-                                plan,
-                                "nulls",
-                                "SET_TO_NULL"));
+                plan.policy().nulls == NullValuePolicy.IGNORE;
 
         MappingPlan.Rule rule =
                 assignment.rule();
 
-        String policy =
-                rule != null &&
-                        rule.objectExplicit()
-                        ? rule.objectPolicy()
-                        : MappingEmissionSupport.option(context,
-                        plan,
-                        "objects",
-                        "PUT");
+        ObjectPolicy policy = plan.objectPolicy(rule);
 
         if (ignoreNull) {
             out.beginBlock(
@@ -144,7 +136,7 @@ final class MappingUpdateEmitter {
                         existing +
                         " == null)");
 
-        if (!"PUT_IF_PRESENT".equals(policy)) {
+        if (policy != ObjectPolicy.PUT_IF_PRESENT) {
             String value =
                     conversions.emit(
                             out,
@@ -249,28 +241,13 @@ final class MappingUpdateEmitter {
         MappingPlan.Rule rule =
                 assignment.rule();
 
-        String nullPolicy =
-                MappingEmissionSupport.option(context,
-                        plan,
-                        "nulls",
-                        "SET_TO_NULL");
-
-        boolean ignoreNull =
-                "IGNORE".equals(
-                        nullPolicy);
+        boolean ignoreNull = plan.policy().nulls == NullValuePolicy.IGNORE;
 
         NodeKind kind = types.nodeKind(targetType);
 
         if (plan.update() && types.isArrayNode(kind)) {
 
-            String arrayPolicy =
-                    rule != null &&
-                            rule.arrayExplicit()
-                            ? rule.arrayPolicy()
-                             : MappingEmissionSupport.option(context,
-                             plan,
-                             "arrays",
-                            "SET");
+            ArrayPolicy arrayPolicy = plan.arrayPolicy(rule);
 
             emitArrayUpdate(out, names, destination, target, value,
                     arrayPolicy, ignoreNull, generated, plan);
@@ -280,16 +257,9 @@ final class MappingUpdateEmitter {
 
         if (plan.update() && MappingEmissionSupport.isMapLike(kind)) {
 
-            String objectPolicy =
-                    rule != null &&
-                            rule.objectExplicit()
-                            ? rule.objectPolicy()
-                            : MappingEmissionSupport.option(context,
-                            plan,
-                            "objects",
-                            "PUT");
+            ObjectPolicy objectPolicy = plan.objectPolicy(rule);
 
-            if (kind != NodeKind.OBJECT_MAP && !"PUT".equals(objectPolicy)) {
+            if (kind != NodeKind.OBJECT_MAP && objectPolicy != ObjectPolicy.PUT) {
                 MappingEmissionSupport.error(context, plan.method(), generated, "ObjectPolicy." + objectPolicy + " requires a Map target");
 
                 return;
@@ -316,7 +286,7 @@ final class MappingUpdateEmitter {
     }
 
     private void emitArrayUpdate(JavaWriter out, NameAllocator names, MappingCompiler.Target destination,
-                                 String target, String value, String policy, boolean ignoreNull,
+                                 String target, String value, ArrayPolicy policy, boolean ignoreNull,
                                  GeneratedClass generated, MappingPlan plan) {
         NodeAccess access = destination.access();
 
@@ -330,7 +300,7 @@ final class MappingUpdateEmitter {
 
         if (existingKind ==
                 NodeKind.ARRAY_SET &&
-                "SET".equals(policy)) {
+                policy == ArrayPolicy.SET) {
 
             MappingEmissionSupport.error(context,
                     plan.method(),
@@ -343,7 +313,7 @@ final class MappingUpdateEmitter {
         if (access.readType()
                 .getKind() ==
                 TypeKind.ARRAY &&
-                "ADD".equals(policy)) {
+                policy == ArrayPolicy.ADD) {
 
             MappingEmissionSupport.error(context,
                     plan.method(),
@@ -452,13 +422,13 @@ final class MappingUpdateEmitter {
             String target,
             String value,
             NodeKind targetKind,
-            String policy,
+            ArrayPolicy policy,
             MappingPlan plan,
             GeneratedClass generated) {
 
         if (targetKind ==
                 NodeKind.ARRAY_SET &&
-                "SET".equals(policy)) {
+                policy == ArrayPolicy.SET) {
 
             MappingEmissionSupport.error(context,
                     plan.method(),
@@ -470,7 +440,7 @@ final class MappingUpdateEmitter {
 
         if (targetKind ==
                 NodeKind.ARRAY_ARRAY &&
-                "ADD".equals(policy)) {
+                policy == ArrayPolicy.ADD) {
 
             MappingEmissionSupport.error(context,
                     plan.method(),
@@ -480,7 +450,7 @@ final class MappingUpdateEmitter {
             return;
         }
 
-        if ("ADD".equals(policy)) {
+        if (policy == ArrayPolicy.ADD) {
             out.line(
                     target +
                             ".addAll(" +
@@ -633,7 +603,7 @@ final class MappingUpdateEmitter {
             MappingCompiler.Target destination,
             String target,
             String value,
-            String policy,
+            ObjectPolicy policy,
             boolean ignoreNull,
             GeneratedClass generated,
             MappingPlan plan) {
@@ -697,7 +667,7 @@ final class MappingUpdateEmitter {
                         existing +
                         " == null)");
 
-        if (!"PUT_IF_PRESENT".equals(policy)) {
+        if (policy != ObjectPolicy.PUT_IF_PRESENT) {
             writes.emitNodeWrite(
                     out,
                     target,
@@ -711,8 +681,7 @@ final class MappingUpdateEmitter {
 
         out.beginBlock("else");
 
-        if ("PUT_IF_ABSENT".equals(
-                policy)) {
+        if (policy == ObjectPolicy.PUT_IF_ABSENT) {
 
             String entry =
                     names.newName("entry");
@@ -756,8 +725,7 @@ final class MappingUpdateEmitter {
             out.dedent();
             out.line("}");
 
-        } else if ("PUT_IF_PRESENT".equals(
-                policy)) {
+        } else if (policy == ObjectPolicy.PUT_IF_PRESENT) {
 
             String entry =
                     names.newName("entry");

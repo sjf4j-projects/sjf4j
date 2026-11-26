@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ReusePolicy;
+import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.RawPolicy;
 import org.sjf4j.annotation.node.NodeValue;
@@ -84,7 +86,7 @@ public final class ConverterResolver {
     private boolean validateReferences(MappingPlan plan, GeneratedClass generated) {
         boolean valid = true;
 
-        for (String reference : optionConverters(plan)) {
+        for (String reference : plan.policy().converters) {
             if (!validateReference(plan, reference, "converters", generated)) valid = false;
         }
 
@@ -161,7 +163,7 @@ public final class ConverterResolver {
          * Method-level candidate methods remain preferences.
          */
         if ((rule == null || rule.nestedMapper().isEmpty()) &&
-                reuseAssignable(plan) &&
+                plan.policy().reuse == ReusePolicy.ASSIGNABLE &&
                 types.isAssignableBoxedGeneric(sourceType, targetType) &&
                 !requiresRuntimeContainerConversion(sourceType, targetType)) {
             return Conversion.direct(sourceType, targetType);
@@ -188,7 +190,7 @@ public final class ConverterResolver {
         /*
          * Method-level converter preferences.
          */
-        List<String> preferredReferences = optionConverters(plan);
+        List<String> preferredReferences = plan.policy().converters;
         Conversion preferred = resolvePreferred(preferredReferences, sourceType, targetType, plan, generated);
 
         if (!generated.isValid()) return null;
@@ -237,7 +239,7 @@ public final class ConverterResolver {
          */
         if (types.nodeKind(sourceType) == NodeKind.COMPILE_TIME_UNKNOWN
                 && !types.isObject(targetType)
-                && plan.rawPolicy(context) == RawPolicy.CAST) {
+                && plan.policy().raws == RawPolicy.CAST) {
             return Conversion.rawCast(sourceType, targetType);
         }
 
@@ -421,33 +423,6 @@ public final class ConverterResolver {
         return result;
     }
 
-    /**
-     * ASSIGNABLE currently is the sole reuse policy. Keep this check at the
-     * conversion-selection point so future policies can change precedence
-     * without modifying code emission.
-     */
-    private boolean reuseAssignable(MappingPlan plan) {
-        AnnotationMirror options = plan.options();
-        if (options == null) return true;
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
-                context.elements.getElementValuesWithDefaults(options).entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals("reuse")) {
-                Object value = entry.getValue().getValue();
-                return value instanceof VariableElement &&
-                        ((VariableElement) value).getSimpleName().contentEquals("ASSIGNABLE");
-            }
-        }
-        return true;
-    }
-
-    private List<String> optionConverters(MappingPlan plan) {
-        AnnotationMirror options = plan.options();
-
-        if (options == null) return Collections.emptyList();
-
-        return stringArrayValue(options, "converters");
-    }
-
     /*
      * --------------------------------------------------------------
      * Method Selection
@@ -595,7 +570,7 @@ public final class ConverterResolver {
      */
 
     private List<ImportedMapper> resolveImportedMappers() {
-        AnnotationMirror compiledMapper = findAnnotation(mapper, COMPILED_MAPPER);
+        AnnotationMirror compiledMapper = AnnotationValues.find(mapper, COMPILED_MAPPER);
 
         if (compiledMapper == null) return Collections.emptyList();
 
@@ -907,58 +882,13 @@ public final class ConverterResolver {
      * --------------------------------------------------------------
      */
 
-    private AnnotationMirror findAnnotation(Element element, String qualifiedName) {
-        for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
-            Element type = annotation.getAnnotationType().asElement();
-
-            if (!(type instanceof TypeElement)) continue;
-
-            if (((TypeElement) type).getQualifiedName().contentEquals(qualifiedName)) return annotation;
-        }
-
-        return null;
-    }
-
     private boolean hasAnnotation(Element element, String qualifiedName) {
-        return findAnnotation(element, qualifiedName) != null;
-    }
-
-    private AnnotationValue annotationValue(AnnotationMirror annotation, String name) {
-        Map<? extends ExecutableElement, ? extends AnnotationValue> values =
-                context.elements.getElementValuesWithDefaults(annotation);
-
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : values.entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals(name)) return entry.getValue();
-        }
-
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> stringArrayValue(AnnotationMirror annotation, String name) {
-        AnnotationValue value = annotationValue(annotation, name);
-        if (value == null || !(value.getValue() instanceof List)) return Collections.emptyList();
-
-        List<String> result = new ArrayList<>();
-
-        for (AnnotationValue item : (List<? extends AnnotationValue>) value.getValue()) {
-            Object raw = item.getValue();
-
-            if (raw instanceof String) {
-                String text = ((String) raw).trim();
-
-                if (!text.isEmpty()) {
-                    result.add(text);
-                }
-            }
-        }
-
-        return result;
+        return AnnotationValues.find(element, qualifiedName) != null;
     }
 
     @SuppressWarnings("unchecked")
     private List<TypeMirror> typeArrayValue(AnnotationMirror annotation, String name) {
-        AnnotationValue value = annotationValue(annotation, name);
+        AnnotationValue value = AnnotationValues.withDefaults(context.elements, annotation, name);
         if (value == null || !(value.getValue() instanceof List)) return Collections.emptyList();
 
         List<TypeMirror> result = new ArrayList<>();

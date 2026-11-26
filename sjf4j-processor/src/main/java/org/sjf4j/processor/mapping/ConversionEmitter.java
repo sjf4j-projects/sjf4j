@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.CompilationContext;
@@ -344,7 +345,7 @@ public final class ConversionEmitter
     @Override
     public void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
                               ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
-                              TypeMirror targetType, String target, String policy, boolean sourceKnownNonNull,
+                              TypeMirror targetType, String target, ObjectPolicy policy, boolean sourceKnownNonNull,
                               GeneratedClass generated) {
         ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
@@ -375,11 +376,11 @@ public final class ConversionEmitter
                 cast(resolved.sourceKeyType(), entry + ".getKey()") + ";");
         String key = emit(out, names, resolved.keyConversion(), rawKey);
 
-        if ("PUT_IF_ABSENT".equals(policy)) {
+        if (policy == ObjectPolicy.PUT_IF_ABSENT) {
             out.beginBlock("if (!" + target + ".containsKey(" + key + ") || " +
                     target + ".get(" + key + ") == null)");
 
-        } else if ("PUT_IF_PRESENT".equals(policy)) {
+        } else if (policy == ObjectPolicy.PUT_IF_PRESENT) {
             out.beginBlock("if (" + target + ".containsKey(" + key + ") && " +
                     target + ".get(" + key + ") != null)");
         }
@@ -391,7 +392,7 @@ public final class ConversionEmitter
         String value = emit(out, names, resolved.valueConversion(), rawValue);
         out.line(target + ".put(" + key + ", " + value + ");");
 
-        if (!"PUT".equals(policy)) {
+        if (policy != ObjectPolicy.PUT) {
             out.endBlock();
         }
 

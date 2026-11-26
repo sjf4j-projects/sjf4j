@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaExpressions;
@@ -112,10 +113,7 @@ public final class MappingEmitter {
                                         .targetType(),
                                 value),
                         targetKind,
-                        MappingEmissionSupport.option(context,
-                                compiled.plan(),
-                                "arrays",
-                                "SET"),
+                        compiled.plan().policy().arrays,
                         compiled.plan(),
                         generated);
 
@@ -132,10 +130,7 @@ public final class MappingEmitter {
                         compiled.plan()
                                 .targetType(),
                         target,
-                        MappingEmissionSupport.option(context,
-                                compiled.plan(),
-                                "objects",
-                                "PUT"),
+                        compiled.plan().policy().objects,
                         sourceKnownNonNull,
                         generated);
             }
@@ -439,7 +434,7 @@ public final class MappingEmitter {
 
         void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
                            ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
-                           TypeMirror targetType, String target, String policy, boolean sourceKnownNonNull,
+                           TypeMirror targetType, String target, ObjectPolicy policy, boolean sourceKnownNonNull,
                            GeneratedClass generated);
     }
 }

@@ -1,5 +1,7 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.ArrayPolicy;
+import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
@@ -106,7 +108,7 @@ public final class MapperMethodGenerator {
 
         AnnotationMirror options = AnnotationValues.find(method, MAPPING_OPTIONS);
         return new MappingPlan(method, methodType, kind, targetType, targetParameter,
-                sources, sourceTypes, rules, options);
+                sources, sourceTypes, rules, MappingPolicy.resolve(context.elements, options));
     }
 
     /*
@@ -168,8 +170,10 @@ public final class MapperMethodGenerator {
         String compute = stringValue(annotation, "compute");
         String nestedMapper = stringValue(annotation, "nestedMapper");
         boolean ignore = booleanValue(annotation, "ignore", false);
-        String arrayPolicy = enumValue(annotation, "array");
-        String objectPolicy = enumValue(annotation, "object");
+        String array = enumValue(annotation, "array");
+        String object = enumValue(annotation, "object");
+        ArrayPolicy arrayPolicy = array == null ? null : ArrayPolicy.valueOf(array);
+        ObjectPolicy objectPolicy = object == null ? null : ObjectPolicy.valueOf(object);
         boolean arrayExplicit = AnnotationValues.explicit(annotation, "array") != null;
         boolean objectExplicit = AnnotationValues.explicit(annotation, "object") != null;
 
