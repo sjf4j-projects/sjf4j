@@ -27,7 +27,12 @@ public final class GsonParser extends StreamingParser {
      * @param reader the Gson reader
      */
     public GsonParser(JsonReader reader) {
-        super(Backend.GSON);
+        this(reader, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public GsonParser(JsonReader reader, boolean exactNumbers) {
+        super(Backend.GSON, exactNumbers);
         this.reader = Asserts.notNull(reader, "reader");
     }
 
@@ -128,7 +133,12 @@ public final class GsonParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
-        return nextIfNull() ? null : Numbers.parseNumber(reader.nextString());
+        return nextIfNull() ? null : _readNumberText();
+    }
+
+    private Number _readNumberText() throws IOException {
+        String text = reader.nextString();
+        return exactNumbers ? Numbers.parseNumberExact(text) : Numbers.parseNumber(text);
     }
 
     @Override
@@ -192,7 +202,7 @@ public final class GsonParser extends StreamingParser {
             case STRING:
                 return reader.nextString();
             case NUMBER:
-                return Numbers.parseNumber(reader.nextString());
+                return _readNumberText();
             case BOOLEAN:
                 return reader.nextBoolean();
             case NULL:

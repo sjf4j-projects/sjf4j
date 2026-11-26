@@ -68,16 +68,26 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
 
     @Override
     public Jackson3Parser createParser(Reader input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public Jackson3Parser createParser(Reader input, boolean exactNumbers) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")));
+                Asserts.notNull(input, "input")), exactNumbers);
     }
 
     @Override
     public Jackson3Parser createParser(InputStream input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public Jackson3Parser createParser(InputStream input, boolean exactNumbers) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")));
+                Asserts.notNull(input, "input")), exactNumbers);
     }
 
     /**
@@ -86,20 +96,35 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
      * @return a SJF4J streaming reader
      */
     public Jackson3Parser createParser(JsonParser parser) {
-        return new Jackson3Parser(Asserts.notNull(parser, "parser"));
+        return createParser(parser, config.exactNumbers);
+    }
+
+    /** Wraps a native reader with an explicit generic numeric policy. */
+    public Jackson3Parser createParser(JsonParser parser, boolean exactNumbers) {
+        return new Jackson3Parser(Asserts.notNull(parser, "parser"), exactNumbers);
     }
 
     @Override
     public Jackson3Parser createParser(String input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public Jackson3Parser createParser(String input, boolean exactNumbers) throws IOException {
         return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
-                Asserts.notNull(input, "input")));
+                Asserts.notNull(input, "input")), exactNumbers);
     }
 
     @Override
     public Jackson3Parser createParser(byte[] input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public Jackson3Parser createParser(byte[] input, boolean exactNumbers) throws IOException {
         return new Jackson3Parser(
-                factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")));
+                factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")), exactNumbers);
     }
 
     @Override

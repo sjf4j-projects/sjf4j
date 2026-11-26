@@ -11,8 +11,8 @@ import org.sjf4j.util.Asserts;
 
 /**
  * Service provider for Fastjson2 JSON binding, selected below Gson and above
- * JSON-P by default. {@link #of(JSONReader.Context, JSONWriter.Context)} reuses
- * the supplied contexts for created binders.
+ * JSON-P by default. {@link #of(JSONReader.Context, JSONWriter.Context)} uses
+ * the supplied settings; each binder copies the read context for numeric policy isolation.
  */
 public final class Fastjson2BinderProvider implements BinderProvider {
 
@@ -25,7 +25,7 @@ public final class Fastjson2BinderProvider implements BinderProvider {
     }
 
     /**
-     * Creates a provider that uses the supplied contexts for every binder it creates.
+     * Creates a provider that copies the supplied read context for each binder.
      * @param readerContext the shared Fastjson2 read context
      * @param writerContext the shared Fastjson2 write context
      * @return a JSON binder provider using these contexts

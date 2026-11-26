@@ -35,8 +35,23 @@ public final class Fastjson2Parser extends StreamingParser {
      * @param reader the Fastjson2 reader
      */
     public Fastjson2Parser(JSONReader reader) {
-        super(Backend.FASTJSON2);
+        this(reader, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public Fastjson2Parser(JSONReader reader, boolean exactNumbers) {
+        super(Backend.FASTJSON2, exactNumbers);
         this.reader = Asserts.notNull(reader, "reader");
+        if (exactNumbers) {
+            JSONReader.Context context = reader.getContext();
+            if (context.isEnabled(JSONReader.Feature.UseDoubleForDecimals)
+                    || context.isEnabled(JSONReader.Feature.UseLongForInts)
+                    || !(context.isEnabled(JSONReader.Feature.UseBigDecimalForDoubles)
+                    || context.isEnabled(JSONReader.Feature.UseBigDecimalForFloats))) {
+                // The native reader may share its context with other readers.
+                throw new BindingException("native Fastjson2 reader context does not support exactNumbers");
+            }
+        }
     }
 
     /**
@@ -253,7 +268,15 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public Number readNumber() {
         peeked = null;
-        return reader.readNumber();
+        return _readNumber();
+    }
+
+    private Number _readNumber() {
+        Number value = reader.readNumber();
+        if (exactNumbers && (value instanceof Double || value instanceof Float)) {
+            throw new BindingException("Fastjson2 returned an inexact generic number");
+        }
+        return value;
     }
 
     @Override
@@ -386,7 +409,7 @@ public final class Fastjson2Parser extends StreamingParser {
                 return null;
             default:
                 if (current == '-' || current >= '0' && current <= '9') {
-                    return reader.readNumber();
+                    return _readNumber();
                 }
                 Token token = reader.isEnd() ? Token.EOF : _token(current);
                 throw new BindingException("unexpected token '" + token + "'");

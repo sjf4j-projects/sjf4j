@@ -57,7 +57,12 @@ public final class Jackson3Parser extends StreamingParser {
      * @param parser the Jackson 3 parser
      */
     public Jackson3Parser(JsonParser parser) {
-        super(Backend.JACKSON3);
+        this(parser, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public Jackson3Parser(JsonParser parser, boolean exactNumbers) {
+        super(Backend.JACKSON3, exactNumbers);
         this.parser = Asserts.notNull(parser, "parser");
         this.readerBased = parser instanceof ReaderBasedJsonParser;
         // A caller may supply a parser already positioned on the first token.
@@ -389,8 +394,11 @@ public final class Jackson3Parser extends StreamingParser {
         if (current == JsonToken.VALUE_NULL) {
             return null;
         }
-        // Jackson 3 checks the token's numeric type in getNumberValue().
-        return parser.getNumberValue();
+        return _readNumber();
+    }
+
+    private Number _readNumber() throws IOException {
+        return exactNumbers ? parser.getNumberValueExact() : parser.getNumberValue();
     }
 
     /* --------------------------------------------------------------
@@ -636,7 +644,7 @@ public final class Jackson3Parser extends StreamingParser {
                 return parser.getString();
             case VALUE_NUMBER_INT:
             case VALUE_NUMBER_FLOAT:
-                return parser.getNumberValue();
+                return _readNumber();
             case VALUE_TRUE:
                 return Boolean.TRUE;
             case VALUE_FALSE:

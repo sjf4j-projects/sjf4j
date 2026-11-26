@@ -63,7 +63,12 @@ public final class SnakeParser extends StreamingParser {
      * @param parser the SnakeYAML parser
      */
     public SnakeParser(Parser parser) {
-        super(Backend.SNAKE);
+        this(parser, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public SnakeParser(Parser parser, boolean exactNumbers) {
+        super(Backend.SNAKE, exactNumbers);
         this.parser = Asserts.notNull(parser, "parser");
     }
 
@@ -231,6 +236,10 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
+        return _readNumber(exactNumbers);
+    }
+
+    private Number _readNumber(boolean exact) throws IOException {
         ScalarEvent scalar = peekScalarValue();
         Token token = scalarToken(scalar);
         if (token == Token.NULL) {
@@ -242,7 +251,7 @@ public final class SnakeParser extends StreamingParser {
             throw expected("number or null", token);
         }
         takeScalarValue();
-        return parseNumber(scalar.getValue());
+        return parseNumber(scalar.getValue(), exact);
     }
 
     @Override
@@ -288,37 +297,37 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public Long readLong() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toLong(value);
     }
 
     @Override
     public Integer readInt() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toInt(value);
     }
 
     @Override
     public Short readShort() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toShort(value);
     }
 
     @Override
     public Byte readByte() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toByte(value);
     }
 
     @Override
     public Double readDouble() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toDouble(value);
     }
 
     @Override
     public Float readFloat() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toFloat(value);
     }
 
@@ -364,7 +373,7 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public BigInteger readBigInteger() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         return value == null ? null : Numbers.toBigInteger(value);
     }
 
@@ -509,7 +518,7 @@ public final class SnakeParser extends StreamingParser {
     }
 
     private Number requireNumber() throws IOException {
-        Number value = readNumber();
+        Number value = _readNumber(false);
         if (value == null) {
             throw new IOException("expected number, but was null");
         }
@@ -650,7 +659,7 @@ public final class SnakeParser extends StreamingParser {
     private void skipScalar(ScalarEvent scalar) throws IOException {
         switch (scalarToken(scalar)) {
             case NUMBER:
-                parseNumber(scalar.getValue());
+                parseNumber(scalar.getValue(), exactNumbers);
                 return;
             case BOOLEAN:
                 parseBoolean(scalar.getValue());
@@ -687,7 +696,7 @@ public final class SnakeParser extends StreamingParser {
             case STRING:
                 return scalar.getValue();
             case NUMBER:
-                return parseNumber(scalar.getValue());
+                return parseNumber(scalar.getValue(), exactNumbers);
             case BOOLEAN:
                 return parseBoolean(scalar.getValue());
             case NULL:
@@ -708,13 +717,13 @@ public final class SnakeParser extends StreamingParser {
         return value.charAt(0);
     }
 
-    private static Number parseNumber(String value) throws IOException {
+    private static Number parseNumber(String value, boolean exact) throws IOException {
         String normalized = normalizeDecimal(value);
         if (normalized == null) {
             throw new IOException("unsupported YAML number: " + value);
         }
         try {
-            return Numbers.parseNumber(normalized);
+            return exact ? Numbers.parseNumberExact(normalized) : Numbers.parseNumber(normalized);
         } catch (NumberFormatException e) {
             throw new IOException("invalid YAML number: " + value, e);
         }

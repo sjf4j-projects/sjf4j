@@ -49,8 +49,13 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
 
     @Override
     public SnakeParser createParser(Reader input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public SnakeParser createParser(Reader input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions));
+        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions), exactNumbers);
     }
 
     @Override

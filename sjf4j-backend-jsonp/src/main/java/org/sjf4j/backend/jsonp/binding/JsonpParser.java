@@ -33,7 +33,12 @@ public final class JsonpParser extends StreamingParser {
      * @param parser the JSON-P parser
      */
     public JsonpParser(JsonParser parser) {
-        super(Backend.JSONP);
+        this(parser, false);
+    }
+
+    /** Creates a parser with an explicit generic numeric read policy. */
+    public JsonpParser(JsonParser parser, boolean exactNumbers) {
+        super(Backend.JSONP, exactNumbers);
         this.parser = Asserts.notNull(parser, "parser");
         try {
             current = parser.currentEvent();
@@ -135,7 +140,8 @@ public final class JsonpParser extends StreamingParser {
             return null;
         }
         require(JsonParser.Event.VALUE_NUMBER, "number or null");
-        Number value = Numbers.parseNumber(parser.getString());
+        String text = parser.getString();
+        Number value = exactNumbers ? Numbers.parseNumberExact(text) : Numbers.parseNumber(text);
         advance();
         return value;
     }

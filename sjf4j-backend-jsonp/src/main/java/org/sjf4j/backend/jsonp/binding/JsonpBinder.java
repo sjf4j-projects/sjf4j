@@ -63,15 +63,25 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
      * @return a SJF4J streaming reader
      */
     public JsonpParser createParser(JsonParser parser) {
-        return new JsonpParser(Asserts.notNull(parser, "parser"));
+        return createParser(parser, config.exactNumbers);
+    }
+
+    /** Wraps a native reader with an explicit generic numeric policy. */
+    public JsonpParser createParser(JsonParser parser, boolean exactNumbers) {
+        return new JsonpParser(Asserts.notNull(parser, "parser"), exactNumbers);
     }
 
     @Override
     public JsonpParser createParser(Reader input) throws IOException {
+        return createParser(input, config.exactNumbers);
+    }
+
+    @Override
+    public JsonpParser createParser(Reader input, boolean exactNumbers) throws IOException {
         Reader protectedInput = new FilterReader(Asserts.notNull(input, "input")) {
             @Override public void close() { /* Caller owns input. */ }
         };
-        return createParser(provider.createParser(protectedInput));
+        return createParser(provider.createParser(protectedInput), exactNumbers);
     }
 
     /**
