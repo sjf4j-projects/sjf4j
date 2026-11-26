@@ -1,7 +1,7 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.JsonObject;
-import org.sjf4j.Sjf4j;
+import org.sjf4j.schema.SchemaSupport;
 import org.sjf4j.schema.BooleanSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaPlan;
@@ -124,7 +124,7 @@ final class SchemaCompiler {
             return null;
         }
         dynamicScopeEnabled = snapshot.hasDynamicRef;
-        Object root = Sjf4j.global().fromJson(snapshot.documents[0]);
+        Object root = SchemaSupport.readJsonValue(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
             RefTarget selected = resolveRef(snapshot,

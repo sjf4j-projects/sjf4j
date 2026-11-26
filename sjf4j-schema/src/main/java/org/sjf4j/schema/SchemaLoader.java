@@ -3,7 +3,6 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -58,7 +57,7 @@ public interface SchemaLoader {
      * documents, using the official JSON Schema Test Suite representation.
      */
     static Map<URI, JsonSchema> parseExternalSchemas(String json) {
-        Object root = Sjf4j.global().fromJson(Asserts.notNull(json, "json"));
+        Object root = SchemaSupport.readJsonValue(Asserts.notNull(json, "json"));
         if (JsonType.of(root) != JsonType.OBJECT) {
             throw new IllegalArgumentException("externalSchemas must be a JSON object");
         }

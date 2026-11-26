@@ -3,6 +3,8 @@ package org.sjf4j.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.NodeKind;
 import org.sjf4j.NodeConfig;
+import org.sjf4j.binding.Binder;
+import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
@@ -14,11 +16,31 @@ import org.sjf4j.value.ValueInfo;
 import java.util.Map;
 
 /**
- * Runtime support for generated compiled JSON Schema validators.
- * Only operations that cannot be emitted as direct Java access belong here.
+ * Shared schema JSON binding and runtime support for generated validators.
+ * Keeps schema document parsing independent of application runtime settings.
  */
 public final class SchemaSupport {
     private SchemaSupport() {}
+
+    /** Only schema JSON binding needs to initialize a backend. */
+    private static final class BinderHolder {
+        private static final Binder<?, ?> BINDER =
+                BinderFactory.jsonProvider().create(NodeConfig.EXACT_NUMBERS);
+    }
+
+    static JsonSchema readSchema(String json) {
+        return (JsonSchema) BinderHolder.BINDER.readNode(json, JsonSchema.class);
+    }
+
+    /** Reads schema JSON literals and documents with exact generic numbers. */
+    public static Object readJsonValue(String json) {
+        return BinderHolder.BINDER.readNode(json, Object.class);
+    }
+
+    /** Writes a schema document or literal for compiled schema snapshots. */
+    public static String writeJsonValue(Object node) {
+        return BinderHolder.BINDER.writeNodeAsString(node);
+    }
 
     /**
      * Executes a compiled validator's diagnostic fallback at its original

@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 
 import org.sjf4j.NodeConfig;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.node.NodeMapper;
@@ -58,16 +57,17 @@ public interface JsonSchema {
      */
 
     /**
-     * Parses JSON text into a schema model node.
+     * Parses JSON text into a schema model node using exact generic numeric reads.
      * <p>
      * The returned value is not compiled yet.
      */
     static JsonSchema fromJson(String json) {
-        return Sjf4j.global().fromJson(json, JsonSchema.class);
+        return SchemaSupport.readSchema(json);
     }
 
     /**
      * Creates a schema model from an already parsed OBNT representation.
+     * Numeric precision already lost by the caller cannot be recovered.
      * <p>
      * The returned value is not compiled yet.
      */
