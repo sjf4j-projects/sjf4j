@@ -21,7 +21,7 @@ public final class MappingEmitter {
     private final TypeSystem types;
     private final ConversionWriter conversions;
     private final MappingReadEmitter sourceReads;
-    private final MappingValueEmitter values;
+    private final MappingValueEmitter valueEmitter;
     private final MappingUpdateEmitter updates;
 
     public MappingEmitter(CompilationContext context, ConversionWriter conversions) {
@@ -30,7 +30,7 @@ public final class MappingEmitter {
         this.conversions = conversions;
         this.sourceReads = new MappingReadEmitter(context);
         MappingWriteEmitter writes = new MappingWriteEmitter(context.types);
-        this.values = new MappingValueEmitter(context.types, sourceReads, conversions);
+        this.valueEmitter = new MappingValueEmitter(context.types, sourceReads, conversions);
         this.updates = new MappingUpdateEmitter(context, sourceReads, writes, conversions);
     }
 
@@ -200,7 +200,7 @@ public final class MappingEmitter {
             // Keep locals when a nullable value is tested and written (IGNORE).
             String value = sourceReads.inlineDirectPropertyRead(plan, assignment);
             if (value == null) {
-                value = values.emitValue(out, names, plan, assignment.value(), generated);
+                value = valueEmitter.emitValue(out, names, plan, assignment.value(), generated);
             }
 
             updates.emitAssignment(
@@ -363,7 +363,7 @@ public final class MappingEmitter {
                             arguments.get(i);
 
                     values[i] =
-                            values.emitValue(
+                            valueEmitter.emitValue(
                                     out,
                                     names,
                                     compiled.plan(),
