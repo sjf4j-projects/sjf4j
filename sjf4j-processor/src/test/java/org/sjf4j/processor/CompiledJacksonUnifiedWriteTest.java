@@ -52,9 +52,11 @@ class CompiledJacksonUnifiedWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + " @Write String write(Model value) throws java.io.IOException; "
-                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException; "
                     + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                     + "}");
+            sources.put("fixture/OmitBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=false) public interface OmitBinder extends Binder {}");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -66,7 +68,9 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("private static void _writeStringMemberIncludeNulls("), backend);
-            assertTrue(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
+            assertFalse(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
+            assertTrue(compiled.generatedSource("fixture/OmitBinder_Impl.java")
+                    .contains("private static void _writeStringMemberOmitNulls("), backend);
             assertFalse(generated.contains("boolean includeNulls)"), backend);
             assertTrue(generated.contains("if (value == null)"), backend);
             assertTrue(generated.contains("g.writeString(value);"), backend);
@@ -81,6 +85,7 @@ class CompiledJacksonUnifiedWriteTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class binderType = loader.loadClass("fixture.Binder");
+                Class omitType = loader.loadClass("fixture.OmitBinder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
                 Object withoutNulls = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
@@ -93,8 +98,7 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(arrayList.get(1).isNull(), backend);
                 JsonNode full = json.readTree((String) write.invoke(normal, model));
                 assertEquals(full, json.readTree((String) write.invoke(withoutNulls, model)), backend);
-                JsonNode filtered = json.readTree((String) binderType
-                        .getMethod("writeOmit", modelType).invoke(withoutNulls, model));
+                JsonNode filtered = json.readTree((String) write.invoke(CompiledTestBinders.create(omitType, backend, NodeConfig.DEFAULT), model));
 
                 assertEquals("felix", full.path("animals").get(0).path("name").asText(), backend);
                 assertEquals("cat", full.path("animals").get(0).path("kind").asText(), backend);

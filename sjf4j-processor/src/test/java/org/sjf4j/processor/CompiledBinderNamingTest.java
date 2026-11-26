@@ -20,9 +20,8 @@ class CompiledBinderNamingTest {
                         "package fixture; public class Bean { public String name; }");
                 sources.put("fixture/Binder.java",
                         "package fixture; import org.sjf4j.annotation.binding.*; "
-                                + "@CompiledBinder(backend=Backend." + backend + ") "
-                                + "public interface Binder { @Write(includeNulls=" + include
-                                + ") String write(Bean value) throws java.io.IOException; }");
+                                + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=" + include + ") "
+                                + "public interface Binder { @Write String write(Bean value) throws java.io.IOException; }");
                 NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                         sources, CodegenProcessor.class);
                 assertTrue(result.success, result.diagnostics());
@@ -37,26 +36,32 @@ class CompiledBinderNamingTest {
     }
 
     @Test
-    void retainsTransitiveHelpersForMixedWritePolicies() throws Exception {
+    void retainsTransitiveHelpersForFixedWritePolicy() throws Exception {
         for (String backend : new String[] {"JACKSON2", "JACKSON3"}) {
-            Map<String, String> sources = new LinkedHashMap<>();
-            sources.put("fixture/Bean.java",
-                    "package fixture; public class Bean { public Child child; }");
-            sources.put("fixture/Child.java",
-                    "package fixture; public class Child { public String name; }");
-            sources.put("fixture/Binder.java",
-                    "package fixture; import org.sjf4j.annotation.binding.*; "
-                            + "@CompiledBinder(backend=Backend." + backend + ") "
-                            + "public interface Binder { "
-                            + "@Write(includeNulls=true) String including(Bean value) throws java.io.IOException; "
-                            + "@Write(includeNulls=false) String omitting(Bean value) throws java.io.IOException; }");
-            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
-            assertTrue(result.success, result.diagnostics());
-            String generated = result.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("private static void _writeStringMemberIncludeNulls("), generated);
-            assertTrue(generated.contains("private static void _writeStringMemberOmitNulls("), generated);
-            assertFalse(generated.contains("private static void _writeString("), generated);
+            for (boolean include : new boolean[]{true, false}) {
+                Map<String, String> sources = new LinkedHashMap<>();
+                sources.put("fixture/Bean.java",
+                        "package fixture; public class Bean { public Child child; }");
+                sources.put("fixture/Child.java",
+                        "package fixture; public class Child { public String name; }");
+                sources.put("fixture/Binder.java",
+                        "package fixture; import org.sjf4j.annotation.binding.*; "
+                        + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=" + include + ") "
+                        + "public interface Binder { @Write String write(Bean value) throws java.io.IOException; }");
+                NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+                assertTrue(result.success, result.diagnostics());
+                String generated = result.generatedSource("fixture/Binder_Impl.java");
+                assertEqualsPolicyHelper(generated, include);
+            }
         }
+    }
+
+    private static void assertEqualsPolicyHelper(String generated, boolean include) {
+        String used = include ? "IncludeNulls" : "OmitNulls";
+        String unused = include ? "OmitNulls" : "IncludeNulls";
+        assertTrue(generated.contains("private static void _writeStringMember" + used + "("), generated);
+        assertFalse(generated.contains("private static void _writeStringMember" + unused + "("), generated);
+        assertFalse(generated.contains("private static void _writeString("), generated);
     }
 
     @Test

@@ -22,16 +22,17 @@ class CompiledNativeWritePlanTest {
                     + " public java.util.UUID id; public String label; }");
             sources.put("fixture/Binder.java", "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "import org.sjf4j.JsonObject; import java.util.Map;"
-                    + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder {"
+                    + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=false) public interface Binder {"
                     + " @Write String writeObject(JsonObject value);"
                     + " @Write byte[] writeObjectBytes(JsonObject value);"
                     + " @Write String writeAny(Object generator);"
                     + " @Write String writeNumber(Number generator);"
-                    + " @Write(includeNulls=false) String writeBean(Bean value);"
-                    + " @Write(includeNulls=false) String writeMap(Map<String,Integer> value);"
-                    + " @Write String writeNullableMap(Map<String,Integer> value);"
-                    + " @Write(includeNulls=false) String writeObjects(Map<String,Bean> value);"
+                    + " @Write String writeBean(Bean value);"
+                    + " @Write String writeMap(Map<String,Integer> value);"
+                    + " @Write String writeObjects(Map<String,Bean> value);"
                     + " }");
+            sources.put("fixture/IncludeBinder.java", "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + ") public interface IncludeBinder extends Binder {}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
@@ -56,6 +57,8 @@ class CompiledNativeWritePlanTest {
                 Class<?> impl = loader.loadClass("fixture.Binder_Impl");
                 Class<?> beanType = loader.loadClass("fixture.Bean");
                 Object binder = impl.getConstructor().newInstance();
+                Class<?> includeImpl = loader.loadClass("fixture.IncludeBinder_Impl");
+                Object including = includeImpl.getConstructor().newInstance();
                 Object value = beanType.getConstructor().newInstance();
                 assertEquals(json.readTree("{}"), json.readTree((String) impl
                         .getMethod("writeBean", beanType).invoke(binder, value)), backend);
@@ -68,8 +71,8 @@ class CompiledNativeWritePlanTest {
                 numbers.put("b", null);
                 assertEquals(json.readTree("{\"a\":7}"), json.readTree((String) impl
                         .getMethod("writeMap", Map.class).invoke(binder, numbers)), backend);
-                assertEquals(json.readTree("{\"a\":7,\"b\":null}"), json.readTree((String) impl
-                        .getMethod("writeNullableMap", Map.class).invoke(binder, numbers)), backend);
+                assertEquals(json.readTree("{\"a\":7,\"b\":null}"), json.readTree((String) includeImpl
+                        .getMethod("writeMap", Map.class).invoke(including, numbers)), backend);
                 Map<String, Object> objects = new LinkedHashMap<>();
                 objects.put("a", value);
                 objects.put("b", null);
