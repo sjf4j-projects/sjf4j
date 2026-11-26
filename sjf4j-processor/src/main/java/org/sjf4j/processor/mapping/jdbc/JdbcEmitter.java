@@ -53,7 +53,7 @@ public final class JdbcEmitter {
             String helper = generated.names().helperMethod(
                     "prepare" + Character.toUpperCase(name.charAt(0)) + name.substring(1));
             generated.addMethod(out -> emitListUsingPrepared(out, method, helper));
-            generated.addHelper(out -> emitPreparedMethod(out, method, helper));
+            generated.addHelper(helper, out -> emitPreparedMethod(out, method, helper));
         } else {
             generated.addMethod(out -> emitMethod(out, method));
         }

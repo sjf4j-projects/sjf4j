@@ -32,7 +32,7 @@ final class FilterEmitter {
     String emit(FilterPlan plan, GeneratedClass generated) {
         prepare(plan, generated);
         String method = generated.names().helperMethod("findFilter");
-        generated.addHelper(out -> {
+        generated.addHelper(method, out -> {
             out.beginBlock("private static boolean " + method +
                     "(Object root, Object current, org.sjf4j.node.NodeWalker.Access access)");
             out.line("return " + predicate(plan) + ";");
@@ -52,7 +52,7 @@ final class FilterEmitter {
             if (prefixLength > 0) {
                 String helper = generated.names().helperMethod("filterPath");
                 directPaths.put(plan, helper);
-                generated.addHelper(out -> emitDirectPath(out, helper, plan));
+                generated.addHelper(helper, out -> emitDirectPath(out, helper, plan));
             }
         } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Double) {
             String field = generated.names().field("FILTER_NUMBER");

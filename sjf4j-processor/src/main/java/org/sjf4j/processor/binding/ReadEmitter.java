@@ -51,7 +51,7 @@ final class ReadEmitter {
     void emitEnumFields(GeneratedClass generated) {
         if (fastjson2 == null || !fastjson2.hasEnums()) return;
         generated.addField(out -> fastjson2.emitFields(out));
-        generated.addHelper(out -> fastjson2.emitHelpers(out));
+        fastjson2.registerHelpers(generated);
     }
 
     boolean usesNameMatcher() {

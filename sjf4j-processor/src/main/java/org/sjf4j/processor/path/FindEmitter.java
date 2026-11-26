@@ -40,7 +40,7 @@ final class FindEmitter {
         final Map<FindPlan.Step, String> descendants = new LinkedHashMap<>();
         collectDescendants(plan.traversal, generated, descendants);
         for (Map.Entry<FindPlan.Step, String> descendant : descendants.entrySet()) {
-            generated.addHelper(out -> emitDescendantHelper(
+            generated.addHelper(descendant.getValue(), out -> emitDescendantHelper(
                     out, plan, descendant.getKey(), descendant.getValue(),
                     filters, descendants));
         }
@@ -188,7 +188,7 @@ final class FindEmitter {
                         "private static final org.sjf4j.path.FilterExpr " + field +
                                 " = ((org.sjf4j.path.PathSegment.Filter) " + filterReference +
                                 ").filterExpr;"));
-                generated.addHelper(out -> {
+                generated.addHelper(helper, out -> {
                     out.beginBlock("private static boolean " + helper +
                             "(Object root, Object current, org.sjf4j.node.NodeWalker.Access access)");
                     out.line("return " + field + ".evalTruth(root, current, access);");
