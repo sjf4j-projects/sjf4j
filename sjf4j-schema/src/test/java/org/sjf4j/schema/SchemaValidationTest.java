@@ -933,8 +933,10 @@ public class SchemaValidationTest {
         assertTrue(idnEmail.validate("\u0085@example.com", false, true).isValid());
         assertFalse(idnEmail.validate("a\u0001@example.com", false, true).isValid());
         assertFalse(idnEmail.validate("a b@example.com", false, true).isValid());
-        assertFalse(idnEmail.validate("\"a b\"@example.com", false, true).isValid());
-        assertFalse(idnEmail.validate("\"a@b\"@example.com", false, true).isValid());
+        // RFC 6531 extends SMTP quoted strings; spaces and @ remain valid when quoted.
+        assertTrue(idnEmail.validate("\"a b\"@example.com", false, true).isValid());
+        assertTrue(idnEmail.validate("\"a@b\"@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("\"a\\©\"@example.com", false, true).isValid());
         assertFalse(idnEmail.validate(".a@example.com", false, true).isValid());
         assertFalse(idnEmail.validate("a..b@example.com", false, true).isValid());
 
@@ -947,7 +949,7 @@ public class SchemaValidationTest {
         SchemaPlan uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}").createPlan();
         assertTrue(uriTemplate.validate("a%41b{+a.b,%41:9999}{var*}", false, true).isValid());
         assertFalse(uriTemplate.validate("a|b", false, true).isValid());
-        assertFalse(uriTemplate.validate("a'b", false, true).isValid());
+        assertTrue(uriTemplate.validate("a'b", false, true).isValid());
         assertTrue(uriTemplate.validate("a~b", false, true).isValid());
         assertTrue(uriTemplate.validate("{=a,b}", false, true).isValid());
         assertFalse(uriTemplate.validate("{,}", false, true).isValid());
