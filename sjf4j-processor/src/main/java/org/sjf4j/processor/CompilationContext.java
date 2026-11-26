@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.processor.access.NodeAccessResolver;
+import org.sjf4j.processor.access.StaticPathResolver;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.method.InterfaceMethodResolver;
@@ -33,6 +34,7 @@ public final class CompilationContext {
     public final NodeAnnotations annotations;
     public final PropertyResolver properties;
     public final NodeAccessResolver access;
+    public final StaticPathResolver paths;
     public final InterfaceMethodResolver methods;
     public final CompiledMetadata metadata;
 
@@ -50,6 +52,7 @@ public final class CompilationContext {
         this.annotations = new NodeAnnotations();
         this.properties = new PropertyResolver(typeUtils, elements, processor.messager, types, annotations);
         this.access = new NodeAccessResolver(types, properties);
+        this.paths = new StaticPathResolver(access);
         this.methods = new InterfaceMethodResolver(typeUtils, elements, types);
         this.metadata = new CompiledMetadata(this, registries);
     }

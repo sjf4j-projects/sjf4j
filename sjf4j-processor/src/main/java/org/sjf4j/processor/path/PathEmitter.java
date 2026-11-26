@@ -3,6 +3,7 @@ package org.sjf4j.processor.path;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
@@ -75,8 +76,8 @@ final class PathEmitter {
 
             if (step == null) return null;
 
-            if (step.access == null ||
-                    !step.access.readable()) {
+            if (step.resolved.access() == null ||
+                    !step.resolved.access().readable()) {
 
                 accessError(
                         plan.method,
@@ -88,7 +89,7 @@ final class PathEmitter {
                 return null;
             }
 
-            step.resultType = step.access.readType();
+            step.resultType = step.resolved.access().readType();
 
             steps.add(step);
 
@@ -149,8 +150,8 @@ final class PathEmitter {
                     return null;
                 }
 
-                if (step.access == null ||
-                        !step.access.writable()) {
+                if (step.resolved.access() == null ||
+                        !step.resolved.access().writable()) {
 
                     accessError(
                             plan.method,
@@ -162,11 +163,11 @@ final class PathEmitter {
                     return null;
                 }
 
-                step.resultType = step.access.writeType();
+                step.resultType = step.resolved.access().writeType();
 
             } else {
-                if (step.access == null ||
-                        !step.access.readable()) {
+                if (step.resolved.access() == null ||
+                        !step.resolved.access().readable()) {
 
                     accessError(
                             plan.method,
@@ -179,21 +180,21 @@ final class PathEmitter {
                 }
 
                 if (plan.ensure &&
-                        (step.access.kind() == NodeAccess.Kind.LIST ||
-                                step.access.kind() == NodeAccess.Kind.MAP) &&
-                        step.access.writeType() == null) {
+                        (step.resolved.access().kind() == NodeAccess.Kind.LIST ||
+                                step.resolved.access().kind() == NodeAccess.Kind.MAP) &&
+                        step.resolved.access().writeType() == null) {
 
                     error(
                             plan.method,
                             generated,
                             plan.annotation +
                                     " cannot materialize through wildcard container " +
-                                    step.ownerType);
+                                    step.resolved.ownerType());
 
                     return null;
                 }
 
-                step.resultType = step.access.readType();
+                step.resultType = step.resolved.access().readType();
             }
 
             steps.add(step);
@@ -209,8 +210,8 @@ final class PathEmitter {
 
         if (target == null) return null;
 
-        if (target.access == null ||
-                !target.access.writable()) {
+        if (target.resolved.access() == null ||
+                !target.resolved.access().writable()) {
 
             accessError(
                     plan.method,
@@ -223,9 +224,9 @@ final class PathEmitter {
         }
 
         if (plan.ifAbsent &&
-                !(target.segment instanceof PathSegment.Append)) {
+                !(target.resolved.segment() instanceof PathSegment.Append)) {
 
-            if (!target.access.readable()) {
+            if (!target.resolved.access().readable()) {
                 accessError(
                         plan.method,
                         generated,
@@ -239,7 +240,7 @@ final class PathEmitter {
             /*
              * Primitive values cannot represent absence.
              */
-            if (target.access
+            if (target.resolved.access()
                     .readType()
                     .getKind()
                     .isPrimitive()) {
@@ -249,13 +250,13 @@ final class PathEmitter {
                         generated,
                         plan.annotation +
                                 " cannot target primitive value " +
-                                target.access.readType());
+                                target.resolved.access().readType());
 
                 return null;
             }
         }
 
-        TypeMirror valueType = target.access.writeType();
+        TypeMirror valueType = target.resolved.access().writeType();
 
         if (!types.isAssignableBoxedGeneric(
                 plan.value.asType(),
@@ -386,10 +387,10 @@ final class PathEmitter {
 
             PathSegment next =
                     i + 1 < steps.size()
-                            ? steps.get(i + 1).segment
-                            : target.segment;
+                            ? steps.get(i + 1).resolved.segment()
+                            : target.resolved.segment();
 
-            if (step.segment instanceof PathSegment.Append) {
+            if (step.resolved.segment() instanceof PathSegment.Append) {
                 step.createExpression = resolveContainerCreation(step.resultType, next,
                         plan.pathParameters, plan.method, generated);
 
@@ -399,7 +400,7 @@ final class PathEmitter {
             }
 
             if (step.resultType.getKind().isPrimitive() ||
-                    !step.access.writable()) {
+                    !step.resolved.access().writable()) {
 
                 continue;
             }
@@ -426,8 +427,8 @@ final class PathEmitter {
             ExecutableElement method,
             GeneratedClass generated) {
 
-        TypeMirror readType = step.access.readType();
-        TypeMirror writeType = step.access.writeType();
+        TypeMirror readType = step.resolved.access().readType();
+        TypeMirror writeType = step.resolved.access().writeType();
 
         if (types.isAssignableBoxedGeneric(
                 readType,
@@ -447,7 +448,7 @@ final class PathEmitter {
                 method,
                 generated,
                 "Ensure intermediate read/write type mismatch on " +
-                        step.ownerType +
+                        step.resolved.ownerType() +
                         ": cannot reconcile " +
                         readType +
                         " and " +
@@ -470,17 +471,12 @@ final class PathEmitter {
             GeneratedClass generated,
             String annotation) {
 
-        NodeAccess access;
+        ResolvedStep resolved;
         VariableElement parameter = null;
 
-        if (segment instanceof PathSegment.Name) {
-            access = context.access.resolveName(ownerType, ((PathSegment.Name) segment).name);
-
-        } else if (segment instanceof PathSegment.Index) {
-            access = context.access.resolveIndex(ownerType);
-
-        } else if (segment instanceof PathSegment.Append) {
-            access = context.access.resolveAppend(ownerType);
+        if (segment instanceof PathSegment.Name || segment instanceof PathSegment.Index ||
+                segment instanceof PathSegment.Append) {
+            resolved = context.paths.resolveStep(ownerType, segment);
 
         } else if (segment instanceof PathSegment.Param) {
             String name = ((PathSegment.Param) segment).param;
@@ -499,12 +495,12 @@ final class PathEmitter {
             }
 
             if (isString(parameter.asType())) {
-                access = context.access.resolveDynamicName(ownerType);
+                resolved = context.paths.resolveParameter(ownerType, (PathSegment.Param) segment, true);
 
             } else if (parameter.asType().getKind() ==
                     TypeKind.INT) {
 
-                access = context.access.resolveIndex(ownerType);
+                resolved = context.paths.resolveParameter(ownerType, (PathSegment.Param) segment, false);
 
             } else {
                 error(
@@ -529,6 +525,7 @@ final class PathEmitter {
             return null;
         }
 
+        NodeAccess access = resolved.access();
         if (access != null &&
                 access.kind() == NodeAccess.Kind.MAP &&
                 !types.hasSafeStringPathKey(ownerType)) {
@@ -545,7 +542,7 @@ final class PathEmitter {
             return null;
         }
 
-        return new Step(ownerType, segment, parameter, access);
+        return new Step(resolved, parameter);
     }
 
     /*
@@ -695,7 +692,7 @@ final class PathEmitter {
             /*
              * Intermediate append creates a fresh child immediately.
              */
-            if (step.segment instanceof PathSegment.Append) {
+            if (step.resolved.segment() instanceof PathSegment.Append) {
                 out.line(
                         localType(step.resultType) +
                                 " " +
@@ -718,7 +715,7 @@ final class PathEmitter {
 
                 out.beginBlock("if (" + next + " == null)");
 
-                if (step.access.writable()) {
+                if (step.resolved.access().writable()) {
                     if (step.createExpression == null) {
                         throw new AssertionError(
                                 "Missing ensure creation expression");
@@ -773,14 +770,14 @@ final class PathEmitter {
             ReadMode mode,
             String missing) {
 
-        TypeMirror type = step.access.readType();
+        TypeMirror type = step.resolved.access().readType();
 
-        switch (step.access.kind()) {
+        switch (step.resolved.access().kind()) {
             case PROPERTY:
             case MAP:
             case JSON_OBJECT:
                 out.line(localType(type) + " " + target + " = " +
-                        reads.name(step.access, owner, nameExpression(step)) + ";");
+                        reads.name(step.resolved.access(), owner, nameExpression(step)) + ";");
                 break;
 
             case LIST:
@@ -849,7 +846,7 @@ final class PathEmitter {
             default:
                 throw new AssertionError(
                         "Unsupported NodeAccess kind: " +
-                                step.access.kind());
+                                step.resolved.access().kind());
         }
 
         if (mode == ReadMode.STRICT &&
@@ -877,7 +874,7 @@ final class PathEmitter {
         String size = array ? owner + ".length" : owner + ".size()";
         String index = emitIndex(out, step, size, names);
 
-        String expression = reads.index(step.access, owner, index);
+        String expression = reads.index(step.resolved.access(), owner, index);
 
         if (mode == ReadMode.ENSURE) {
             out.line(
@@ -960,7 +957,7 @@ final class PathEmitter {
             String old,
             NameAllocator names) {
 
-        if (step.segment instanceof PathSegment.Append) {
+        if (step.resolved.segment() instanceof PathSegment.Append) {
             emitAppend(
                     out,
                     step,
@@ -969,7 +966,7 @@ final class PathEmitter {
             return;
         }
 
-        switch (step.access.kind()) {
+        switch (step.resolved.access().kind()) {
             case PROPERTY:
                 if (old != null) {
                     emitPropertyOld(
@@ -979,11 +976,11 @@ final class PathEmitter {
                             old);
                 }
 
-                out.line(NodeWriteEmitter.name(step.access, owner, null, value) + ";");
+                out.line(NodeWriteEmitter.name(step.resolved.access(), owner, null, value) + ";");
                 return;
 
             case MAP: {
-                String expression = NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
+                String expression = NodeWriteEmitter.name(step.resolved.access(), owner, nameExpression(step), value);
 
                 emitOptionalOld(out, step, old, expression);
 
@@ -991,7 +988,7 @@ final class PathEmitter {
             }
 
             case JSON_OBJECT: {
-                String expression = NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
+                String expression = NodeWriteEmitter.name(step.resolved.access(), owner, nameExpression(step), value);
 
                 emitOptionalObjectOld(out, step, old, expression);
 
@@ -1006,8 +1003,8 @@ final class PathEmitter {
 
             case DYNAMIC: {
                 String expression = isIndexStep(step)
-                        ? NodeWriteEmitter.index(step.access, owner, rawIndexExpression(step), value)
-                        : NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
+                        ? NodeWriteEmitter.index(step.resolved.access(), owner, rawIndexExpression(step), value)
+                        : NodeWriteEmitter.name(step.resolved.access(), owner, nameExpression(step), value);
 
                 emitOptionalObjectOld(out, step, old, expression);
 
@@ -1017,7 +1014,7 @@ final class PathEmitter {
             default:
                 throw new AssertionError(
                         "Unsupported NodeAccess kind: " +
-                                step.access.kind());
+                                step.resolved.access().kind());
         }
     }
 
@@ -1027,7 +1024,7 @@ final class PathEmitter {
             String owner,
             String old) {
 
-        if (!step.access.readable()) {
+        if (!step.resolved.access().readable()) {
             out.line(
                     "Object " +
                             old +
@@ -1035,8 +1032,8 @@ final class PathEmitter {
             return;
         }
 
-        out.line(localType(step.access.readType()) + " " + old + " = " +
-                reads.name(step.access, owner, nameExpression(step)) + ";");
+        out.line(localType(step.resolved.access().readType()) + " " + old + " = " +
+                reads.name(step.resolved.access(), owner, nameExpression(step)) + ";");
     }
 
     private void emitOptionalOld(
@@ -1101,12 +1098,12 @@ final class PathEmitter {
             String old,
             NameAllocator names) {
 
-        if (step.segment instanceof PathSegment.Append) {
+        if (step.resolved.segment() instanceof PathSegment.Append) {
             throw new AssertionError(
                     "Append must use emitAppend");
         }
 
-        boolean array = step.access.kind() == NodeAccess.Kind.ARRAY;
+        boolean array = step.resolved.access().kind() == NodeAccess.Kind.ARRAY;
         String size = array ? owner + ".length" : owner + ".size()";
         String index = emitIndex(out, step, size, names);
 
@@ -1147,7 +1144,7 @@ final class PathEmitter {
                                 "];");
             }
 
-            out.line(NodeWriteEmitter.index(step.access, owner, index, value) + ";");
+            out.line(NodeWriteEmitter.index(step.resolved.access(), owner, index, value) + ";");
 
             return;
         }
@@ -1173,13 +1170,13 @@ final class PathEmitter {
             out.line(
                     old +
                             " = " +
-                            (step.access.kind() == NodeAccess.Kind.LIST
+                            (step.resolved.access().kind() == NodeAccess.Kind.LIST
                                     || types.isObject(oldType(step))
                                     ? "" : "(" + localType(oldType(step)) + ") ") +
-                            NodeWriteEmitter.index(step.access, owner, index, value) +
+                            NodeWriteEmitter.index(step.resolved.access(), owner, index, value) +
                             ";");
         } else {
-            out.line(NodeWriteEmitter.index(step.access, owner, index, value) + ";");
+            out.line(NodeWriteEmitter.index(step.resolved.access(), owner, index, value) + ";");
         }
 
         out.endBlock(
@@ -1191,7 +1188,7 @@ final class PathEmitter {
 
         out.indent();
 
-        out.line(NodeWriteEmitter.append(step.access, owner, value) + ";");
+        out.line(NodeWriteEmitter.append(step.resolved.access(), owner, value) + ";");
 
         if (old != null) {
             out.line(
@@ -1202,7 +1199,7 @@ final class PathEmitter {
         out.endBlock(" else {");
         out.indent();
 
-        String container = step.access.kind() == NodeAccess.Kind.JSON_ARRAY ? "JsonArray" : "List";
+        String container = step.resolved.access().kind() == NodeAccess.Kind.JSON_ARRAY ? "JsonArray" : "List";
 
         out.line(
                 "throw new org.sjf4j.exception.NodeException(" +
@@ -1223,7 +1220,7 @@ final class PathEmitter {
     }
 
     private void emitAppend(JavaWriter out, Step step, String owner, String value) {
-        out.line(NodeWriteEmitter.append(step.access, owner, value) + ";");
+        out.line(NodeWriteEmitter.append(step.resolved.access(), owner, value) + ";");
     }
 
     /*
@@ -1241,7 +1238,7 @@ final class PathEmitter {
 
         Step target = resolved.target;
 
-        if (target.segment instanceof PathSegment.Append) {
+        if (target.resolved.segment() instanceof PathSegment.Append) {
             emitWrite(out, target, owner, value, null, names);
             emitNullReturn(out, resolved.plan.method);
 
@@ -1520,8 +1517,8 @@ final class PathEmitter {
 
         String index = names.newName("index");
 
-        if (step.segment instanceof PathSegment.Index) {
-            int value = ((PathSegment.Index) step.segment).index;
+        if (step.resolved.segment() instanceof PathSegment.Index) {
+            int value = ((PathSegment.Index) step.resolved.segment()).index;
 
             out.line(
                     "int " +
@@ -1563,10 +1560,10 @@ final class PathEmitter {
     private String nameExpression(
             Step step) {
 
-        if (step.segment instanceof PathSegment.Name) {
+        if (step.resolved.segment() instanceof PathSegment.Name) {
             return JavaWriter.stringLiteral(
                     ((PathSegment.Name)
-                            step.segment).name);
+                            step.resolved.segment()).name);
         }
 
         return step.parameter.getSimpleName().toString();
@@ -1575,10 +1572,10 @@ final class PathEmitter {
     private String rawIndexExpression(
             Step step) {
 
-        if (step.segment instanceof PathSegment.Index) {
+        if (step.resolved.segment() instanceof PathSegment.Index) {
             return Integer.toString(
                     ((PathSegment.Index)
-                            step.segment).index);
+                            step.resolved.segment()).index);
         }
 
         return step.parameter.getSimpleName().toString();
@@ -1587,13 +1584,13 @@ final class PathEmitter {
     private boolean isIndexStep(
             Step step) {
 
-        if (step.segment instanceof PathSegment.Index ||
-                step.segment instanceof PathSegment.Append) {
+        if (step.resolved.segment() instanceof PathSegment.Index ||
+                step.resolved.segment() instanceof PathSegment.Append) {
 
             return true;
         }
 
-        return step.segment instanceof PathSegment.Param && step.parameter != null
+        return step.resolved.segment() instanceof PathSegment.Param && step.parameter != null
                 && step.parameter.asType().getKind() == TypeKind.INT;
     }
 
@@ -1733,9 +1730,9 @@ final class PathEmitter {
     }
 
     private TypeMirror oldType(Step step) {
-        if (step.segment instanceof PathSegment.Append) return null;
+        if (step.resolved.segment() instanceof PathSegment.Append) return null;
 
-        if (step.access.readable()) return step.access.readType();
+        if (step.resolved.access().readable()) return step.resolved.access().readType();
 
         /*
          * Write-only property:
@@ -1759,11 +1756,11 @@ final class PathEmitter {
     }
 
     private String stepHint(Step step) {
-        if (step.segment instanceof PathSegment.Name) return ((PathSegment.Name) step.segment).name;
+        if (step.resolved.segment() instanceof PathSegment.Name) return ((PathSegment.Name) step.resolved.segment()).name;
 
-        if (step.segment instanceof PathSegment.Param) return ((PathSegment.Param) step.segment).param;
+        if (step.resolved.segment() instanceof PathSegment.Param) return ((PathSegment.Param) step.resolved.segment()).param;
 
-        if (step.segment instanceof PathSegment.Append) return "value";
+        if (step.resolved.segment() instanceof PathSegment.Append) return "value";
 
         return "item";
     }
@@ -1778,7 +1775,7 @@ final class PathEmitter {
                                 "Cannot create missing ensure intermediate '" +
                                         stepHint(step) +
                                         "' on " +
-                                        step.ownerType +
+                                        step.resolved.ownerType() +
                                         ": access is read-only") +
                         ");");
     }
@@ -1792,7 +1789,7 @@ final class PathEmitter {
 
         String mode = read ? "readable" : "writable";
 
-        if (step.segment instanceof PathSegment.Name) {
+        if (step.resolved.segment() instanceof PathSegment.Name) {
             error(
                     method,
                     generated,
@@ -1800,14 +1797,14 @@ final class PathEmitter {
                             mode +
                             " property '" +
                             ((PathSegment.Name)
-                                    step.segment).name +
+                                    step.resolved.segment()).name +
                             "' on " +
                             ownerType);
 
             return;
         }
 
-        if (step.segment instanceof PathSegment.Append) {
+        if (step.resolved.segment() instanceof PathSegment.Append) {
             error(
                     method,
                     generated,
@@ -1817,7 +1814,7 @@ final class PathEmitter {
             return;
         }
 
-        if (step.segment instanceof PathSegment.Index) {
+        if (step.resolved.segment() instanceof PathSegment.Index) {
             error(
                     method,
                     generated,
@@ -1825,15 +1822,15 @@ final class PathEmitter {
                             mode +
                             " index [" +
                             ((PathSegment.Index)
-                                    step.segment).index +
+                                    step.resolved.segment()).index +
                             "] on " +
                             ownerType);
 
             return;
         }
 
-        if (step.segment instanceof PathSegment.Param) {
-            String name = ((PathSegment.Param) step.segment).param;
+        if (step.resolved.segment() instanceof PathSegment.Param) {
+            String name = ((PathSegment.Param) step.resolved.segment()).param;
 
             if (step.parameter != null &&
                     isString(
@@ -1904,24 +1901,15 @@ final class PathEmitter {
 
     private static final class Step {
 
-        final TypeMirror ownerType;
-        final PathSegment segment;
+        final ResolvedStep resolved;
         final VariableElement parameter;
-        final NodeAccess access;
 
         TypeMirror resultType;
         String createExpression;
 
-        Step(
-                TypeMirror ownerType,
-                PathSegment segment,
-                VariableElement parameter,
-                NodeAccess access) {
-
-            this.ownerType = ownerType;
-            this.segment = segment;
+        Step(ResolvedStep resolved, VariableElement parameter) {
+            this.resolved = resolved;
             this.parameter = parameter;
-            this.access = access;
         }
     }
 
