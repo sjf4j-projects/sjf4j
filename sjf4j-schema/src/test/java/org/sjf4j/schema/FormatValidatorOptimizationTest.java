@@ -44,14 +44,42 @@ class FormatValidatorOptimizationTest {
     }
 
     @Test
+    void validatesQuotedEmailLocalParts() {
+        assertTrue(FormatValidator.EMAIL.validate("\"joe bloggs\"@example.com"));
+        assertTrue(FormatValidator.EMAIL.validate("\"\"@example.com"));
+        assertTrue(FormatValidator.EMAIL.validate("\"\\\"\"@example.com"));
+        assertTrue(FormatValidator.EMAIL.validate("\"\\\\\"@example.com"));
+        assertFalse(FormatValidator.EMAIL.validate("\"test\\©\"@iana.org"));
+        assertFalse(FormatValidator.EMAIL.validate("\"©\"@iana.org"));
+        assertFalse(FormatValidator.EMAIL.validate("\"a\nb\"@iana.org"));
+        assertFalse(FormatValidator.EMAIL.validate("\"a\"\"b\"@iana.org"));
+        assertTrue(FormatValidator.IDN_EMAIL.validate("\"δοκιμή\"@example.com"));
+        assertTrue(FormatValidator.IDN_EMAIL.validate("\"joe@ bloggs\"@example.com"));
+        assertTrue(FormatValidator.IDN_EMAIL.validate("\"😀\"@example.com"));
+        assertFalse(FormatValidator.IDN_EMAIL.validate("\"test\\©\"@iana.org"));
+        assertFalse(FormatValidator.IDN_EMAIL.validate("\"\ud800\"@example.com"));
+        assertTrue(FormatValidator.EMAIL.validate("test@[IPv6:::1]"));
+        assertFalse(FormatValidator.EMAIL.validate("test@[IPv6:::ffff:192.168.0.01]"));
+    }
+
+    @Test
+    void validatesIpv6Strictly() {
+        assertTrue(FormatValidator.IPV6.validate("::1"));
+        assertTrue(FormatValidator.IPV6.validate("::ffff:192.168.0.1"));
+        assertFalse(FormatValidator.IPV6.validate("[::1]"));
+        assertFalse(FormatValidator.IPV6.validate("::ffff:192.168.0.01"));
+        assertFalse(FormatValidator.IPV6.validate("fe80::1%3"));
+    }
+
+    @Test
     void validatesIpv4WithDirectOctetScanner() {
-        assertTrue(FormatValidator._validateIpv4("0.0.0.0"));
-        assertTrue(FormatValidator._validateIpv4("255.255.255.255"));
-        assertFalse(FormatValidator._validateIpv4("256.0.0.1"));
-        assertFalse(FormatValidator._validateIpv4("1.2.3"));
-        assertFalse(FormatValidator._validateIpv4("1.2.3.4.5"));
-        assertFalse(FormatValidator._validateIpv4("01.2.3.4"));
-        assertFalse(FormatValidator._validateIpv4("1.02.3.4"));
+        assertTrue(FormatValidator.IPV4.validate("0.0.0.0"));
+        assertTrue(FormatValidator.IPV4.validate("255.255.255.255"));
+        assertFalse(FormatValidator.IPV4.validate("256.0.0.1"));
+        assertFalse(FormatValidator.IPV4.validate("1.2.3"));
+        assertFalse(FormatValidator.IPV4.validate("1.2.3.4.5"));
+        assertFalse(FormatValidator.IPV4.validate("01.2.3.4"));
+        assertFalse(FormatValidator.IPV4.validate("1.02.3.4"));
     }
 
     @Test
@@ -199,6 +227,7 @@ class FormatValidatorOptimizationTest {
 
     @Test
     void validatesUriTemplateLiteralsByCodePoint() {
+        assertTrue(FormatValidator._validateUriTemplate("a'b"));
         assertFalse(FormatValidator._validateUriTemplate("a|b"));
         assertTrue(FormatValidator._validateUriTemplate("a😀b"));
         assertTrue(FormatValidator._validateUriTemplate("a\ue000b"));

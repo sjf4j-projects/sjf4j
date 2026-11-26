@@ -1,7 +1,8 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.util.Formats;
+
 import java.net.IDN;
-import java.net.InetAddress;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -80,15 +81,7 @@ public interface FormatValidator {
 
     FormatValidator URI_REFERENCE = FormatUtil::validateUriReference;
 
-    FormatValidator IPV6 = value -> {
-        if (value == null || value.isEmpty() || !value.contains(":")) return false;
-        try {
-            InetAddress.getByName(value);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    };
+    FormatValidator IPV6 = Formats::isIpv6;
 
     FormatValidator JSON_POINTER = FormatValidator::_validateJsonPointer;
 
@@ -100,7 +93,7 @@ public interface FormatValidator {
 
     FormatValidator EMAIL = FormatValidator::_validateEmail;
 
-    FormatValidator IPV4 = FormatValidator::_validateIpv4;
+    FormatValidator IPV4 = Formats::isIpv4;
 
     FormatValidator UUID = value -> _validateUuid(value);
 
@@ -194,7 +187,7 @@ public interface FormatValidator {
     static boolean _validateEmailLocal(String local) {
         if (local.isEmpty()) return false;
         if (local.charAt(0) == '"') {
-            return _isQuotedEmailLocal(local);
+            return _isQuotedEmailLocal(local, false);
         }
         if (local.charAt(0) == '.' || local.charAt(local.length() - 1) == '.') return false;
         boolean segment = false;
@@ -213,12 +206,12 @@ public interface FormatValidator {
 
     static boolean _validateIdnEmailLocal(String local) {
         if (local.isEmpty()) return false;
+        if (local.charAt(0) == '"') return _isQuotedEmailLocal(local, true);
         for (int i = 0; i < local.length(); i++) {
             char ch = local.charAt(i);
             // RFC 6531 admits non-ASCII UTF-8 code points, including U+0085.
             if (ch == '@' || ch <= 0x1f || ch == 0x7f || Character.isWhitespace(ch)) return false;
         }
-        if (local.charAt(0) == '"') return _isQuotedEmailLocal(local);
         if (local.charAt(0) == '.' || local.charAt(local.length() - 1) == '.' || local.contains("..")) return false;
         return true;
     }
@@ -277,8 +270,8 @@ public interface FormatValidator {
 
     static boolean _isUriTemplateLiteral(int cp) {
         if (cp <= 0x7f) {
-            return cp == 0x21 || (cp >= 0x23 && cp <= 0x24) || cp == 0x26
-                    || (cp >= 0x28 && cp <= 0x3b) || cp == 0x3d
+            // RFC 6570 section 2.1, erratum 6937: apostrophe is a literal.
+            return cp == 0x21 || (cp >= 0x23 && cp <= 0x24) || (cp >= 0x26 && cp <= 0x3b) || cp == 0x3d
                     || (cp >= 0x3f && cp <= 0x5b) || cp == 0x5d || cp == 0x5f
                     || (cp >= 0x61 && cp <= 0x7a) || cp == 0x7e;
         }
@@ -375,8 +368,29 @@ public interface FormatValidator {
         return quoted ? -1 : at;
     }
 
-    static boolean _isQuotedEmailLocal(String local) {
-        return local.length() >= 2 && local.charAt(local.length() - 1) == '"';
+    static boolean _isQuotedEmailLocal(String local, boolean allowUnicode) {
+        int end = local.length() - 1;
+        if (end < 1 || local.charAt(end) != '"') return false;
+        // RFC 5321 quoted-pairSMTP is ASCII, even when RFC 6531 extends qtext.
+        for (int i = 1; i < end; i++) {
+            char ch = local.charAt(i);
+            if (ch == '\\') {
+                if (++i >= end) return false;
+                ch = local.charAt(i);
+                if (ch < 0x20 || ch > 0x7e) return false;
+            } else if (ch >= 0x20 && ch <= 0x7e && ch != '"') {
+                continue;
+            } else if (allowUnicode && ch >= 0x80) {
+                if (Character.isHighSurrogate(ch)) {
+                    if (++i >= end || !Character.isLowSurrogate(local.charAt(i))) return false;
+                } else if (Character.isLowSurrogate(ch)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     static boolean _validateDateTime(String value) {
@@ -446,30 +460,6 @@ public interface FormatValidator {
 
     static boolean _isLeapYear(int year) {
         return (year & 3) == 0 && (year % 100 != 0 || year % 400 == 0);
-    }
-
-    static boolean _validateIpv4(String value) {
-        if (value == null) return false;
-        int len = value.length();
-        int start = 0;
-        for (int octet = 0; octet < 4; octet++) {
-            if (start >= len) return false;
-            int end = start;
-            int number = 0;
-            while (end < len) {
-                char ch = value.charAt(end);
-                if (ch < '0' || ch > '9') break;
-                if (end - start == 3) return false;
-                number = number * 10 + (ch - '0');
-                end++;
-            }
-            if (end == start || number > 255) return false;
-            if (end - start > 1 && value.charAt(start) == '0') return false;
-            if (octet == 3) return end == len;
-            if (end >= len || value.charAt(end) != '.') return false;
-            start = end + 1;
-        }
-        return false;
     }
 
     static boolean _validateDuration(String value) {

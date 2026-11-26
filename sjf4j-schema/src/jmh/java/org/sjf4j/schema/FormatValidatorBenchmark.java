@@ -163,7 +163,7 @@ public class FormatValidatorBenchmark {
         String local = value.substring(0, at);
         if (local.isEmpty()) return false;
         if (local.charAt(0) == '"') {
-            if (!FormatValidator._isQuotedEmailLocal(local)) return false;
+            if (!FormatValidator._isQuotedEmailLocal(local, false)) return false;
         } else if (!LEGACY_EMAIL_PATTERN.matcher(local).matches()) {
             return false;
         }
