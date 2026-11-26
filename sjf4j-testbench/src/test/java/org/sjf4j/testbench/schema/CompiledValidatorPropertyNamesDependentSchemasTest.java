@@ -49,6 +49,9 @@ public class CompiledValidatorPropertyNamesDependentSchemasTest {
 
         @ValidJsonSchema("{\"propertyNames\":{\"maxLength\":3}}")
         void requireValidNames(Object value);
+
+        @ValidJsonSchema("{\"propertyNames\":false}")
+        void requireNoNames(Object value);
     }
 
     public static final class Bean {
@@ -120,6 +123,22 @@ public class CompiledValidatorPropertyNamesDependentSchemasTest {
                 () -> validator.requireValidNames(Map.of("tooLong", 1)));
         assertEquals("propertyNames", failure.getResult().getLastError().getKeyword());
         assertEquals("/tooLong",
+                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/propertyNames",
+                failure.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+    }
+
+    @Test
+    void foldedPropertyNamesKeepsEscapedFirstName() {
+        Checks v = CompiledInstances.create(Checks.class);
+        v.requireNoNames(Map.of());
+        Map<String, Object> names = new LinkedHashMap<>();
+        names.put("a/b~c", null);
+        names.put("later", 2);
+        ValidationException failure = assertThrows(ValidationException.class,
+                () -> v.requireNoNames(names));
+        assertEquals("propertyNames", failure.getResult().getLastError().getKeyword());
+        assertEquals("/a~1b~0c",
                 failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
         assertEquals("/propertyNames",
                 failure.getResult().getLastError().getKeywordPs().rootedPointerExpr());

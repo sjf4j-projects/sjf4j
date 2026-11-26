@@ -180,10 +180,12 @@ final class SchemaMethodGenerator {
         List<String> emitted = null;
         if (!fallback && booleanLiteral == null) {
             emitted = new ArrayList<String>();
+            SchemaValue subject = SchemaValue.of(context, parameterType, metadata);
             for (int i = 0; i < directBindings.size(); i++) {
+                SchemaCheck check = directBindings.get(i);
                 emitted.addAll(new SchemaEmitter(generated, "M" + methodSerial++, locals).emitRoot(
-                        directBindings.get(i), SchemaValue.of(context, parameterType, metadata), value,
-                        plans.get(i), strictParam, failure));
+                        check, subject, value, plans.get(i), strictParam, failure));
+                if (check.rejectsNull()) subject = subject.nonNull();
             }
         }
         if (fallback) {

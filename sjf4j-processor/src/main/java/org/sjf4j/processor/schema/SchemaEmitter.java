@@ -224,36 +224,57 @@ final class SchemaEmitter {
         if (check.dynamic) {
             // propertyNames is an independent assertion over each key string.
             // No property value is read, and no name is marked as covered.
+            String keySet = check.jsonObject ? variable + ".keySet()"
+                    : "org.sjf4j.Nodes.keySetInObject(" + variable + ")";
             if (check.propertyNamesCheck != null
                     && check.propertyNamesCheck.kind != SchemaCheck.Kind.PASS) {
-                String key = locals.newName("propertyName");
-                statements.add("for (String " + key + " : " + (check.jsonObject
-                        ? variable + ".keySet()"
-                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
-                InstancePath previousPath = instancePath;
-                instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
-                String validName = branchPredicate(plan, check.propertyNamesCheck,
-                        check.elementValue, key, strictFormat);
-                statements.add("    if (!(" + validName + ")) "
-                        + fail(onFailure, check.propertyNamesDiagnostic));
-                instancePath = previousPath;
-                statements.add("}");
+                if (check.propertyNamesCheck.kind == SchemaCheck.Kind.REJECT) {
+                    // Only the diagnostic path needs the first failing name.
+                    if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                        String keys = locals.newName("propertyNames");
+                        statements.add("java.util.Set<String> " + keys + " = " + keySet + ";");
+                        InstancePath previousPath = instancePath;
+                        instancePath = namePath(keys + ".iterator().next()", null, true);
+                        statements.add("if (!" + keys + ".isEmpty()) "
+                                + fail(onFailure, check.propertyNamesDiagnostic));
+                        instancePath = previousPath;
+                    } else {
+                        statements.add("if (!" + keySet + ".isEmpty()) "
+                                + fail(onFailure, check.propertyNamesDiagnostic));
+                    }
+                } else {
+                    String key = locals.newName("propertyName");
+                    String validName = branchPredicate(plan, check.propertyNamesCheck,
+                            check.elementValue, key, strictFormat);
+                    if (!"true".equals(validName)) {
+                        statements.add("for (String " + key + " : " + keySet + ") {");
+                        InstancePath previousPath = instancePath;
+                        instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
+                        statements.add("    if (!(" + validName + ")) "
+                                + fail(onFailure, check.propertyNamesDiagnostic));
+                        instancePath = previousPath;
+                        statements.add("}");
+                    }
+                }
             }
             // Each dependentSchemas branch checks the containing object, not
             // its trigger value. Local additionalProperties coverage is untouched.
             if (!check.dependentSchemas.isEmpty()) {
                 String names = locals.newName("presentNames");
-                statements.add("java.util.Set<String> " + names + " = "
-                        + (check.jsonObject ? variable + ".keySet()"
-                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ";");
+                List<String> branches = new ArrayList<String>();
                 int branch = 0;
                 for (SchemaCheck.DependentSchema dependency : check.dependentSchemas) {
-                    statements.add("if (" + names + ".contains(" + literal(dependency.trigger) + ")) {");
                     List<String> nested = new ArrayList<String>();
                     emitValue(nested, plan, dependency.check, check.elementValue.nonNull(), variable,
                             prefix + "DEPENDENT_SCHEMA_" + branch++, strictFormat, 0, onFailure);
-                    for (String statement : nested) statements.add("    " + statement);
-                    statements.add("}");
+                    if (nested.isEmpty()) continue;
+                    branches.add("if (" + names + ".contains(" + literal(dependency.trigger) + ")) {");
+                    for (String statement : nested) branches.add("    " + statement);
+                    branches.add("}");
+                }
+                if (!branches.isEmpty()) {
+                    statements.add("java.util.Set<String> " + names + " = " + keySet + ";");
+                    statements.addAll(branches);
                 }
             }
             for (SchemaCheck.Required required : check.required) {
@@ -338,31 +359,42 @@ final class SchemaEmitter {
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = locals.newName(property.name);
-            String access = check.dynamic
-                    ? "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + DEFAULT_CONFIG + ")"
-                    : check.jsonObject
-                    ? variable + ".getNode(" + literal(property.name) + ")"
-                    : variable + "." + property.staticAccess;
-            statements.add((property.codecOwner == null ? property.value.localType() : "Object")
-                    + " " + local + " = " + access + ";");
-            String checkedValue = local;
-            if (property.codecOwner != null && property.check.kind != SchemaCheck.Kind.PASS) {
-                String codecField = generated.names().field(property.name.toUpperCase(Locale.ROOT) + "_CODEC");
-                generated.addField(out -> out.line("private static final org.sjf4j.value.ValueInfo "
-                        + codecField + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
-                        + property.codecOwner + ".class).getPropertyNoAlias("
-                        + literal(property.name) + ").valueInfo;"));
-                checkedValue = locals.newName("rawValue");
-                String encodedType = property.value.shape == SchemaValue.Shape.STRING
-                        || property.value.shape == SchemaValue.Shape.NUMBER
-                        || property.value.shape == SchemaValue.Shape.BOOLEAN
-                        ? property.value.type.toString() : "Object";
-                String encoded = codecField + ".valueToRaw(" + local + ")";
-                if (!"Object".equals(encodedType)) {
-                    encoded = "(" + encodedType + ") " + encoded;
+            boolean encodedProperty = property.codecOwner != null
+                    && property.check.kind != SchemaCheck.Kind.PASS;
+            String checkedValue = encodedProperty ? locals.newName("rawValue") : local;
+            List<String> lines = new ArrayList<String>();
+            InstancePath parentPath = instancePath;
+            instancePath = namePath(literal(property.name), property.name,
+                    DIAGNOSTIC_FAILURE.equals(onFailure));
+            emitValue(lines, plan, property.check, property.value, checkedValue,
+                    prefix + "SUB_" + index++, strictFormat, 0, onFailure);
+            instancePath = parentPath;
+            // Type-known checks may fold to no assertions. Do not read a
+            // property (or convert its codec) merely to discard the result.
+            if (lines.isEmpty()) continue;
+            if (property.check.kind != SchemaCheck.Kind.REJECT) {
+                String access = check.dynamic
+                        ? "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + DEFAULT_CONFIG + ")"
+                        : check.jsonObject
+                        ? variable + ".getNode(" + literal(property.name) + ")"
+                        : variable + "." + property.staticAccess;
+                statements.add((property.codecOwner == null ? property.value.localType() : "Object")
+                        + " " + local + " = " + access + ";");
+                if (encodedProperty) {
+                    String codecField = generated.names().field(property.name.toUpperCase(Locale.ROOT) + "_CODEC");
+                    generated.addField(out -> out.line("private static final org.sjf4j.value.ValueInfo "
+                            + codecField + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                            + property.codecOwner + ".class).getPropertyNoAlias("
+                            + literal(property.name) + ").valueInfo;"));
+                    String encodedType = property.value.shape == SchemaValue.Shape.STRING
+                            || property.value.shape == SchemaValue.Shape.NUMBER
+                            || property.value.shape == SchemaValue.Shape.BOOLEAN
+                            ? property.value.type.toString() : "Object";
+                    String encoded = codecField + ".valueToRaw(" + local + ")";
+                    if (!"Object".equals(encodedType)) encoded = "(" + encodedType + ") " + encoded;
+                    statements.add(encodedType + " " + checkedValue + " = " + local
+                            + " == null ? null : " + encoded + ";");
                 }
-                statements.add(encodedType + " " + checkedValue + " = " + local
-                        + " == null ? null : " + encoded + ";");
             }
             if (check.dynamic) {
                 String contains = check.jsonObject
@@ -371,18 +403,10 @@ final class SchemaEmitter {
                                 + ").contains(" + literal(property.name) + ")";
                 statements.add("if (" + contains + ") {");
             }
-            List<String> lines = new ArrayList<String>();
-            InstancePath parentPath = instancePath;
-            instancePath = namePath(literal(property.name), property.name,
-                    DIAGNOSTIC_FAILURE.equals(onFailure));
-            emitValue(lines, plan, property.check, property.value, checkedValue,
-                    prefix + "SUB_" + index, strictFormat, 0, onFailure);
-            instancePath = parentPath;
             for (String line : lines) {
                 statements.add((check.dynamic ? "    " : "") + line);
             }
             if (check.dynamic) statements.add("}");
-            index++;
         }
         return statements;
     }
@@ -611,6 +635,7 @@ final class SchemaEmitter {
                                 SchemaCheck.ApplicatorCheck check, SchemaValue value,
                                 String expression, String strictFormat, String onFailure) {
         if (check.kind == SchemaCheck.Kind.ALL_OF) {
+            SchemaValue currentValue = value;
             for (SchemaCheck branch : check.branches) {
                 if (branch.kind == SchemaCheck.Kind.PASS) continue;
                 if (branch.kind == SchemaCheck.Kind.REJECT) {
@@ -618,12 +643,13 @@ final class SchemaEmitter {
                     // remain reachable to javac; the JIT folds this fail-fast path.
                     lines.add("if (java.lang.Boolean.TRUE) " + fail(onFailure, check.diagnostic));
                 } else if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-                    emitValue(lines, plan, branch, value, expression,
+                    emitValue(lines, plan, branch, currentValue, expression,
                             helperPrefix + "_all_" + helperCount++, strictFormat, 0, onFailure);
                 } else {
-                    lines.add("if (!(" + branchPredicate(plan, branch, value, expression, strictFormat)
-                            + ")) " + onFailure);
+                    String predicate = branchPredicate(plan, branch, currentValue, expression, strictFormat);
+                    if (!"true".equals(predicate)) lines.add("if (!(" + predicate + ")) " + onFailure);
                 }
+                if (branch.rejectsNull()) currentValue = currentValue.nonNull();
             }
         } else if (check.kind == SchemaCheck.Kind.NOT) {
             lines.add("if (" + branchPredicate(plan, check.branches.get(0), value,
@@ -660,8 +686,8 @@ final class SchemaEmitter {
         } finally {
             locals = parentLocals;
         }
-        boolean alwaysRejects = !body.isEmpty()
-                && "return false;".equals(body.get(body.size() - 1));
+        if (body.isEmpty()) return "true";
+        boolean alwaysRejects = "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();
         generated.addHelper(out -> {
             out.beginBlock("private static boolean " + helper + "("
@@ -1000,55 +1026,118 @@ final class SchemaEmitter {
         // child probes are not assertion errors: only the aggregate contains /
         // minContains / maxContains constraint can fail at the array location.
         // This loop is independent of positional items/prefixItems evaluation.
-        if (check.contains != null) {
-            String matches = locals.newName("matches");
-            lines.add("int " + matches + " = 0;");
+        if (check.contains != null && (check.minContains > 0 || check.maxContains != null)) {
+            String matches;
             if (check.contains.kind == SchemaCheck.Kind.PASS) {
-                lines.add(matches + " = " + size + ";");
-            } else if (check.contains.kind != SchemaCheck.Kind.REJECT) {
+                matches = size;
+                if (check.minContains > 0 && check.maxContains != null) {
+                    matches = locals.newName("matches");
+                    lines.add("int " + matches + " = " + size + ";");
+                }
+            } else if (check.contains.kind == SchemaCheck.Kind.REJECT) {
+                matches = "0";
+            } else {
                 String candidate = locals.newName("candidate");
-                TypeMirror candidateType = value.itemType();
                 String test = branchPredicate(plan, check.contains, check.itemValue,
                         candidate, strictFormat);
-                if (knownCollection || knownArray) {
-                    String javaType = candidateType == null
-                            || candidateType.getKind() == TypeKind.WILDCARD
-                            ? "Object" : candidateType.toString();
-                    lines.add("for (" + javaType + " " + candidate + " : " + subject + ") {");
-                    lines.add("    if (" + test + ") " + matches + "++;");
-                    lines.add("}");
+                if ("true".equals(test)) {
+                    matches = size;
+                    if (check.minContains > 0 && check.maxContains != null) {
+                        matches = locals.newName("matches");
+                        lines.add("int " + matches + " = " + size + ";");
+                    }
                 } else {
-                    String iterator = locals.newName("containsIterator");
-                    lines.add("java.util.Iterator<Object> " + iterator
-                            + " = org.sjf4j.Nodes.iteratorInArray(" + subject + ");");
-                    lines.add("while (" + iterator + ".hasNext()) {");
-                    lines.add("    Object " + candidate + " = " + iterator + ".next();");
-                    lines.add("    if (" + test + ") " + matches + "++;");
-                    lines.add("}");
+                    matches = locals.newName("matches");
+                    lines.add("int " + matches + " = 0;");
+                    TypeMirror candidateType = value.itemType();
+                    if (knownCollection || knownArray) {
+                        String javaType = candidateType == null
+                                || candidateType.getKind() == TypeKind.WILDCARD
+                                ? "Object" : candidateType.toString();
+                        lines.add("for (" + javaType + " " + candidate + " : " + subject + ") {");
+                        lines.add("    if (" + test + ") " + matches + "++;");
+                        lines.add("}");
+                    } else {
+                        String iterator = locals.newName("containsIterator");
+                        lines.add("java.util.Iterator<Object> " + iterator
+                                + " = org.sjf4j.Nodes.iteratorInArray(" + subject + ");");
+                        lines.add("while (" + iterator + ".hasNext()) {");
+                        lines.add("    Object " + candidate + " = " + iterator + ".next();");
+                        lines.add("    if (" + test + ") " + matches + "++;");
+                        lines.add("}");
+                    }
                 }
             }
-            lines.add("if (" + matches + " < " + check.minContains + ") "
-                    + fail(onFailure, check.minContainsDiagnostic));
-            if (check.maxContains != null) {
-                lines.add("if (" + matches + " > " + check.maxContains + ") "
-                        + fail(onFailure, check.maxContainsDiagnostic));
+            if (check.minContains > 0) {
+                String condition = "0".equals(matches) ? "java.lang.Boolean.TRUE"
+                        : matches + " < " + check.minContains;
+                lines.add("if (" + condition + ") " + fail(onFailure, check.minContainsDiagnostic));
+            }
+            if (check.maxContains != null && !"0".equals(matches)) {
+                // After passing the minimum, an inconsistent upper bound is
+                // guaranteed to fail. Keep the original diagnostic precedence.
+                String condition = check.minContains > check.maxContains
+                        ? "java.lang.Boolean.TRUE" : matches + " > " + check.maxContains;
+                lines.add("if (" + condition + ") " + fail(onFailure, check.maxContainsDiagnostic));
             }
         }
         // prefixItems constrains only its declared indices; items applies to
-        // the remaining indices in this *same* schema, not sibling applicators.
-        boolean hasPrefixChecks = false;
-        for (SchemaCheck prefix : check.prefixItems) {
-            if (prefix.kind != SchemaCheck.Kind.PASS) {
-                hasPrefixChecks = true;
-                break;
+        // the remaining indices in this same schema. Build the actual checks
+        // before deciding whether any iteration is required.
+        String indexVar = locals.newName("index");
+        String itemVar = locals.newName("item");
+        InstancePath parentPath = instancePath;
+        List<String> body = new ArrayList<String>();
+        boolean onlyRejects = true;
+        int firstRejectedIndex = -1;
+        SchemaCheck firstRejected = null;
+        if (DIAGNOSTIC_FAILURE.equals(onFailure)) instancePath = indexPath(indexVar);
+        for (int i = 0; i < check.prefixItems.size(); i++) {
+            SchemaCheck prefix = check.prefixItems.get(i);
+            List<String> child = new ArrayList<String>();
+            emitValue(child, plan, prefix, check.itemValue, itemVar,
+                    planName + "_PREFIX_" + i, strictFormat, depth + 1, onFailure);
+            if (child.isEmpty()) continue;
+            if (prefix.kind != SchemaCheck.Kind.REJECT) {
+                onlyRejects = false;
+            } else if (firstRejected == null) {
+                firstRejectedIndex = i;
+                firstRejected = prefix;
+            }
+            body.add("    if (" + indexVar + " == " + i + ") {");
+            for (String statement : child) body.add("        " + statement);
+            body.add("    }");
+        }
+        if (check.items != null) {
+            List<String> child = new ArrayList<String>();
+            emitValue(child, plan, check.items, check.itemValue, itemVar,
+                    planName + "_ITEM", strictFormat, depth + 1, onFailure);
+            if (!child.isEmpty()) {
+                if (check.items.kind != SchemaCheck.Kind.REJECT) {
+                    onlyRejects = false;
+                } else if (firstRejected == null) {
+                    firstRejectedIndex = check.prefixItems.size();
+                    firstRejected = check.items;
+                }
+                boolean afterPrefix = !check.prefixItems.isEmpty();
+                if (afterPrefix) body.add("    if (" + indexVar + " >= " + check.prefixItems.size() + ") {");
+                for (String statement : child) body.add((afterPrefix ? "        " : "    ") + statement);
+                if (afterPrefix) body.add("    }");
             }
         }
-        boolean hasItems = check.items != null && check.items.kind != SchemaCheck.Kind.PASS;
-        if (!hasPrefixChecks && !hasItems) return;
+        instancePath = parentPath;
+        if (body.isEmpty()) return;
+        if (onlyRejects && firstRejected != null) {
+            // A rejected positional schema fails exactly when its first
+            // prohibited index exists. Report that same index without a loop.
+            if (DIAGNOSTIC_FAILURE.equals(onFailure)) instancePath = indexPath(Integer.toString(firstRejectedIndex));
+            lines.add("if (" + size + " > " + firstRejectedIndex + ") "
+                    + fail(onFailure, firstRejected.diagnostic));
+            instancePath = parentPath;
+            return;
+        }
 
-        String indexVar = locals.newName("index");
         lines.add("int " + indexVar + " = 0;");
-        String itemVar = locals.newName("item");
         TypeMirror itemType = value.itemType();
         if (knownCollection || knownArray) {
             String itemJavaType = itemType == null || itemType.getKind() == TypeKind.WILDCARD
@@ -1061,32 +1150,7 @@ final class SchemaEmitter {
             lines.add("while (" + iterator + ".hasNext()) {");
             lines.add("    Object " + itemVar + " = " + iterator + ".next();");
         }
-        InstancePath parentPath = instancePath;
-        if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-            instancePath = indexPath(indexVar);
-        }
-        for (int i = 0; i < check.prefixItems.size(); i++) {
-            SchemaCheck prefix = check.prefixItems.get(i);
-            if (prefix.kind == SchemaCheck.Kind.PASS) continue;
-            lines.add("    if (" + indexVar + " == " + i + ") {");
-            List<String> child = new ArrayList<String>();
-            emitValue(child, plan, prefix, check.itemValue, itemVar,
-                    planName + "_PREFIX_" + i, strictFormat, depth + 1, onFailure);
-            for (String statement : child) lines.add("        " + statement);
-            lines.add("    }");
-        }
-        if (hasItems) {
-            boolean afterPrefix = !check.prefixItems.isEmpty();
-            if (afterPrefix) {
-                lines.add("    if (" + indexVar + " >= " + check.prefixItems.size() + ") {");
-            }
-            List<String> child = new ArrayList<String>();
-            emitValue(child, plan, check.items, check.itemValue, itemVar,
-                    planName + "_ITEM", strictFormat, depth + 1, onFailure);
-            for (String statement : child) lines.add((afterPrefix ? "        " : "    ") + statement);
-            if (afterPrefix) lines.add("    }");
-        }
-        instancePath = parentPath;
+        lines.addAll(body);
         lines.add("    " + indexVar + "++;");
         lines.add("}");
     }

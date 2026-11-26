@@ -47,6 +47,12 @@ public class CompiledValidatorContainsTest {
 
         @ValidJsonSchema("{\"contains\":{\"minimum\":5},\"maxContains\":1}")
         boolean primitiveArray(int[] value);
+
+        @ValidJsonSchema("{\"contains\":false,\"minContains\":0,\"maxContains\":0}")
+        boolean zeroMatches(Object value);
+
+        @ValidJsonSchema("{\"contains\":{\"const\":1},\"minContains\":0}")
+        boolean unrestricted(Object value);
     }
 
     @Test
@@ -80,6 +86,9 @@ public class CompiledValidatorContainsTest {
         assertTrue(v.primitiveArray(new int[]{3, 5}));
         assertFalse(v.primitiveArray(new int[]{5, 6}));
         assertTrue(v.primitiveArray(null));
+        assertTrue(v.zeroMatches(List.of(1, 2)));
+        assertTrue(v.unrestricted(List.of(2, 3)));
+        assertTrue(v.unrestricted(List.of()));
     }
 
     @Test

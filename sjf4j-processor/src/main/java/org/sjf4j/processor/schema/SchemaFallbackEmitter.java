@@ -56,12 +56,20 @@ final class SchemaFallbackEmitter {
                 }
                 out.beginBlock("private static org.sjf4j.schema.SchemaPlan _load()");
                 out.beginBlock("try");
-                out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
-                        + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
-                        + plan.name + ".class.getClassLoader());");
+                boolean externalMappings = !plan.annotation.externalSchemas().isEmpty()
+                        || !plan.annotation.externalSchemasRef().isEmpty();
+                boolean needsLoader = externalMappings;
+                for (int i = 0; i < plan.snapshot.uris.length && !needsLoader; i++) {
+                    if (!plan.snapshot.externalUris.contains(plan.snapshot.uris[i])
+                            && (i != 0 || plan.annotation.value().isEmpty())) needsLoader = true;
+                }
+                if (needsLoader) {
+                    out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
+                            + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
+                            + plan.name + ".class.getClassLoader());");
+                }
                 // Restore this binding's scoped external retrieval URI mappings.
-                if (!plan.annotation.externalSchemas().isEmpty()
-                        || !plan.annotation.externalSchemasRef().isEmpty()) {
+                if (externalMappings) {
                     out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
                             + "loader.loadExternalSchemas("
                             + plan.annotationExpression + ".externalSchemas(), "

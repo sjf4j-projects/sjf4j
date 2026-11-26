@@ -18,6 +18,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeKind;
 import java.net.URI;
@@ -305,6 +306,14 @@ final class ObjectCompiler {
             SchemaValue value = explicitCodec
                     ? encodedValue(declared, property, codecMetadata)
                     : schemaCompiler.schemaValue(declared);
+            // A compile-time constant field is non-null even when its declared
+            // Java type is nullable. Do not infer this for getters or codecs.
+            if (!explicitCodec && property != null
+                    && value.shape == SchemaValue.Shape.STRING
+                    && property.read().member() instanceof VariableElement
+                    && ((VariableElement) property.read().member()).getConstantValue() instanceof String) {
+                value = value.nonNull();
+            }
             SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
             // A fallback on just the child value loses @NodeProperty codec selection.
             if (explicitCodec && (check == null || check.hasFallback())) return null;

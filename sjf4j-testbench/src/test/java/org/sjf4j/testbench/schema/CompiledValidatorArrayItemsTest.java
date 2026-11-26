@@ -51,6 +51,15 @@ public class CompiledValidatorArrayItemsTest {
 
         @ValidJsonSchema("{\"prefixItems\":[{\"type\":\"string\"}],\"items\":false}")
         void requirePrefix(Object value);
+
+        @ValidJsonSchema("{\"prefixItems\":[true,false,false],\"items\":false}")
+        void requireBooleanPrefix(Object value);
+
+        @ValidJsonSchema("{\"prefixItems\":[{\"type\":\"integer\"}],\"items\":false}")
+        void requirePrimitivePrefix(int[] value);
+
+        @ValidJsonSchema("{\"items\":{\"type\":\"integer\"}}")
+        boolean allPrimitiveItems(int[] value);
     }
 
     @Test
@@ -113,6 +122,23 @@ public class CompiledValidatorArrayItemsTest {
         assertTrue(v.constrainedUnique(List.of("ok")));
         assertFalse(v.constrainedUnique(List.of("ok", "ok")));
         assertFalse(v.constrainedUnique(List.of("ok", 1)));
+    }
+
+    @Test
+    void foldedArrayChecksPreserveFirstRejectedIndex() {
+        Checks v = CompiledInstances.create(Checks.class);
+        v.requireBooleanPrefix(List.of(1));
+        ValidationException prefix = assertThrows(ValidationException.class,
+                () -> v.requireBooleanPrefix(List.of(1, 2, 3, 4)));
+        assertEquals("/1", prefix.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/prefixItems/1", prefix.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+        v.requirePrimitivePrefix(new int[]{1});
+        ValidationException items = assertThrows(ValidationException.class,
+                () -> v.requirePrimitivePrefix(new int[]{1, 2, 3}));
+        assertEquals("/1", items.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/items", items.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+        assertTrue(v.allPrimitiveItems(new int[]{1, 2, 3}));
+        assertTrue(v.allPrimitiveItems(null));
     }
 
     @Test

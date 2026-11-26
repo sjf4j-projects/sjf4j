@@ -53,3 +53,5 @@ jobs:
           if-no-files-found: error
 
 # Verify native write generation changes with the full independent scan.
+
+# Run the independent analysis for compiled validator emission changes.
