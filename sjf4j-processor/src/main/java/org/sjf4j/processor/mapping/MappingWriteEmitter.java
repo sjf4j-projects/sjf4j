@@ -1,10 +1,10 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
+import org.sjf4j.processor.mapping.target.TargetAccessEmitter;
 import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.access.NodeAccess;
-import org.sjf4j.processor.access.NodeReadEmitter;
-import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.processor.code.JavaWriter;
@@ -18,17 +18,17 @@ import javax.lang.model.type.TypeMirror;
 final class MappingWriteEmitter {
 
     private final TypeSystem types;
-    private final NodeReadEmitter reads;
+    private final TargetAccessEmitter accessEmitter;
 
     MappingWriteEmitter(TypeSystem types) {
         this.types = types;
-        this.reads = new NodeReadEmitter(types);
+        this.accessEmitter = new TargetAccessEmitter(types);
     }
 
     void emitPathWrite(
             JavaWriter out,
             NameAllocator names,
-            MappingCompiler.Target target,
+            TargetPlan target,
             String root,
             String value) {
 
@@ -189,7 +189,7 @@ final class MappingWriteEmitter {
             String owner,
             NodeAccess access,
             int rawIndex,
-            MappingPlan.WriteMode mode) {
+            TargetPlan.WriteMode mode) {
 
         String size =
                 MappingEmissionSupport.sizeExpression(
@@ -221,7 +221,7 @@ final class MappingWriteEmitter {
                         ";");
 
         if (mode ==
-                MappingPlan.WriteMode.IF_PARENT_PRESENT) {
+                TargetPlan.WriteMode.IF_PARENT_PRESENT) {
 
             out.beginBlock(
                     "if (" +
@@ -266,7 +266,7 @@ final class MappingWriteEmitter {
             String owner,
             NodeAccess access,
             int rawIndex,
-            MappingPlan.WriteMode mode) {
+            TargetPlan.WriteMode mode) {
 
         String size =
                 MappingEmissionSupport.sizeExpression(
@@ -326,36 +326,10 @@ final class MappingWriteEmitter {
                 "name is required");
     }
 
-    void emitNodeWrite(JavaWriter out, String owner, PathSegment segment,
+    private void emitNodeWrite(JavaWriter out, String owner, PathSegment segment,
                                String index, NodeAccess access, String value) {
-        if (segment instanceof PathSegment.Name) {
-            String key = JavaWriter.stringLiteral(((PathSegment.Name) segment).name);
-            out.line(NodeWriteEmitter.name(access, owner, key, value) + ";");
-            return;
-        }
-
-        if (segment instanceof PathSegment.Append) {
-            out.line(NodeWriteEmitter.append(access, owner, value) + ";");
-            return;
-        }
-
-        if (segment instanceof PathSegment.Index) {
-            String actualIndex = index != null ? index :
-                    Integer.toString(((PathSegment.Index) segment).index);
-            if (access.kind() == NodeAccess.Kind.LIST || access.kind() == NodeAccess.Kind.JSON_ARRAY) {
-                out.beginBlock("if (" + actualIndex + " == " + owner + ".size())");
-                out.line(NodeWriteEmitter.append(access, owner, value) + ";");
-                out.endBlock();
-                out.beginBlock("else");
-                out.line(NodeWriteEmitter.index(access, owner, actualIndex, value) + ";");
-                out.endBlock();
-            } else {
-                out.line(NodeWriteEmitter.index(access, owner, actualIndex, value) + ";");
-            }
-            return;
-        }
-
-        throw new IllegalStateException("unsupported target segment: " + segment);
+        accessEmitter.write(out, owner, segment, index, access, value,
+                TargetAccessEmitter.IndexPolicy.SET_OR_APPEND);
     }
 
     String readTargetExpression(
@@ -372,18 +346,9 @@ final class MappingWriteEmitter {
                 access);
     }
 
-    String readTargetExpression(String owner, PathSegment segment,
+    private String readTargetExpression(String owner, PathSegment segment,
                                         String index, NodeAccess access) {
-        if (segment instanceof PathSegment.Name) {
-            return reads.name(access, owner,
-                    JavaWriter.stringLiteral(((PathSegment.Name) segment).name));
-        }
-        if (segment instanceof PathSegment.Index) {
-            String resolved = index != null ? index :
-                    Integer.toString(((PathSegment.Index) segment).index);
-            return reads.index(access, owner, resolved);
-        }
-        throw new IllegalStateException("unsupported target read: " + segment);
+        return accessEmitter.read(owner, segment, index, access, TargetAccessEmitter.ReadPolicy.DIRECT);
     }
 
     private String ensureExpression(

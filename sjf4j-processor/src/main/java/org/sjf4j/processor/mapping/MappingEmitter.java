@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -295,13 +296,8 @@ public final class MappingEmitter {
 
         switch (creation.kind()) {
             case NO_ARGS:
-                out.line(
-                        targetType +
-                                " " +
-                                target +
-                                " = new " +
-                                targetType +
-                                "();");
+                out.line(targetType + " " + target + " = " +
+                        TargetCreationEmitter.constructor(targetType, java.util.Collections.emptyList()) + ";");
 
                 return target;
 
@@ -309,23 +305,7 @@ public final class MappingEmitter {
                 ExecutableElement factory =
                         creation.factory();
 
-                String call;
-
-                if (creation.factoryOwner() ==
-                        null) {
-
-                    call =
-                            factory.getSimpleName() +
-                                    "()";
-
-                } else {
-                    call =
-                            creation.factoryOwner()
-                                    .getQualifiedName() +
-                                    "." +
-                                    factory.getSimpleName() +
-                                    "()";
-                }
+                String call = TargetCreationEmitter.factory(creation, false);
 
                 String cast = context.typeUtils.isAssignable(
                         factory.getReturnType(), creation.targetType())
@@ -381,33 +361,8 @@ public final class MappingEmitter {
                     }
                 }
 
-                StringBuilder constructor =
-                        new StringBuilder();
-
-                constructor.append(
-                                targetType)
-                        .append(' ')
-                        .append(target)
-                        .append(" = new ")
-                        .append(targetType)
-                        .append('(');
-
-                for (int i = 0;
-                     i < values.length;
-                     i++) {
-
-                    if (i != 0) {
-                        constructor.append(", ");
-                    }
-
-                    constructor.append(
-                            values[i]);
-                }
-
-                constructor.append(");");
-
-                out.line(
-                        constructor.toString());
+                out.line(targetType + " " + target + " = " +
+                        TargetCreationEmitter.constructor(targetType, java.util.Arrays.asList(values)) + ";");
 
                 return target;
             }

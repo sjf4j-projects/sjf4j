@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
@@ -8,7 +9,6 @@ import org.sjf4j.path.PathSyntax;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.ResolvedPath;
-import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.mapping.CreatorResolver;
 import org.sjf4j.processor.property.Property;
@@ -238,7 +238,7 @@ public final class JdbcCompiler {
                 return null;
             }
 
-            Target target = resolveTarget(targetType, rule.target(), generated, plan.method());
+            TargetPlan target = resolveTarget(targetType, rule.target(), generated, plan.method());
 
             if (target == null) return null;
 
@@ -303,7 +303,7 @@ public final class JdbcCompiler {
 
             if (value == null) return null;
 
-            assignments.add(new Assignment(Target.property(name, access), value));
+            assignments.add(new Assignment(TargetPlan.property(name, access), value));
         }
 
         /*
@@ -738,7 +738,7 @@ public final class JdbcCompiler {
      * --------------------------------------------------------------
      */
 
-    private Target resolveTarget(TypeMirror rootType, String expression,
+    private TargetPlan resolveTarget(TypeMirror rootType, String expression,
                                  GeneratedClass generated, ExecutableElement method) {
 
         PathSegment[] segments;
@@ -818,7 +818,7 @@ public final class JdbcCompiler {
                     }
                     return readType;
                 });
-        return resolved == null ? null : Target.path(expression, resolved);
+        return resolved == null ? null : TargetPlan.path(expression, TargetPlan.WriteMode.STRICT, resolved);
     }
 
     private boolean supportedTargetAccess(NodeAccess access) {
@@ -1192,15 +1192,15 @@ public final class JdbcCompiler {
 
     public static final class Assignment {
 
-        private final Target target;
+        private final TargetPlan target;
         private final Value value;
 
-        Assignment(Target target, Value value) {
+        Assignment(TargetPlan target, Value value) {
             this.target = target;
             this.value = value;
         }
 
-        public Target target() {
+        public TargetPlan target() {
             return target;
         }
 
@@ -1261,55 +1261,4 @@ public final class JdbcCompiler {
         }
     }
 
-    public static final class Target {
-
-        public enum Kind {
-            PROPERTY,
-            PATH
-        }
-
-        private final Kind kind;
-        private final String expression;
-        private final ResolvedPath path;
-
-        private Target(Kind kind, String expression, ResolvedPath path) {
-            this.kind = kind;
-            this.expression = expression;
-            this.path = path;
-        }
-
-        static Target property(String name, NodeAccess access) {
-            ResolvedStep step = new ResolvedStep(access.ownerType(), new PathSegment.Name(null, name), access);
-            return new Target(Kind.PROPERTY, name, new ResolvedPath(access.ownerType(),
-                    Collections.singletonList(step), access.writeType()));
-        }
-
-        static Target path(String expression, ResolvedPath path) {
-            return new Target(Kind.PATH, expression, path);
-        }
-
-        public Kind kind() {
-            return kind;
-        }
-
-        public String expression() {
-            return expression;
-        }
-
-        public List<ResolvedStep> steps() {
-            return path.steps();
-        }
-
-        public ResolvedStep finalStep() {
-            return path.steps().get(path.steps().size() - 1);
-        }
-
-        public NodeAccess finalAccess() {
-            return finalStep().access();
-        }
-
-        public TypeMirror type() {
-            return path.resultType();
-        }
-    }
 }

@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.annotation.mapping.ArrayPolicy;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
@@ -45,7 +46,7 @@ final class MappingUpdateEmitter {
         MappingPlan plan =
                 compiled.plan();
 
-        MappingCompiler.Target destination =
+        TargetPlan destination =
                 assignment.target();
 
         MappingCompiler.Value mapped =
@@ -64,14 +65,14 @@ final class MappingUpdateEmitter {
         }
 
         NodeAccess access =
-                destination.access();
+                destination.propertyAccess();
 
         if (!access.readable()) {
             MappingEmissionSupport.error(context,
                     plan.method(),
                     generated,
                     "object update target '" +
-                            destination.name() +
+                            destination.expression() +
                             "' must be readable");
 
             return true;
@@ -106,7 +107,7 @@ final class MappingUpdateEmitter {
             writes.emitNodeWrite(
                     out,
                     target,
-                    destination.name(),
+                    destination.expression(),
                     null,
                     access,
                     "null");
@@ -127,7 +128,7 @@ final class MappingUpdateEmitter {
                         " = " +
                         writes.readTargetExpression(
                                 target,
-                                destination.name(),
+                                destination.expression(),
                                 access) +
                         ";");
 
@@ -153,7 +154,7 @@ final class MappingUpdateEmitter {
             writes.emitNodeWrite(
                     out,
                     target,
-                    destination.name(),
+                    destination.expression(),
                     null,
                     access,
                     value);
@@ -191,11 +192,11 @@ final class MappingUpdateEmitter {
             String value,
             GeneratedClass generated) {
 
-        MappingCompiler.Target destination =
+        TargetPlan destination =
                 assignment.target();
 
         if (destination.kind() ==
-                MappingCompiler.Target.Kind.PATH) {
+                TargetPlan.Kind.PATH) {
 
             writes.emitPathWrite(
                     out,
@@ -226,11 +227,11 @@ final class MappingUpdateEmitter {
             String value,
             GeneratedClass generated) {
 
-        MappingCompiler.Target destination =
+        TargetPlan destination =
                 assignment.target();
 
         NodeAccess access =
-                destination.access();
+                destination.propertyAccess();
 
         TypeMirror targetType =
                 destination.type();
@@ -276,22 +277,22 @@ final class MappingUpdateEmitter {
         boolean primitiveValue = sourceReads.isDirectPrimitiveRead(plan, assignment.value(), false);
         if ((ignoreNull || targetType.getKind().isPrimitive()) && !primitiveValue) {
             out.beginBlock("if (" + value + " != null)");
-            writes.emitNodeWrite(out, target, destination.name(), null, access, value);
+            writes.emitNodeWrite(out, target, destination.expression(), null, access, value);
 
             out.endBlock();
 
         } else {
-            writes.emitNodeWrite(out, target, destination.name(), null, access, value);
+            writes.emitNodeWrite(out, target, destination.expression(), null, access, value);
         }
     }
 
-    private void emitArrayUpdate(JavaWriter out, NameAllocator names, MappingCompiler.Target destination,
+    private void emitArrayUpdate(JavaWriter out, NameAllocator names, TargetPlan destination,
                                  String target, String value, ArrayPolicy policy, boolean ignoreNull,
                                  GeneratedClass generated, MappingPlan plan) {
-        NodeAccess access = destination.access();
+        NodeAccess access = destination.propertyAccess();
 
         if (!access.readable()) {
-            MappingEmissionSupport.error(context, plan.method(), generated, "array update target '" + destination.name() + "' must be readable");
+            MappingEmissionSupport.error(context, plan.method(), generated, "array update target '" + destination.expression() + "' must be readable");
 
             return;
         }
@@ -332,7 +333,7 @@ final class MappingUpdateEmitter {
                     plan.method(),
                     generated,
                     "array update target '" +
-                            destination.name() +
+                            destination.expression() +
                             "' element type is not writable");
 
             return;
@@ -358,7 +359,7 @@ final class MappingUpdateEmitter {
             writes.emitNodeWrite(
                     out,
                     target,
-                    destination.name(),
+                    destination.expression(),
                     null,
                     access,
                     "null");
@@ -380,7 +381,7 @@ final class MappingUpdateEmitter {
                         " = " +
                         writes.readTargetExpression(
                                 target,
-                                destination.name(),
+                                destination.expression(),
                                 access) +
                         ";");
 
@@ -392,7 +393,7 @@ final class MappingUpdateEmitter {
         writes.emitNodeWrite(
                 out,
                 target,
-                destination.name(),
+                destination.expression(),
                 null,
                 access,
                 value);
@@ -600,7 +601,7 @@ final class MappingUpdateEmitter {
     private void emitObjectUpdate(
             JavaWriter out,
             NameAllocator names,
-            MappingCompiler.Target destination,
+            TargetPlan destination,
             String target,
             String value,
             ObjectPolicy policy,
@@ -609,14 +610,14 @@ final class MappingUpdateEmitter {
             MappingPlan plan) {
 
         NodeAccess access =
-                destination.access();
+                destination.propertyAccess();
 
         if (!access.readable()) {
             MappingEmissionSupport.error(context,
                     plan.method(),
                     generated,
                     "object update target '" +
-                            destination.name() +
+                            destination.expression() +
                             "' must be readable");
 
             return;
@@ -636,7 +637,7 @@ final class MappingUpdateEmitter {
             writes.emitNodeWrite(
                     out,
                     target,
-                    destination.name(),
+                    destination.expression(),
                     null,
                     access,
                     "null");
@@ -658,7 +659,7 @@ final class MappingUpdateEmitter {
                         " = " +
                         writes.readTargetExpression(
                                 target,
-                                destination.name(),
+                                destination.expression(),
                                 access) +
                         ";");
 
@@ -671,7 +672,7 @@ final class MappingUpdateEmitter {
             writes.emitNodeWrite(
                     out,
                     target,
-                    destination.name(),
+                    destination.expression(),
                     null,
                     access,
                     value);

@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
 import org.sjf4j.annotation.mapping.ObjectPolicy;
 import org.sjf4j.processor.code.JavaExpressions;
 import org.sjf4j.NodeKind;
@@ -765,11 +766,11 @@ public final class ConversionEmitter
 
         switch (creation.kind()) {
             case NO_ARGS:
-                out.line(result + " = new " + workingType + "();");
+                out.line(result + " = " + TargetCreationEmitter.constructor(workingType.toString(), java.util.Collections.emptyList()) + ";");
                 break;
 
             case FACTORY:
-                out.line(result + " = " + factoryExpression(creation) + ";");
+                out.line(result + " = " + TargetCreationEmitter.factory(creation, false) + ";");
                 break;
 
             case CONSTRUCTOR:
@@ -810,21 +811,8 @@ public final class ConversionEmitter
                     argument.source(), argument.conversion()));
         }
 
-        StringBuilder expression = new StringBuilder();
-        expression.append("new ").append(conversion.workingTargetType()).append('(');
-
-        for (int i = 0; i < values.size(); i++) {
-
-            if (i != 0) {
-                expression.append(", ");
-            }
-
-            expression.append(values.get(i));
-        }
-
-        expression.append(')');
-
-        out.line(result + " = " + expression + ";");
+        out.line(result + " = " +
+                TargetCreationEmitter.constructor(conversion.workingTargetType().toString(), values) + ";");
     }
 
     /*
@@ -1174,13 +1162,6 @@ public final class ConversionEmitter
             default:
                 throw new IllegalStateException("unsupported dynamic object target " + type);
         }
-    }
-
-    private String factoryExpression(CreatorResolver.Creation creation) {
-        ExecutableElement factory = creation.factory();
-        if (creation.factoryOwner() == null) return factory.getSimpleName() + "()";
-
-        return creation.factoryOwner().getQualifiedName() + "." + factory.getSimpleName() + "()";
     }
 
     private String cast(TypeMirror type, String expression) {

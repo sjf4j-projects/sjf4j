@@ -1,8 +1,10 @@
 package org.sjf4j.processor.mapping.jdbc;
 
+import org.sjf4j.processor.mapping.target.TargetCreationEmitter;
+import org.sjf4j.processor.mapping.target.TargetPlan;
+import org.sjf4j.processor.mapping.target.TargetAccessEmitter;
 import org.sjf4j.processor.code.MethodSignature;
 import org.sjf4j.processor.code.JavaExpressions;
-import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.ResolvedStep;
@@ -11,12 +13,8 @@ import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.mapping.CreatorResolver;
-import org.sjf4j.processor.access.NodeReadEmitter;
-import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -35,10 +33,12 @@ public final class JdbcEmitter {
 
     private final CompilationContext context;
     private final TypeSystem types;
+    private final TargetAccessEmitter targetAccess;
 
     public JdbcEmitter(CompilationContext context) {
         this.context = context;
         this.types = context.types;
+        this.targetAccess = new TargetAccessEmitter(types);
     }
 
     /*
@@ -598,37 +598,18 @@ public final class JdbcEmitter {
 
         switch (creation.kind()) {
             case NO_ARGS:
-                out.line(
-                        method.targetType() +
-                                " " +
-                                target +
-                                " = new " +
-                                method.targetType() +
-                                "();");
+                out.line(method.targetType() + " " + target + " = " +
+                        TargetCreationEmitter.constructor(method.targetType().toString(), Collections.emptyList()) + ";");
                 break;
 
             case CONSTRUCTOR:
-                out.line(
-                        method.targetType() +
-                                " " +
-                                target +
-                                " = new " +
-                                method.targetType() +
-                                "(" +
-                                join(
-                                        constructorValues) +
-                                ");");
+                out.line(method.targetType() + " " + target + " = " +
+                        TargetCreationEmitter.constructor(method.targetType().toString(), constructorValues) + ";");
                 break;
 
             case FACTORY:
-                out.line(
-                        method.targetType() +
-                                " " +
-                                target +
-                                " = " +
-                                factoryExpression(
-                                        creation) +
-                                ";");
+                out.line(method.targetType() + " " + target + " = " +
+                        TargetCreationEmitter.factory(creation, true) + ";");
                 break;
 
             default:
@@ -1477,7 +1458,7 @@ public final class JdbcEmitter {
             JavaWriter out,
             NameAllocator names,
             String root,
-            JdbcCompiler.Target target,
+            TargetPlan target,
             String value) {
 
         List<ResolvedStep> steps =
@@ -1541,43 +1522,13 @@ public final class JdbcEmitter {
     }
 
     private String readExpression(String owner, ResolvedStep step) {
-        NodeAccess access = step.access();
-        PathSegment segment = step.segment();
-        switch (access.kind()) {
-            case PROPERTY:
-                return NodeReadEmitter.rawName(access, owner, null);
-            case MAP:
-            case JSON_OBJECT:
-                return cast(access.readType(), NodeReadEmitter.rawName(access, owner, nameKey(segment)));
-            case LIST:
-            case JSON_ARRAY:
-                return cast(access.readType(), NodeReadEmitter.rawIndex(access, owner, Integer.toString(index(segment))));
-            case ARRAY:
-                return NodeReadEmitter.rawIndex(access, owner, Integer.toString(index(segment)));
-            default:
-                throw new IllegalStateException("Unsupported JDBC target path read: " + access.kind());
-        }
+        return targetAccess.read(owner, step.segment(), null, step.access(),
+                TargetAccessEmitter.ReadPolicy.CAST_CONTAINER);
     }
 
     private void writeValue(JavaWriter out, String owner, ResolvedStep step, String value) {
-        NodeAccess access = step.access();
-        PathSegment segment = step.segment();
-        switch (access.kind()) {
-            case PROPERTY:
-                out.line(NodeWriteEmitter.name(access, owner, null, value) + ";");
-                return;
-            case MAP:
-            case JSON_OBJECT:
-                out.line(NodeWriteEmitter.name(access, owner, nameKey(segment), value) + ";");
-                return;
-            case LIST:
-            case ARRAY:
-            case JSON_ARRAY:
-                out.line(NodeWriteEmitter.index(access, owner, Integer.toString(index(segment)), value) + ";");
-                return;
-            default:
-                throw new IllegalStateException("Unsupported JDBC target path write: " + access.kind());
-        }
+        targetAccess.write(out, owner, step.segment(), null, step.access(), value,
+                TargetAccessEmitter.IndexPolicy.SET_ONLY);
     }
 
     /*
@@ -1585,13 +1536,6 @@ public final class JdbcEmitter {
      * Creator
      * --------------------------------------------------------------
      */
-
-    private String factoryExpression(CreatorResolver.Creation creation) {
-        ExecutableElement factory = creation.factory();
-        if (creation.factoryOwner() == null || !factory.getModifiers().contains(Modifier.STATIC)) return "this." + factory.getSimpleName() + "()";
-
-        return creation.factoryOwner().getQualifiedName().toString() + "." + factory.getSimpleName() + "()";
-    }
 
     /*
      * --------------------------------------------------------------
@@ -1602,18 +1546,6 @@ public final class JdbcEmitter {
     private String cast(TypeMirror type, String expression) {
         if (type == null || types.isObject(type)) return expression;
         return JavaExpressions.cast(JavaExpressions.boxedType(types, type), expression);
-    }
-
-    private String nameKey(PathSegment segment) {
-        if (!(segment instanceof PathSegment.Name)) throw new IllegalStateException("Expected name segment, got " + segment);
-
-        return JavaWriter.stringLiteral(((PathSegment.Name) segment).name);
-    }
-
-    private int index(PathSegment segment) {
-        if (!(segment instanceof PathSegment.Index)) throw new IllegalStateException("Expected index segment, got " + segment);
-
-        return ((PathSegment.Index) segment).index;
     }
 
     private String join(List<String> values) {

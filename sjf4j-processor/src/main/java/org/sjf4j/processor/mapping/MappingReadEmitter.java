@@ -1,5 +1,6 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.processor.mapping.target.TargetPlan;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.access.NodeAccess;
@@ -196,7 +197,7 @@ final class MappingReadEmitter {
      * existing evaluation order and null propagation.
      */
     String inlineDirectPropertyRead(MappingPlan plan, MappingCompiler.Assignment assignment) {
-        if (assignment.target().kind() != MappingCompiler.Target.Kind.PROPERTY ||
+        if (assignment.target().kind() != TargetPlan.Kind.PROPERTY ||
                 !MappingEmissionSupport.rootKnownNonNull(plan)) {
             return null;
         }
