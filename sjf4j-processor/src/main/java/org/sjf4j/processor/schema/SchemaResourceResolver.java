@@ -142,7 +142,7 @@ final class SchemaResourceResolver {
                 } else {
                     JsonSchema mapped = external.get(documentUri);
                     if (mapped != null) {
-                        rootDocument = SchemaUtil.writeJson(mapped);
+                        rootDocument = JsonSchema.writeJsonValue(mapped);
                         rootFromExternal = true;
                     } else {
                         rootDocument = null;
@@ -171,7 +171,7 @@ final class SchemaResourceResolver {
         // externalSchemas is an input representation; the registry only sees
         // ordinary (retrieval URI, JsonSchema) pairs.
         for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-            String document = SchemaUtil.writeJson(entry.getValue());
+            String document = JsonSchema.writeJsonValue(entry.getValue());
             String present = resources.get(entry.getKey());
             if (present != null) {
                 if (!(entry.getKey().equals(documentUri) && rootFromExternal)) {

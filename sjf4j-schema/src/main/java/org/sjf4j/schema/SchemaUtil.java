@@ -1,8 +1,5 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.NodeConfig;
-import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.util.Asserts;
@@ -19,19 +16,6 @@ import java.util.regex.PatternSyntaxException;
  * resolution/normalization.
  */
 public final class SchemaUtil {
-
-    static final Binder<?, ?> SCHEMA_BINDER =
-            BinderFactory.jsonProvider().create(NodeConfig.EXACT_NUMBERS);
-
-    /** Parses a schema JSON literal without rounding generic numeric values. */
-    public static Object parseJson(String json) {
-        return SCHEMA_BINDER.readNode(json, Object.class);
-    }
-
-    /** Serializes a schema document or literal for compiled schema snapshots. */
-    public static String writeJson(Object node) {
-        return SCHEMA_BINDER.writeNodeAsString(node);
-    }
 
     /**
      * Stable message codes used by schema compilation and validation output.

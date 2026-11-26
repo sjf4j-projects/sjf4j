@@ -20,11 +20,12 @@ class SchemaExactNumbersTest {
 
     @Test
     void schemaBinderUsesSelectedProviderAndFixedPrecision() {
-        assertSame(NodeConfig.EXACT_NUMBERS, SchemaUtil.SCHEMA_BINDER.config());
+        assertSame(NodeConfig.EXACT_NUMBERS, SchemaBinderHolder.BINDER.config());
         assertEquals(BinderFactory.jsonProvider().create(NodeConfig.DEFAULT).getClass(),
-                SchemaUtil.SCHEMA_BINDER.getClass());
+                SchemaBinderHolder.BINDER.getClass());
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"minimum\":" + DECIMAL + "}");
         assertEquals(EXACT, schema.getNode("minimum"));
+        assertEquals(EXACT, JsonSchema.readJsonValue(JsonSchema.writeJsonValue(EXACT)));
         ObjectSchema exponent = (ObjectSchema) JsonSchema.fromJson("{\"minimum\":1.23e-400}");
         assertEquals(0, new BigDecimal("1.23e-400").compareTo(
                 assertInstanceOf(BigDecimal.class, exponent.getNode("minimum"))));

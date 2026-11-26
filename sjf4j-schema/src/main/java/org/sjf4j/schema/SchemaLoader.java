@@ -57,7 +57,7 @@ public interface SchemaLoader {
      * documents, using the official JSON Schema Test Suite representation.
      */
     static Map<URI, JsonSchema> parseExternalSchemas(String json) {
-        Object root = SchemaUtil.parseJson(Asserts.notNull(json, "json"));
+        Object root = JsonSchema.readJsonValue(Asserts.notNull(json, "json"));
         if (JsonType.of(root) != JsonType.OBJECT) {
             throw new IllegalArgumentException("externalSchemas must be a JSON object");
         }
