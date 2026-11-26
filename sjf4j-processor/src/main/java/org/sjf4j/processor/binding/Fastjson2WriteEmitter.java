@@ -433,10 +433,7 @@ final class Fastjson2WriteEmitter {
 
     void registerHelpers(GeneratedClass generated, BindingValue value) {
         for (FastjsonMode mode : fastjsonModes) {
-            generated.addHelper(fastjsonHelperName(value, mode), out -> {
-                writes.selectWritePolicy(value);
-                emitNativeHelper(out, value, mode);
-            });
+            generated.addHelper(fastjsonHelperName(value, mode), out -> emitNativeHelper(out, value, mode));
         }
     }
 }

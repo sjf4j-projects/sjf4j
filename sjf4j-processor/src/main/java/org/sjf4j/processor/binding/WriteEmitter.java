@@ -19,7 +19,7 @@ final class WriteEmitter {
 
     private final BackendSpec backend;
     private final BindingNames names;
-    private boolean includeNulls = true;
+    private final boolean includeNulls;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
@@ -27,9 +27,10 @@ final class WriteEmitter {
 
     private final Map<String, BindingValue> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend, BindingNames names) {
+    WriteEmitter(BackendSpec backend, BindingNames names, boolean includeNulls) {
         this.backend = backend;
         this.names = names;
+        this.includeNulls = includeNulls;
         this.streaming = new StreamingWriteEmitter(backend, names, this);
         switch (backend.backend()) {
             case FASTJSON2:
@@ -141,7 +142,6 @@ final class WriteEmitter {
 
     void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
         BindingPlan plan = compiled.plan();
-        includeNulls = plan.includeNulls();
         BindingSource.beginOverride(out, plan.method());
         String source = BindingSource.parameterName(plan, 0);
 
@@ -266,12 +266,7 @@ final class WriteEmitter {
         }
     }
 
-    void selectWritePolicy(BindingValue value) {
-        includeNulls = value.writeIncludeNulls();
-    }
-
     private void emitHelper(JavaWriter out, BindingValue value) {
-        selectWritePolicy(value);
         if (isJackson()) {
             jackson.emitHelper(out, value);
             return;
@@ -310,8 +305,7 @@ final class WriteEmitter {
     void prepareStringHelpers() {
         stringHelper();
         if (isJackson()) {
-            names.sharedHelper("writeStringMemberIncludeNulls");
-            names.sharedHelper("writeStringMemberOmitNulls");
+            stringMemberHelper();
         }
     }
 
@@ -356,11 +350,8 @@ final class WriteEmitter {
     void registerStringHelpers(GeneratedClass generated) {
         generated.addHelper(stringHelper(), this::emitStringHelper);
         if (isJackson()) {
-            for (boolean include : new boolean[]{true, false}) {
-                String helper = names.sharedHelper(include ? "writeStringMemberIncludeNulls"
-                        : "writeStringMemberOmitNulls");
-                generated.addHelper(helper, out -> emitStringMemberHelper(out, helper, include));
-            }
+            String helper = stringMemberHelper();
+            generated.addHelper(helper, out -> emitStringMemberHelper(out, helper));
         }
     }
 
@@ -410,7 +401,7 @@ final class WriteEmitter {
 
     }
 
-    private void emitStringMemberHelper(JavaWriter out, String helper, boolean include) {
+    private void emitStringMemberHelper(JavaWriter out, String helper) {
         boolean jackson2 = backend.backend() == Backend.JACKSON2;
         String generator = jackson2 ? "com.fasterxml.jackson.core.JsonGenerator"
                 : "tools.jackson.core.JsonGenerator";
@@ -419,10 +410,10 @@ final class WriteEmitter {
         String nameMethod = jackson2 ? "writeFieldName" : "writeName";
         out.beginBlock("private static void " + helper + "(" + generator
                 + " g, " + nameType + " name, String value) throws java.io.IOException");
-        if (!include) out.beginBlock("if (value != null)");
+        if (!includeNulls) out.beginBlock("if (value != null)");
         out.line("g." + nameMethod + "(name);");
         out.line("g.writeString(value);");
-        if (!include) out.endBlock();
+        if (!includeNulls) out.endBlock();
         out.endBlock();
     }
 

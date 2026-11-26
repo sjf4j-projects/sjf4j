@@ -50,12 +50,14 @@ class CompiledFastjson2UnifiedWriteTest {
                 + "@CompiledBinder(backend=Backend.FASTJSON2) "
                 + "public interface Binder { "
                 + " @Write String write(Model value) throws java.io.IOException; "
-                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException; "
                 + " @Write byte[] writeBytes(Model value) throws java.io.IOException; "
                 + " @Write void writeToStream(Model value, java.io.OutputStream out) throws java.io.IOException; "
                 + " @Write void writeToWriter(Model value, java.io.Writer out) throws java.io.IOException; "
                 + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                 + "}");
+        sources.put("fixture/OmitBinder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*;"
+                + "@CompiledBinder(backend=Backend.FASTJSON2,includeNulls=false) public interface OmitBinder extends Binder {}");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -76,6 +78,7 @@ class CompiledFastjson2UnifiedWriteTest {
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> modelType = loader.loadClass("fixture.Model");
             Class binderType = loader.loadClass("fixture.Binder");
+            Class omitType = loader.loadClass("fixture.OmitBinder");
             Object model = modelType.getConstructor().newInstance();
             Object normal = CompiledInstances.create(binderType);
             Object withoutNulls = CompiledTestBinders.create(binderType, "FASTJSON2", new NodeConfig(false));
@@ -99,8 +102,7 @@ class CompiledFastjson2UnifiedWriteTest {
 
             JsonNode full = json.readTree(output);
             assertEquals(full, json.readTree((String) write.invoke(withoutNulls, model)));
-            JsonNode filtered = json.readTree((String) binderType
-                    .getMethod("writeOmit", modelType).invoke(withoutNulls, model));
+            JsonNode filtered = json.readTree((String) write.invoke(CompiledTestBinders.create(omitType, "FASTJSON2", NodeConfig.DEFAULT), model));
             assertEquals("felix", full.path("animals").get(0).path("name").asText());
             assertEquals("cat", full.path("animals").get(0).path("kind").asText());
             assertTrue(full.path("animals").get(1).isNull());

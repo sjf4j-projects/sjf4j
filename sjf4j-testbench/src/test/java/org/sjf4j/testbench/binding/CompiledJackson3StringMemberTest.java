@@ -41,31 +41,35 @@ public class CompiledJackson3StringMemberTest {
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Writer {
         @Write byte[] write(Payload value) throws IOException;
-        @Write(includeNulls = false) byte[] writeOmit(Payload value) throws IOException;
     }
+
+    @CompiledBinder(backend = Backend.JACKSON3, includeNulls = false)
+    public interface Jackson3OmitWriter extends Jackson3Writer {}
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Writer {
         @Write byte[] write(Payload value) throws IOException;
-        @Write(includeNulls = false) byte[] writeOmit(Payload value) throws IOException;
     }
+
+    @CompiledBinder(backend = Backend.JACKSON2, includeNulls = false)
+    public interface Jackson2OmitWriter extends Jackson2Writer {}
 
     @Test
     void jackson3StaticStringMemberPreservesNullPolicy() throws Exception {
         Payload value = fixture();
         for (boolean includeNulls : new boolean[]{true, false}) {
             Jackson3Writer writer3 = CompiledInstances.create(
-                    Jackson3Writer.class, new Jackson3Binder(new NodeConfig(!includeNulls)));
-            JsonNode actual = JSON.readTree(includeNulls
-                    ? writer3.write(value) : writer3.writeOmit(value));
+                    includeNulls ? Jackson3Writer.class : Jackson3OmitWriter.class,
+                    new Jackson3Binder(new NodeConfig(!includeNulls)));
+            JsonNode actual = JSON.readTree(writer3.write(value));
             verifyNullPolicy(actual, includeNulls);
 
             // Jackson2 is deliberately unchanged: both backends must have
             // equivalent output semantics for the same native backend configuration.
             Jackson2Writer writer2 = CompiledInstances.create(
-                    Jackson2Writer.class, new Jackson2Binder(new NodeConfig(!includeNulls)));
-            JsonNode jackson2 = JSON.readTree(includeNulls
-                    ? writer2.write(value) : writer2.writeOmit(value));
+                    includeNulls ? Jackson2Writer.class : Jackson2OmitWriter.class,
+                    new Jackson2Binder(new NodeConfig(!includeNulls)));
+            JsonNode jackson2 = JSON.readTree(writer2.write(value));
             assertEquals(jackson2, actual);
         }
     }
@@ -76,7 +80,7 @@ public class CompiledJackson3StringMemberTest {
         List<Method> helpers = Arrays.stream(writer.getClass().getDeclaredMethods())
                 .filter(m -> m.getName().startsWith("_writeStringMember"))
                 .toList();
-        assertEquals(2, helpers.size());
+        assertEquals(1, helpers.size());
         assertTrue(helpers.stream().allMatch(m -> Modifier.isStatic(m.getModifiers())));
     }
 

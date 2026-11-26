@@ -15,11 +15,12 @@ final class BindingEmitter {
     private final BindingNames names;
     private boolean byteOrderFieldEmitted;
 
-    BindingEmitter(CompilationContext context, BackendSpec backend, BindingNames names) {
+    BindingEmitter(CompilationContext context, BackendSpec backend, BindingNames names,
+                   boolean includeNulls, boolean exactNumbers) {
         this.names = names;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2;
-        this.reads = new ReadEmitter(context, backend, names);
-        this.writes = new WriteEmitter(backend, names);
+        this.reads = new ReadEmitter(context, backend, names, exactNumbers);
+        this.writes = new WriteEmitter(backend, names, includeNulls);
         this.helpers = new BindingHelperEmitter(context, reads, writes, names);
     }
 

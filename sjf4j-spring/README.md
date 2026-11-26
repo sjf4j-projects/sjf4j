@@ -40,8 +40,8 @@ The annotation processor writes `META-INF/sjf4j/compiled.interfaces`. The
 Spring integration collects these indexes across classpath JARs and registers
 lazy singleton Beans. An explicitly registered Bean of the same interface
 takes priority. Compiled instances use compile-time settings, independently of
-runtime `NodeConfig` Beans. `@CompiledBinder.includeNulls` and per-method
-`@Write.includeNulls` determine compiled and fallback output.
+runtime `NodeConfig` Beans. `@CompiledBinder.includeNulls` and `@CompiledBinder.exactNumbers` determine
+compiled and fallback write/read policies for the entire interface.
 
 Spring must discover your application configuration and service (for example,
 through `AnnotationConfigApplicationContext` and `@ComponentScan`). SJF4J

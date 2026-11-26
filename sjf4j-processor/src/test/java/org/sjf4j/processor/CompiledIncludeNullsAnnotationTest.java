@@ -43,28 +43,19 @@ class CompiledIncludeNullsAnnotationTest {
                     "package fixture; import org.sjf4j.annotation.binding.Write;"
                     + "public interface Base {"
                     + " @Write String inherited(Object value);"
-                    + " @Write(includeNulls=true) String inheritedInclude(Object value);"
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + format + ",includeNulls=false)"
                     + "public interface Binder extends Base {"
                     + " @Write String write(Model value);"
-                    + " @Write(includeNulls=true) String writeInclude(Model value);"
                     + " @Write byte[] writeBytes(Model value);"
-                    + " @Write(includeNulls=true) byte[] writeBytesInclude(Model value);"
                     + " @Write String writeAny(Object value);"
-                    + " @Write(includeNulls=true) String writeAnyInclude(Object value);"
                     + "}");
-            // The inverse precedence is also important: an include-by-default
-            // interface must be able to omit null members on one @Write.
             sources.put("fixture/DefaultBinder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + format + ")"
-                    + "public interface DefaultBinder {"
-                    + " @Write String write(Object value);"
-                    + " @Write(includeNulls=false) String writeOmit(Object value);"
-                    + "}");
+                    + "public interface DefaultBinder extends Binder {}");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -79,7 +70,6 @@ class CompiledIncludeNullsAnnotationTest {
                 Class modelType = loader.loadClass("fixture.Model");
                 Object model = modelType.getConstructor().newInstance();
                 Object injectedTrue = CompiledTestBinders.create(binderType, backend, new NodeConfig(true));
-                Object injectedFalse = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
 
                 Class defaultBinderType = loader.loadClass("fixture.DefaultBinder");
                 Class<?> defaultImpl = loader.loadClass("fixture.DefaultBinder_Impl");
@@ -90,25 +80,27 @@ class CompiledIncludeNullsAnnotationTest {
                 testDynamic.put("missing", null);
                 testDynamic.put("present", Arrays.asList("a", null, "b"));
                 Map<String, Object> includeDefaultResult = decode(backend, (String) defaultBinderType
-                        .getMethod("write", Object.class).invoke(includeDefault, testDynamic));
-                Map<String, Object> omitOverrideResult = decode(backend, (String) defaultBinderType
-                        .getMethod("writeOmit", Object.class).invoke(includeDefault, testDynamic));
+                        .getMethod("writeAny", Object.class).invoke(includeDefault, testDynamic));
+                Map<String, Object> omitResult = decode(backend, (String) binderType
+                        .getMethod("writeAny", Object.class).invoke(injectedTrue, testDynamic));
                 assertTrue(includeDefaultResult.containsKey("missing"), backend);
-                assertFalse(omitOverrideResult.containsKey("missing"), backend);
-                assertEquals(Arrays.asList("a", null, "b"), omitOverrideResult.get("present"), backend);
+                assertFalse(omitResult.containsKey("missing"), backend);
+                assertEquals(Arrays.asList("a", null, "b"), omitResult.get("present"), backend);
 
-                for (Object binder : Arrays.asList(injectedTrue, injectedFalse)) {
+                for (NodeConfig config : new NodeConfig[]{NodeConfig.DEFAULT, NodeConfig.OMIT_NULLS}) {
+                    Object binder = CompiledTestBinders.create(binderType, backend, config);
+                    Object including = CompiledTestBinders.create(defaultBinderType, backend, config);
                     Map<String, Object> omitted = decode(backend, (String) binderType
                             .getMethod("write", modelType).invoke(binder, model));
                     Map<String, Object> included = decode(backend, (String) binderType
-                            .getMethod("writeInclude", modelType).invoke(binder, model));
+                            .getMethod("write", modelType).invoke(including, model));
                     checkModel(omitted, false);
                     checkModel(included, true);
 
                     byte[] omittedBytes = (byte[]) binderType.getMethod("writeBytes", modelType)
                             .invoke(binder, model);
-                    byte[] includedBytes = (byte[]) binderType.getMethod("writeBytesInclude", modelType)
-                            .invoke(binder, model);
+                    byte[] includedBytes = (byte[]) binderType.getMethod("writeBytes", modelType)
+                            .invoke(including, model);
                     assertEquals(omitted, decode(backend, new String(omittedBytes, StandardCharsets.UTF_8)), backend);
                     assertEquals(included, decode(backend, new String(includedBytes, StandardCharsets.UTF_8)), backend);
 
@@ -119,8 +111,7 @@ class CompiledIncludeNullsAnnotationTest {
                         Map<String, Object> omitDynamic = decode(backend, (String) binderType
                                 .getMethod(prefix, Object.class).invoke(binder, dynamic));
                         Map<String, Object> includeDynamic = decode(backend, (String) binderType
-                                .getMethod(prefix.equals("writeAny") ? "writeAnyInclude" : "inheritedInclude",
-                                        Object.class).invoke(binder, dynamic));
+                                .getMethod(prefix, Object.class).invoke(including, dynamic));
                         assertFalse(omitDynamic.containsKey("missing"), backend + " " + prefix);
                         assertTrue(includeDynamic.containsKey("missing"), backend + " " + prefix);
                         assertEquals(Arrays.asList("a", null, "b"), omitDynamic.get("present"), backend);
@@ -152,7 +143,7 @@ class CompiledIncludeNullsAnnotationTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void valueCodecRawMapFallbackInheritsPerMethodNullPolicy() throws Exception {
+    void valueCodecRawMapFallbackUsesInterfaceNullPolicy() throws Exception {
         for (String backend : new String[]{
                 "SIMPLE", "JACKSON2", "JACKSON3", "FASTJSON2", "GSON", "JSONP", "SNAKE"}) {
             String format = backend.equals("SNAKE") ? ",format=Format.YAML" : "";
@@ -175,16 +166,20 @@ class CompiledIncludeNullsAnnotationTest {
                     + "@CompiledBinder(backend=Backend." + backend + format
                     + ",registries={Codecs.class},includeNulls=false)"
                     + "public interface Binder {"
-                    + " @Write String omit(Token token);"
-                    + " @Write(includeNulls=true) String include(Token token);"
+                    + " @Write String write(Token token);"
                     + "}");
+            sources.put("fixture/IncludeBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + format + ",registries={Codecs.class})"
+                    + "public interface IncludeBinder extends Binder {}");
             NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains(".writeRaw(rawValue, this.config)"), backend);
             assertFalse(generated.contains("writeConfigOmitNulls"), backend);
             assertFalse(generated.contains("writeConfigIncludeNulls"), backend);
-            assertTrue(generated.contains("NodeConfig.DEFAULT"), backend);
+            assertTrue(generated.contains("NodeConfig.OMIT_NULLS"), backend);
+            assertTrue(compiled.generatedSource("fixture/IncludeBinder_Impl.java").contains("NodeConfig.DEFAULT"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
@@ -193,9 +188,10 @@ class CompiledIncludeNullsAnnotationTest {
                 Object token = tokenType.getConstructor().newInstance();
                 Object binder = CompiledTestBinders.create(binderType, backend, new NodeConfig(true));
                 Map<String, Object> omitted = decode(backend, (String) binderType
-                        .getMethod("omit", tokenType).invoke(binder, token));
+                        .getMethod("write", tokenType).invoke(binder, token));
                 Map<String, Object> included = decode(backend, (String) binderType
-                        .getMethod("include", tokenType).invoke(binder, token));
+                        .getMethod("write", tokenType).invoke(CompiledTestBinders.create(
+                                loader.loadClass("fixture.IncludeBinder"), backend, NodeConfig.OMIT_NULLS), token));
                 assertFalse(omitted.containsKey("missing"), backend);
                 assertTrue(included.containsKey("missing"), backend);
                 assertEquals("x", omitted.get("present"), backend);

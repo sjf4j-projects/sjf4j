@@ -53,12 +53,14 @@ class CompiledGsonJsonpUnifiedWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + " @Write String write(Model value) throws java.io.IOException; "
-                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException; "
                     + " @Write byte[] writeBytes(Model value) throws java.io.IOException; "
                     + " @Write void writeStream(Model value, java.io.OutputStream out) throws java.io.IOException; "
                     + " @Write void writeWriter(Model value, java.io.Writer out) throws java.io.IOException; "
                     + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                     + "}");
+            sources.put("fixture/OmitBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=false) public interface OmitBinder extends Binder {}");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -78,14 +80,14 @@ class CompiledGsonJsonpUnifiedWriteTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class binderType = loader.loadClass("fixture.Binder");
+                Class omitType = loader.loadClass("fixture.OmitBinder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
                 Object withoutNulls = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 JsonNode full = mapper.readTree((String) write.invoke(normal, model));
                 assertEquals(full, mapper.readTree((String) write.invoke(withoutNulls, model)), backend);
-                JsonNode filtered = mapper.readTree((String) binderType
-                        .getMethod("writeOmit", modelType).invoke(withoutNulls, model));
+                JsonNode filtered = mapper.readTree((String) write.invoke(CompiledTestBinders.create(omitType, backend, NodeConfig.DEFAULT), model));
 
                 byte[] data = (byte[]) binderType.getMethod("writeBytes", modelType)
                         .invoke(normal, model);

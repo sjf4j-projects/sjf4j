@@ -1,6 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -38,16 +39,15 @@ public final class BindingGenerator {
 
         if (backend == null || !generated.isValid()) return;
 
-        generated.enableBackendBinder(backend.binderType());
-        boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
-        generated.addField(out ->
-                out.line("private final " + backend.binderType() + " binder;"));
+        CompiledBinder annotation = type.getAnnotation(CompiledBinder.class);
+        boolean includeNulls = annotation.includeNulls();
+        boolean exactNumbers = annotation.exactNumbers();
 
         List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
 
         for (ResolvedMethod resolved : resolvedMethods) {
-            BindingPlan plan = methodGenerator.analyze(resolved, generated, binderIncludeNulls);
+            BindingPlan plan = methodGenerator.analyze(resolved, generated);
 
             if (plan != null) {
                 plans.add(plan);
@@ -55,6 +55,8 @@ public final class BindingGenerator {
         }
 
         if (!generated.isValid()) return;
+
+        configureBackendBinder(generated, backend, exactNumbers);
 
         BindingCompiler compiler = new BindingCompiler(
                 context, generated.names(), context.metadata, backend.backend());
@@ -72,7 +74,7 @@ public final class BindingGenerator {
         if (!generated.isValid()) return;
 
         BindingEmitter emitter = new BindingEmitter(context, backend,
-                new BindingNames(generated.names()));
+                new BindingNames(generated.names()), includeNulls, exactNumbers);
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);
@@ -84,5 +86,17 @@ public final class BindingGenerator {
 
         emitter.emitEnumFields(generated);
         generated.write();
+    }
+
+    /** Fastjson2 fixes the native numeric policy once, at construction. */
+    private void configureBackendBinder(GeneratedClass generated, BackendSpec backend,
+                                        boolean exactNumbers) {
+        boolean fastjson2 = backend.backend() == Backend.FASTJSON2;
+        generated.enableBackendBinder(backend.binderType(),
+                fastjson2 && exactNumbers ? "org.sjf4j.NodeConfig.EXACT_NUMBERS" : "");
+        generated.addField(out -> out.line("private final " + backend.binderType() + " binder;"));
+        String policy = fastjson2 ? ".forCompiledRead(" + exactNumbers + ")" : "";
+        generated.addConstructorInitializer(out -> out.line("this.binder = "
+                + "org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\")" + policy + ";"));
     }
 }

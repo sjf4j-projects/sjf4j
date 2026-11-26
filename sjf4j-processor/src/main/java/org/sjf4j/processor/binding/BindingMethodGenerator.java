@@ -1,6 +1,5 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.processor.CompilationContext;
@@ -8,8 +7,6 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
@@ -36,8 +33,7 @@ final class BindingMethodGenerator {
         this.outputStreamType = requiredType("java.io.OutputStream");
     }
 
-    BindingPlan analyze(ResolvedMethod resolved, GeneratedClass generated,
-                        boolean binderIncludeNulls) {
+    BindingPlan analyze(ResolvedMethod resolved, GeneratedClass generated) {
         ExecutableElement method = resolved.declaration();
         boolean read = method.getAnnotation(Read.class) != null;
         boolean write = method.getAnnotation(Write.class) != null;
@@ -56,7 +52,7 @@ final class BindingMethodGenerator {
 
         return read
                 ? analyzeRead(resolved, generated)
-                : analyzeWrite(resolved, generated, binderIncludeNulls);
+                : analyzeWrite(resolved, generated);
     }
 
     private BindingPlan analyzeRead(ResolvedMethod resolved, GeneratedClass generated) {
@@ -86,13 +82,11 @@ final class BindingMethodGenerator {
         return BindingPlan.readFrom(resolved, returnType, input);
     }
 
-    private BindingPlan analyzeWrite(ResolvedMethod resolved, GeneratedClass generated,
-                                     boolean binderIncludeNulls) {
+    private BindingPlan analyzeWrite(ResolvedMethod resolved, GeneratedClass generated) {
         ExecutableElement method = resolved.declaration();
         ExecutableType type = resolved.type();
         List<? extends TypeMirror> parameters = type.getParameterTypes();
         TypeMirror returnType = type.getReturnType();
-        boolean includeNulls = resolvedIncludeNulls(method, binderIncludeNulls);
 
         if (parameters.size() == 1) {
             BindingPlan.WriteOutput output = returnOutput(returnType);
@@ -102,7 +96,7 @@ final class BindingMethodGenerator {
                 return null;
             }
 
-            return BindingPlan.writeTo(resolved, parameters.get(0), output, includeNulls);
+            return BindingPlan.writeTo(resolved, parameters.get(0), output);
         }
 
         if (parameters.size() == 2) {
@@ -118,24 +112,12 @@ final class BindingMethodGenerator {
                 return null;
             }
 
-            return BindingPlan.writeTo(resolved, parameters.get(0), output, includeNulls);
+            return BindingPlan.writeTo(resolved, parameters.get(0), output);
         }
 
         error(method, generated,
                 "@Write method must have one value parameter, optionally followed by an OutputStream or Writer");
         return null;
-    }
-
-    /**
-     * getAnnotation(Write.class) includes default values and cannot tell a
-     * missing attribute from an explicit includeNulls=true override.
-     * AnnotationMirror.getElementValues() contains only explicitly written
-     * attributes, including on methods inherited from precompiled interfaces.
-     */
-    private static boolean resolvedIncludeNulls(ExecutableElement method, boolean binderDefault) {
-        AnnotationMirror mirror = AnnotationValues.find(method, Write.class.getName());
-        AnnotationValue value = AnnotationValues.explicit(mirror, "includeNulls");
-        return value == null ? binderDefault : Boolean.TRUE.equals(value.getValue());
     }
 
     private BindingPlan.ReadInput readInput(TypeMirror type) {

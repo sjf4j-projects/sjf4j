@@ -50,7 +50,6 @@ final class BindingValue {
     private final TypeMirror type;
     private final Kind kind;
     private final boolean primitive;
-    private final boolean writeIncludeNulls;
 
     private String helperName;
     private final Map<Integer, String> preparedNames = new HashMap<>();
@@ -71,12 +70,11 @@ final class BindingValue {
     private boolean writeDynamic;
 
     BindingValue(BindingPlan.Direction direction, TypeMirror type, Kind kind,
-                 boolean primitive, boolean writeIncludeNulls) {
+                 boolean primitive) {
         this.direction = Asserts.notNull(direction, "direction");
         this.type = Asserts.notNull(type, "type");
         this.kind = Asserts.notNull(kind, "kind");
         this.primitive = primitive;
-        this.writeIncludeNulls = writeIncludeNulls;
     }
 
     BindingPlan.Direction direction() {
@@ -93,10 +91,6 @@ final class BindingValue {
 
     boolean primitive() {
         return primitive;
-    }
-
-    boolean writeIncludeNulls() {
-        return writeIncludeNulls;
     }
 
     boolean helperRequired() {

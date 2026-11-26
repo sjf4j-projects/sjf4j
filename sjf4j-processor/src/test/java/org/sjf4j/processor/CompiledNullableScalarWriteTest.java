@@ -39,8 +39,11 @@ class CompiledNullableScalarWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + " public interface Binder {"
                     + " @Write String write(Model value) throws java.io.IOException;"
-                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException;"
-                    + "}"
+                    + "}",
+                    "fixture/OmitBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + ",includeNulls=false)"
+                    + " public interface OmitBinder extends Binder {}"
             ), CodegenProcessor.class);
 
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
@@ -51,6 +54,7 @@ class CompiledNullableScalarWriteTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class binderType = loader.loadClass("fixture.Binder");
+                Class omitType = loader.loadClass("fixture.OmitBinder");
                 Object model = modelType.getConstructor().newInstance();
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
 
@@ -58,8 +62,8 @@ class CompiledNullableScalarWriteTest {
                         CompiledInstances.create(binderType), model));
                 assertEquals(all, json.readTree((String) write.invoke(
                         CompiledTestBinders.create(binderType, backend, new NodeConfig(false)), model)), backend);
-                JsonNode filtered = json.readTree((String) binderType.getMethod("writeOmit", modelType).invoke(
-                        CompiledTestBinders.create(binderType, backend, new NodeConfig(true)), model));
+                JsonNode filtered = json.readTree((String) write.invoke(
+                        CompiledTestBinders.create(omitType, backend, new NodeConfig(true)), model));
                 for (JsonNode node : new JsonNode[]{all, filtered}) {
                     assertEquals("12.34", node.path("decimal").decimalValue().toPlainString(), backend);
                     assertEquals(42, node.path("count").intValue(), backend);

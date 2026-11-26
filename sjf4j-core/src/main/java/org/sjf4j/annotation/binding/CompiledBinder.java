@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * Marks an interface whose structural binding operations are generated at
  * compile time.
  *
- * <p>The format and backend are fixed for one generated binder interface.
+ * <p>The format, backend, and binding policies are fixed for one generated binder interface.
  * Binding operations are declared with {@link Read} and {@link Write}.
  * Each abstract method must have exactly one of these annotations.
  * Binding failures, including I/O errors, are reported as unchecked
@@ -49,10 +49,13 @@ public @interface CompiledBinder {
     Backend backend() default Backend.AUTO;
 
     /**
-     * Default null-property policy for generated {@link Write} operations.
-     * This policy is fixed at compilation, including runtime fallback.
+     * Whether generated writes include null-valued object members, including runtime fallback.
+     * Null array elements and root nulls are always written.
      */
     boolean includeNulls() default true;
+
+    /** Preserve generic decimal and exponent literals as BigDecimal in all reads, including runtime fallback. */
+    boolean exactNumbers() default false;
 
     /** Additional precompiled {@link org.sjf4j.annotation.node.NodeRegistry} interfaces. */
     Class<?>[] registries() default {};
