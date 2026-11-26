@@ -44,9 +44,9 @@ class CompiledBinderCastWarningsTest {
                     sources, CodegenProcessor.class, "-Xlint:cast", "-Werror");
             assertTrue(result.success, backend + ": " + result.diagnostics());
             String generated = result.generatedSource("fixture/Binder_Impl.java");
-            assertFalse(generated.contains("(java.lang.Object) parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), backend);
-            assertFalse(generated.contains("(java.util.Map<java.lang.String,java.lang.Object>) parser.readRawObject(org.sjf4j.NodeConfig.DEFAULT)"), backend);
-            assertFalse(generated.contains("(java.util.List<java.lang.Object>) parser.readRawArray(org.sjf4j.NodeConfig.DEFAULT)"), backend);
+            assertFalse(generated.contains("(Object) parser.readRaw(NodeConfig.DEFAULT)"), backend);
+            assertFalse(generated.contains("(Map<String,Object>) parser.readRawObject(NodeConfig.DEFAULT)"), backend);
+            assertFalse(generated.contains("(List<Object>) parser.readRawArray(NodeConfig.DEFAULT)"), backend);
         }
     }
 }
