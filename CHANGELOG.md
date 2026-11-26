@@ -8,11 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Breaking Changes
-- Removed `CompiledInstances.create(Class<T>, NodeConfig)` and generated `_Impl(NodeConfig)` constructors. Compiled APIs now use compile-time settings; use `CompiledInstances.create(type)` and explicit annotation options where applicable. Runtime APIs still support `NodeConfig`.
-- Backend Binder injection remains supported, but `CompiledInstances.create(Class<T>, B)` now accepts `Binder` instead of an unconstrained type parameter. This changes the erased JVM parameter type from `Object` to `Binder` and is binary-incompatible with existing callers.
+### Added
+- Added opt-in exact numeric binding across Runtime and Compiled APIs through `Sjf4j.Builder.exactNumbers` and `@CompiledBinder.exactNumbers`, preserving generic decimal and exponent literals as `BigDecimal`.
 
-**Migration:** Update calls to removed APIs, regenerate compiled implementations, and cleanly recompile affected applications and dependent JARs against the new SJF4J version (including the annotation processor). Previously compiled callers of the removed or changed overloads or constructors may fail with `NoSuchMethodError` until rebuilt.
+### Changed
+- JSON Schema documents and compiled schema literals now preserve exact numeric precision by default.
+- Refactored the annotation processor around shared compilation plans, access emitters, and code generation utilities.
+- Simplified generated code with fewer redundant null checks, meaningful identifiers, and reachable helpers only.
+- Expanded official JSON Schema conformance reporting and added independent SpotBugs analysis.
+
+### Fixed
+- Fixed numeric comparison and `multipleOf` precision in Runtime and Compiled JSON Schema validation.
+- Improved email, IPv6, and URI template format validation.
+- Fixed nullable integral conversions in compiled mappings and circular initialization of temporal value codecs.
+
+### Breaking Changes
+- Removed runtime `NodeConfig` injection from Compiled APIs, including `CompiledInstances.create(Class<T>, NodeConfig)` and generated `_Impl(NodeConfig)` constructors. Runtime APIs still support `NodeConfig`.
+- Removed `@Write.includeNulls`; null policy is now set at the `@CompiledBinder` interface level.
+- Changed backend Binder injection to `CompiledInstances.create(Class<T>, Binder)`.
+- Updated the streaming parser contract: added `readNumberExact()` and required `NodeConfig` for raw reads.
+
+**Migration:** Regenerate compiled implementations and recompile dependent applications. Move method-level null policies to separate compiled binder interfaces where needed. Custom backend implementations must adopt the updated streaming parser contract.
 
 
 ## [1.5.2] - 2026.11.23
