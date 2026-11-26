@@ -27,8 +27,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("parser.readRaw()"), source);
-        assertFalse(source.contains("(Object) parser.readRaw()"), source);
+        assertTrue(source.contains("parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
+        assertFalse(source.contains("(Object) parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
         assertFalse(source.contains(
                 "StreamingIO.readNode(parser, Object.class"), source);
     }
@@ -48,8 +48,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("parser.readRaw()"), source);
-        assertFalse(source.contains("(Object) parser.readRaw()"), source);
+        assertTrue(source.contains("parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
+        assertFalse(source.contains("(Object) parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
         assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 
@@ -68,8 +68,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("parser.readRaw()"), source);
-        assertFalse(source.contains("(Object) parser.readRaw()"), source);
+        assertTrue(source.contains("parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
+        assertFalse(source.contains("(Object) parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
         assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 
@@ -88,8 +88,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("parser.readRaw()"), source);
-        assertFalse(source.contains("(Object) parser.readRaw()"), source);
+        assertTrue(source.contains("parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
+        assertFalse(source.contains("(Object) parser.readRaw(org.sjf4j.NodeConfig.DEFAULT)"), source);
         assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 

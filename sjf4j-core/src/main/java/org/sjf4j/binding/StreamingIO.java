@@ -1003,11 +1003,6 @@ public final class StreamingIO {
 
 
     /** Adopts the owned raw LinkedHashMap without copying its members. */
-    public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
-        return readJsonObject(parser, NodeConfig.DEFAULT);
-    }
-
-    /** Adopts a raw container read with the supplied numeric policy. */
     public static JsonObject readJsonObject(StreamingParser parser, NodeConfig config) throws IOException {
         Map<String, Object> raw = parser.readRawObject(config);
         if (raw == null) return null;
@@ -1017,11 +1012,6 @@ public final class StreamingIO {
     }
 
     /** Adopts the owned raw ArrayList without copying its elements. */
-    public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
-        return readJsonArray(parser, NodeConfig.DEFAULT);
-    }
-
-    /** Adopts a raw container read with the supplied numeric policy. */
     public static JsonArray readJsonArray(StreamingParser parser, NodeConfig config) throws IOException {
         List<Object> raw = parser.readRawArray(config);
         if (raw == null) return null;

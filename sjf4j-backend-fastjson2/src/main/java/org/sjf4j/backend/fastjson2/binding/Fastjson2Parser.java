@@ -70,11 +70,6 @@ public final class Fastjson2Parser extends StreamingParser {
      */
     @Override
     public Object readRaw(NodeConfig config) throws IOException {
-        return readRaw();
-    }
-
-    @Override
-    public Object readRaw() throws IOException {
         try {
             return _readRaw();
         } finally {
@@ -84,11 +79,6 @@ public final class Fastjson2Parser extends StreamingParser {
 
     @Override
     public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
-        return readRawObject();
-    }
-
-    @Override
-    public Map<String, Object> readRawObject() throws IOException {
         try {
             if (reader.current() == '{') return _readRawObjectBody();
             if (reader.nextIfNull()) return null;
@@ -100,11 +90,6 @@ public final class Fastjson2Parser extends StreamingParser {
 
     @Override
     public List<Object> readRawArray(NodeConfig config) throws IOException {
-        return readRawArray();
-    }
-
-    @Override
-    public List<Object> readRawArray() throws IOException {
         try {
             if (reader.current() == '[') return _readRawArrayBody();
             if (reader.nextIfNull()) return null;

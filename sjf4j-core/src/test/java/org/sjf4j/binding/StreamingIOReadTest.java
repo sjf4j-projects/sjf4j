@@ -69,16 +69,16 @@ class StreamingIOReadTest {
     @Test
     void handlesNullAndWrongShapeForPlainJsonContainers() throws Exception {
         try (SimpleJsonParser parser = new SimpleJsonParser("null")) {
-            assertNull(StreamingIO.readJsonObject(parser));
+            assertNull(StreamingIO.readJsonObject(parser, NodeConfig.DEFAULT));
         }
         try (SimpleJsonParser parser = new SimpleJsonParser("null")) {
-            assertNull(StreamingIO.readJsonArray(parser));
+            assertNull(StreamingIO.readJsonArray(parser, NodeConfig.DEFAULT));
         }
         try (SimpleJsonParser parser = new SimpleJsonParser("[]")) {
-            assertThrows(BindingException.class, () -> StreamingIO.readJsonObject(parser));
+            assertThrows(BindingException.class, () -> StreamingIO.readJsonObject(parser, NodeConfig.DEFAULT));
         }
         try (SimpleJsonParser parser = new SimpleJsonParser("{}")) {
-            assertThrows(BindingException.class, () -> StreamingIO.readJsonArray(parser));
+            assertThrows(BindingException.class, () -> StreamingIO.readJsonArray(parser, NodeConfig.DEFAULT));
         }
     }
 

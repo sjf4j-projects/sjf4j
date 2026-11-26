@@ -586,15 +586,9 @@ public abstract class StreamingParser implements Closeable {
      * possible. Backend implementations must create independently owned
      * mutable containers for raw object and array values; the binding layer
      * may adopt those containers without copying.</p>
-     */
-    public Object readRaw() throws IOException {
-        return readRaw(NodeConfig.DEFAULT);
-    }
-
-    /**
-     * Reads an owned raw value using the supplied generic numeric policy.
-     * For a backend with a native reader-wide numeric policy, the config
-     * must agree with the reader's configured policy.
+     *
+     * <p>For a backend with a native reader-wide numeric policy, the config
+     * must agree with the reader's configured policy.</p>
      */
     public abstract Object readRaw(NodeConfig config) throws IOException;
 
@@ -604,11 +598,6 @@ public abstract class StreamingParser implements Closeable {
      * Implementations must preserve this backing type for zero-copy JsonObject adoption.
      * Backends may override this to avoid generic raw-value dispatch.
      */
-    public Map<String, Object> readRawObject() throws IOException {
-        return readRawObject(NodeConfig.DEFAULT);
-    }
-
-    /** Reads an owned raw container using the supplied numeric policy. */
     @SuppressWarnings("unchecked")
     public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
         Object value = readRaw(config);
@@ -623,11 +612,6 @@ public abstract class StreamingParser implements Closeable {
      * {@link java.util.ArrayList}, or null for JSON null.
      * Implementations must preserve this backing type for zero-copy JsonArray adoption.
      */
-    public List<Object> readRawArray() throws IOException {
-        return readRawArray(NodeConfig.DEFAULT);
-    }
-
-    /** Reads an owned raw container using the supplied numeric policy. */
     @SuppressWarnings("unchecked")
     public List<Object> readRawArray(NodeConfig config) throws IOException {
         Object value = readRaw(config);

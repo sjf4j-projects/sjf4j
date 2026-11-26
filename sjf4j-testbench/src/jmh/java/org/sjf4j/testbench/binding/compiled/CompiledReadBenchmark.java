@@ -11,6 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
@@ -486,7 +487,7 @@ public class CompiledReadBenchmark {
     public Object jackson3_map_string_raw() throws IOException {
         try (StreamingParser parser = JACKSON3_RUNTIME.createParser(User.JSON_DATA)) {
             parser.start();
-            Map<String, Object> value = parser.readRawObject();
+            Map<String, Object> value = parser.readRawObject(NodeConfig.DEFAULT);
             parser.end();
             return value;
         }
@@ -496,7 +497,7 @@ public class CompiledReadBenchmark {
     public Object jackson3_map_utf8_raw() throws IOException {
         try (StreamingParser parser = JACKSON3_RUNTIME.createParser(JSON_UTF8)) {
             parser.start();
-            Map<String, Object> value = parser.readRawObject();
+            Map<String, Object> value = parser.readRawObject(NodeConfig.DEFAULT);
             parser.end();
             return value;
         }
