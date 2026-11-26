@@ -6,6 +6,8 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.ResolvedPath;
+import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.mapping.CreatorResolver;
 import org.sjf4j.processor.property.Property;
@@ -759,108 +761,64 @@ public final class JdbcCompiler {
             return null;
         }
 
-        List<TargetStep> steps = new ArrayList<TargetStep>(segments.length - 1);
-        TypeMirror currentType = rootType;
-
-        for (int i = 1; i < segments.length; i++) {
-            PathSegment segment = segments[i];
-            boolean last = i == segments.length - 1;
-
-            NodeAccess access;
-
-            if (segment instanceof PathSegment.Name) {
-                access = context.access.resolveName(currentType, ((PathSegment.Name) segment).name);
-
-            } else if (segment instanceof PathSegment.Index) {
-                int index = ((PathSegment.Index) segment).index;
-
-                /*
-                 * The JDBC target emitter intentionally uses direct static
-                 * indexing. Relative negative indexing would require extra
-                 * runtime path semantics.
-                 */
-                if (index < 0) {
-
+        ResolvedPath resolved = context.paths.resolve(rootType, segments,
+                (i, last, segment) -> {
+                    if (segment instanceof PathSegment.Name) return true;
+                    if (segment instanceof PathSegment.Index) {
+                        // JDBC uses direct static indexing, not relative indexes.
+                        if (((PathSegment.Index) segment).index < 0) {
+                            error(method, generated,
+                                    "Negative indexes are not supported in JDBC target paths: " + expression);
+                            return false;
+                        }
+                        return true;
+                    }
                     error(method, generated,
-                            "Negative indexes are not supported in JDBC target paths: " + expression);
-
-                    return null;
-                }
-
-                access = context.access.resolveIndex(currentType);
-
-            } else {
-
-                error(method, generated,
-                        "JDBC target path supports only property names and indexes: " + expression);
-
-                return null;
-            }
-
-            if (access == null) {
-
-                error(method, generated, "Cannot resolve JDBC target path '" + expression +
-                        "' at segment " + segment);
-
-                return null;
-            }
-
-            if (!supportedTargetAccess(access)) {
-                error(method, generated,
-                        "Unsupported JDBC target path access '" + access.kind() + "' in " + expression);
-
-                return null;
-            }
-
-            if (last) {
-
-                TypeMirror writeType = access.writeType();
-
-                if (writeType == null) {
-
-                    error(method, generated, "Final JDBC target path segment is not writable: " + expression);
-
-                    return null;
-                }
-
-                if (!types.isFullyConcrete(writeType)) {
-                    error(method, generated, "JDBC target path type must be fully concrete: " + writeType);
-
-                    return null;
-                }
-
-            } else {
-
-                TypeMirror readType = access.readType();
-
-                if (readType == null) {
-
-                    error(method, generated,
-                            "Intermediate JDBC target path segment is not readable: " + expression);
-
-                    return null;
-                }
-
-                if (readType.getKind().isPrimitive()) {
-                    error(method, generated, "JDBC target path cannot traverse primitive value: " + expression);
-
-                    return null;
-                }
-
-                if (!types.isFullyConcrete(readType)) {
-                    error(method, generated,
-                            "Intermediate JDBC target path type must be fully concrete: " + readType);
-
-                    return null;
-                }
-
-                currentType = readType;
-            }
-
-            steps.add(new TargetStep(segment, access));
-        }
-
-        return Target.path(expression, steps);
+                            "JDBC target path supports only property names and indexes: " + expression);
+                    return false;
+                },
+                (i, last, step) -> {
+                    NodeAccess access = step.access();
+                    if (access == null) {
+                        error(method, generated, "Cannot resolve JDBC target path '" + expression +
+                                "' at segment " + step.segment());
+                        return null;
+                    }
+                    if (!supportedTargetAccess(access)) {
+                        error(method, generated,
+                                "Unsupported JDBC target path access '" + access.kind() + "' in " + expression);
+                        return null;
+                    }
+                    if (last) {
+                        TypeMirror writeType = access.writeType();
+                        if (writeType == null) {
+                            error(method, generated, "Final JDBC target path segment is not writable: " + expression);
+                            return null;
+                        }
+                        if (!types.isFullyConcrete(writeType)) {
+                            error(method, generated, "JDBC target path type must be fully concrete: " + writeType);
+                            return null;
+                        }
+                        return writeType;
+                    }
+                    TypeMirror readType = access.readType();
+                    if (readType == null) {
+                        error(method, generated,
+                                "Intermediate JDBC target path segment is not readable: " + expression);
+                        return null;
+                    }
+                    if (readType.getKind().isPrimitive()) {
+                        error(method, generated, "JDBC target path cannot traverse primitive value: " + expression);
+                        return null;
+                    }
+                    if (!types.isFullyConcrete(readType)) {
+                        error(method, generated,
+                                "Intermediate JDBC target path type must be fully concrete: " + readType);
+                        return null;
+                    }
+                    return readType;
+                });
+        return resolved == null ? null : Target.path(expression, resolved);
     }
 
     private boolean supportedTargetAccess(NodeAccess access) {
@@ -1317,25 +1275,6 @@ public final class JdbcCompiler {
         }
     }
 
-    public static final class TargetStep {
-
-        private final PathSegment segment;
-        private final NodeAccess access;
-
-        TargetStep(PathSegment segment, NodeAccess access) {
-            this.segment = segment;
-            this.access = access;
-        }
-
-        public PathSegment segment() {
-            return segment;
-        }
-
-        public NodeAccess access() {
-            return access;
-        }
-    }
-
     public static final class Target {
 
         public enum Kind {
@@ -1345,23 +1284,22 @@ public final class JdbcCompiler {
 
         private final Kind kind;
         private final String expression;
-        private final List<TargetStep> steps;
+        private final ResolvedPath path;
 
-        private Target(Kind kind, String expression, List<TargetStep> steps) {
+        private Target(Kind kind, String expression, ResolvedPath path) {
             this.kind = kind;
             this.expression = expression;
-
-            this.steps = Collections.unmodifiableList(new ArrayList<TargetStep>(steps));
+            this.path = path;
         }
 
         static Target property(String name, NodeAccess access) {
-            List<TargetStep> steps = new ArrayList<TargetStep>(1);
-            steps.add(new TargetStep(new PathSegment.Name(null, name), access));
-            return new Target(Kind.PROPERTY, name, steps);
+            ResolvedStep step = new ResolvedStep(access.ownerType(), new PathSegment.Name(null, name), access);
+            return new Target(Kind.PROPERTY, name, new ResolvedPath(access.ownerType(),
+                    Collections.singletonList(step), access.writeType()));
         }
 
-        static Target path(String expression, List<TargetStep> steps) {
-            return new Target(Kind.PATH, expression, steps);
+        static Target path(String expression, ResolvedPath path) {
+            return new Target(Kind.PATH, expression, path);
         }
 
         public Kind kind() {
@@ -1372,12 +1310,12 @@ public final class JdbcCompiler {
             return expression;
         }
 
-        public List<TargetStep> steps() {
-            return steps;
+        public List<ResolvedStep> steps() {
+            return path.steps();
         }
 
-        public TargetStep finalStep() {
-            return steps.get(steps.size() - 1);
+        public ResolvedStep finalStep() {
+            return path.steps().get(path.steps().size() - 1);
         }
 
         public NodeAccess finalAccess() {
@@ -1385,7 +1323,7 @@ public final class JdbcCompiler {
         }
 
         public TypeMirror type() {
-            return finalAccess().writeType();
+            return path.resultType();
         }
     }
 }

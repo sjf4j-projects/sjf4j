@@ -6,6 +6,8 @@ import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.ResolvedPath;
+import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.Property;
@@ -380,7 +382,7 @@ public final class MappingCompiler {
         }
 
         return CompiledMethod.root(plan,
-                new Read(source, sourceType, Collections.<ReadStep>emptyList(), sourceType), conversion);
+                new Read(source, new ResolvedPath(sourceType, Collections.emptyList(), sourceType)), conversion);
     }
 
     private ConverterResolver.Conversion rootFallbackConversion(MappingPlan plan, TypeMirror source,
@@ -646,7 +648,7 @@ public final class MappingCompiler {
 
         if (expression.isEmpty() || "$".equals(expression)) {
             TypeMirror rootType = plan.sourceType(root);
-            return new Read(root, rootType, Collections.<ReadStep>emptyList(), rootType);
+            return new Read(root, new ResolvedPath(rootType, Collections.emptyList(), rootType));
         }
 
         if (isPath(expression)) return resolvePathRead(plan, root, expression, required, generated);
@@ -663,9 +665,9 @@ public final class MappingCompiler {
             return null;
         }
 
-        List<ReadStep> steps = new ArrayList<ReadStep>(1);
-        steps.add(new ReadStep(new PathSegment.Name(PathSegment.Root.INSTANCE, expression), access));
-        return new Read(root, rootType, steps, access.readType());
+        ResolvedStep step = new ResolvedStep(rootType,
+                new PathSegment.Name(PathSegment.Root.INSTANCE, expression), access);
+        return new Read(root, new ResolvedPath(rootType, Collections.singletonList(step), access.readType()));
     }
 
     private Read resolvePathRead(MappingPlan plan, VariableElement root, String expression,
@@ -685,45 +687,27 @@ public final class MappingCompiler {
             return null;
         }
 
-        PathSegment[] segments = path.segments();
-        TypeMirror rootType = plan.sourceType(root);
-        TypeMirror current = rootType;
-        List<ReadStep> steps = new ArrayList<>();
-
-        for (int i = 1; i < segments.length; i++) {
-            PathSegment segment = segments[i];
-
-            NodeAccess access;
-
-            if (segment instanceof PathSegment.Name) {
-                access = context.access.resolveName(current, ((PathSegment.Name) segment).name);
-
-            } else if (segment instanceof PathSegment.Index) {
-                access = context.access.resolveIndex(current);
-
-            } else {
-                if (required) {
-                    error(plan.method(), generated,
-                            "source path '" + expression + "' supports only name and index segments");
-                }
-
-                return null;
-            }
-
-            if (access == null || !access.readable()) {
-                if (required) {
-                    error(plan.method(), generated,
-                            "source path '" + expression + "' is not readable at segment " + i);
-                }
-
-                return null;
-            }
-
-            steps.add(new ReadStep(segment, access));
-            current = access.readType();
-        }
-
-        return new Read(root, rootType, steps, current);
+        ResolvedPath resolved = context.paths.resolve(plan.sourceType(root), path.segments(),
+                (i, last, segment) -> {
+                    if (segment instanceof PathSegment.Name || segment instanceof PathSegment.Index) return true;
+                    if (required) {
+                        error(plan.method(), generated,
+                                "source path '" + expression + "' supports only name and index segments");
+                    }
+                    return false;
+                },
+                (i, last, step) -> {
+                    NodeAccess access = step.access();
+                    if (access == null || !access.readable()) {
+                        if (required) {
+                            error(plan.method(), generated,
+                                    "source path '" + expression + "' is not readable at segment " + i);
+                        }
+                        return null;
+                    }
+                    return access.readType();
+                });
+        return resolved == null ? null : new Read(root, resolved);
     }
 
     /**
@@ -800,80 +784,49 @@ public final class MappingCompiler {
             return null;
         }
 
-        List<TargetStep> steps = new ArrayList<>();
-        TypeMirror current = rootType;
-
-        for (int i = 1; i < segments.length; i++) {
-            PathSegment segment = segments[i];
-            boolean last = i == segments.length - 1;
-
-            NodeAccess access;
-
-            if (segment instanceof PathSegment.Name) {
-                access = context.access.resolveName(current, ((PathSegment.Name) segment).name);
-
-            } else if (segment instanceof PathSegment.Index) {
-                if (rule.mode() == MappingPlan.WriteMode.ENSURE) {
-                    error(method, generated, "@EnsureMapping does not support index target segments");
-
-                    return null;
-                }
-
-                access = context.access.resolveIndex(current);
-
-            } else if (segment instanceof PathSegment.Append && last &&
-                    rule.mode() == MappingPlan.WriteMode.STRICT) {
-                access = context.access.resolveAppend(current);
-
-            } else {
-                error(method, generated,
-                        "unsupported target path segment at index " + i + " in '" + rule.target() + "'");
-
-                return null;
-            }
-
-            if (access == null) {
-                error(method, generated, "cannot resolve target path '" + rule.target() + "' at segment " + i);
-
-                return null;
-            }
-
-            if (last) {
-                if (!access.writable()) {
-                    error(method, generated, "target path '" + rule.target() + "' is not writable");
-
-                    return null;
-                }
-
-            } else {
-                if (!access.readable()) {
+        ResolvedPath resolved = context.paths.resolve(rootType, segments,
+                (i, last, segment) -> {
+                    if (segment instanceof PathSegment.Name) return true;
+                    if (segment instanceof PathSegment.Index) {
+                        if (rule.mode() == MappingPlan.WriteMode.ENSURE) {
+                            error(method, generated, "@EnsureMapping does not support index target segments");
+                            return false;
+                        }
+                        return true;
+                    }
+                    if (segment instanceof PathSegment.Append && last &&
+                            rule.mode() == MappingPlan.WriteMode.STRICT) return true;
                     error(method, generated,
-                            "target path '" + rule.target() + "' is not readable at segment " + i);
-
-                    return null;
-                }
-
-                /*
-                 * Ensure may need to create and assign a missing intermediate
-                 * OBNT node, so read-only intermediate access is insufficient.
-                 */
-                if (rule.mode() == MappingPlan.WriteMode.ENSURE && !access.writable()) {
-                    error(method, generated, "@EnsureMapping target path '" + rule.target() +
-                            "' contains a read-only intermediate segment");
-
-                    return null;
-                }
-            }
-
-            steps.add(new TargetStep(segment, access));
-
-            if (!last) {
-                current = access.readType();
-            }
-        }
-
-        TargetStep tail = steps.get(steps.size() - 1);
-        return Target.path(rule.target(), rule.mode(), steps, tail.access.writeType());
+                            "unsupported target path segment at index " + i + " in '" + rule.target() + "'");
+                    return false;
+                },
+                (i, last, step) -> {
+                    NodeAccess access = step.access();
+                    if (access == null) {
+                        error(method, generated, "cannot resolve target path '" + rule.target() + "' at segment " + i);
+                        return null;
+                    }
+                    if (last) {
+                        if (!access.writable()) {
+                            error(method, generated, "target path '" + rule.target() + "' is not writable");
+                            return null;
+                        }
+                        return access.writeType();
+                    }
+                    if (!access.readable()) {
+                        error(method, generated,
+                                "target path '" + rule.target() + "' is not readable at segment " + i);
+                        return null;
+                    }
+                    // Ensure may need to create and assign a missing intermediate OBNT node.
+                    if (rule.mode() == MappingPlan.WriteMode.ENSURE && !access.writable()) {
+                        error(method, generated, "@EnsureMapping target path '" + rule.target() +
+                                "' contains a read-only intermediate segment");
+                        return null;
+                    }
+                    return access.readType();
+                });
+        return resolved == null ? null : Target.path(rule.target(), rule.mode(), resolved);
     }
 
     /*
@@ -1134,25 +1087,19 @@ public final class MappingCompiler {
 
         private final Kind kind;
         private final String name;
-
         private final TypeMirror type;
-
         private final NodeAccess access;
-
         private final MappingPlan.WriteMode mode;
-
-        private final List<TargetStep> steps;
+        private final ResolvedPath path;
 
         private Target(Kind kind, String name, TypeMirror type, NodeAccess access,
-                       MappingPlan.WriteMode mode, List<TargetStep> steps) {
+                       MappingPlan.WriteMode mode, ResolvedPath path) {
             this.kind = kind;
             this.name = name;
             this.type = type;
             this.access = access;
             this.mode = mode;
-
-            this.steps = steps == null ? Collections.<TargetStep>emptyList()
-                    : Collections.unmodifiableList(new ArrayList<TargetStep>(steps));
+            this.path = path;
         }
 
         static Target property(String name, NodeAccess access) {
@@ -1160,9 +1107,8 @@ public final class MappingCompiler {
                     MappingPlan.WriteMode.STRICT, null);
         }
 
-        static Target path(String expression, MappingPlan.WriteMode mode,
-                           List<TargetStep> steps, TypeMirror type) {
-            return new Target(Kind.PATH, expression, type, null, mode, steps);
+        static Target path(String expression, MappingPlan.WriteMode mode, ResolvedPath path) {
+            return new Target(Kind.PATH, expression, path.resultType(), null, mode, path);
         }
 
         Kind kind() {
@@ -1185,27 +1131,8 @@ public final class MappingCompiler {
             return mode;
         }
 
-        List<TargetStep> steps() {
-            return steps;
-        }
-    }
-
-    static final class TargetStep {
-
-        private final PathSegment segment;
-        private final NodeAccess access;
-
-        TargetStep(PathSegment segment, NodeAccess access) {
-            this.segment = segment;
-            this.access = access;
-        }
-
-        PathSegment segment() {
-            return segment;
-        }
-
-        NodeAccess access() {
-            return access;
+        List<ResolvedStep> steps() {
+            return path == null ? Collections.emptyList() : path.steps();
         }
     }
 
@@ -1276,18 +1203,11 @@ public final class MappingCompiler {
     static final class Read {
 
         private final VariableElement root;
-        private final TypeMirror rootType;
-        private final List<ReadStep> steps;
+        private final ResolvedPath path;
 
-        private final TypeMirror type;
-
-        Read(VariableElement root, TypeMirror rootType, List<ReadStep> steps, TypeMirror type) {
+        Read(VariableElement root, ResolvedPath path) {
             this.root = root;
-            this.rootType = rootType;
-
-            this.steps = Collections.unmodifiableList(new ArrayList<ReadStep>(steps));
-
-            this.type = type;
+            this.path = path;
         }
 
         VariableElement root() {
@@ -1295,38 +1215,19 @@ public final class MappingCompiler {
         }
 
         TypeMirror rootType() {
-            return rootType;
+            return path.rootType();
         }
 
-        List<ReadStep> steps() {
-            return steps;
+        List<ResolvedStep> steps() {
+            return path.steps();
         }
 
         TypeMirror type() {
-            return type;
+            return path.resultType();
         }
 
         boolean rootValue() {
-            return steps.isEmpty();
-        }
-    }
-
-    static final class ReadStep {
-
-        private final PathSegment segment;
-        private final NodeAccess access;
-
-        ReadStep(PathSegment segment, NodeAccess access) {
-            this.segment = segment;
-            this.access = access;
-        }
-
-        PathSegment segment() {
-            return segment;
-        }
-
-        NodeAccess access() {
-            return access;
+            return path.steps().isEmpty();
         }
     }
 

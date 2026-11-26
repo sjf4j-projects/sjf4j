@@ -4,6 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
@@ -1012,7 +1013,7 @@ public final class MappingEmitter {
 
         out.beginBlock("if (" + source + " != null)");
         for (int i = start; i < end; i++) {
-            MappingCompiler.ReadStep step =
+            ResolvedStep step =
                     arguments.get(i).value().read().steps().get(0);
             out.line(locals[i - start] + " = " +
                     readExpression(source, step.segment(), step.access()) + ";");
@@ -1057,7 +1058,7 @@ public final class MappingEmitter {
         MappingCompiler.Read read = value.read();
         if (read.rootValue() || read.steps().size() != 1) return null;
 
-        MappingCompiler.ReadStep step = read.steps().get(0);
+        ResolvedStep step = read.steps().get(0);
         if (!(step.segment() instanceof PathSegment.Name) ||
                 step.access().kind() != NodeAccess.Kind.PROPERTY) {
             return null;
@@ -1426,7 +1427,7 @@ public final class MappingEmitter {
 
         boolean first = true;
 
-        for (MappingCompiler.ReadStep step :
+        for (ResolvedStep step :
                 read.steps()) {
 
             NodeAccess access =
@@ -2284,7 +2285,7 @@ public final class MappingEmitter {
             String root,
             String value) {
 
-        List<MappingCompiler.TargetStep> steps =
+        List<ResolvedStep> steps =
                 target.steps();
 
         String current =
@@ -2297,7 +2298,7 @@ public final class MappingEmitter {
              i < steps.size() - 1;
              i++) {
 
-            MappingCompiler.TargetStep step =
+            ResolvedStep step =
                     steps.get(i);
 
             NodeAccess access =
@@ -2398,7 +2399,7 @@ public final class MappingEmitter {
                     child;
         }
 
-        MappingCompiler.TargetStep tail =
+        ResolvedStep tail =
                 steps.get(
                         steps.size() - 1);
 

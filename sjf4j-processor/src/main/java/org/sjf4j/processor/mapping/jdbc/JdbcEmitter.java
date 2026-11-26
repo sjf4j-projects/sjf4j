@@ -3,6 +3,7 @@ package org.sjf4j.processor.mapping.jdbc;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.ResolvedStep;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.code.JavaWriter;
@@ -1526,7 +1527,7 @@ public final class JdbcEmitter {
             JdbcCompiler.Target target,
             String value) {
 
-        List<JdbcCompiler.TargetStep> steps =
+        List<ResolvedStep> steps =
                 target.steps();
 
         String owner =
@@ -1536,7 +1537,7 @@ public final class JdbcEmitter {
              i < steps.size() - 1;
              i++) {
 
-            JdbcCompiler.TargetStep step =
+            ResolvedStep step =
                     steps.get(i);
 
             NodeAccess access =
@@ -1586,7 +1587,7 @@ public final class JdbcEmitter {
                 value);
     }
 
-    private String readExpression(String owner, JdbcCompiler.TargetStep step) {
+    private String readExpression(String owner, ResolvedStep step) {
         NodeAccess access = step.access();
         PathSegment segment = step.segment();
         switch (access.kind()) {
@@ -1605,7 +1606,7 @@ public final class JdbcEmitter {
         }
     }
 
-    private void writeValue(JavaWriter out, String owner, JdbcCompiler.TargetStep step, String value) {
+    private void writeValue(JavaWriter out, String owner, ResolvedStep step, String value) {
         NodeAccess access = step.access();
         PathSegment segment = step.segment();
         switch (access.kind()) {
