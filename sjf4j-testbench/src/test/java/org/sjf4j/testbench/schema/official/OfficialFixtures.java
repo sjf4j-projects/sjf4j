@@ -22,4 +22,8 @@ final class OfficialFixtures {
     static Object readNode(Path file) throws IOException {
         return JSON.readNode(Files.readAllBytes(file), Object.class);
     }
+    static void writeNode(Path file, Object node) throws IOException {
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, JSON.writeNodeAsString(node));
+    }
 }
