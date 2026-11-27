@@ -139,36 +139,32 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        if (!ctx.limitsEvaluation()) return _evaluate(instance, instancePs, ctx);
-        ctx.enterEvaluation();
+        boolean limited = ctx.limitsEvaluation();
+        if (limited) ctx.enterEvaluation(this, instance, instancePs);
         try {
-            return _evaluate(instance, instancePs, ctx);
-        } finally {
-            ctx.leaveEvaluation();
-        }
-    }
-
-    private boolean _evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        if (ctx.isCollectAnnotations()) {
-            int mark = ctx.annotationMark();
-            boolean valid = false;
-            try {
-                valid = _evaluateKeywords(instance, instancePs, ctx);
-                if (valid && annotations != null) {
-                    for (Annotation annotation : annotations) {
-                        if (annotation.stringOnly && instance.jsonType() != JsonType.STRING) {
-                            continue;
+            if (ctx.isCollectAnnotations()) {
+                int mark = ctx.annotationMark();
+                boolean valid = false;
+                try {
+                    valid = _evaluateKeywords(instance, instancePs, ctx);
+                    if (valid && annotations != null) {
+                        for (Annotation annotation : annotations) {
+                            if (annotation.stringOnly && instance.jsonType() != JsonType.STRING) {
+                                continue;
+                            }
+                            ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
+                                    annotation.resourceUri, annotation.keyword, null, annotation.annotation);
                         }
-                        ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
-                                annotation.resourceUri, annotation.keyword, null, annotation.annotation);
                     }
+                    return valid;
+                } finally {
+                    if (!valid) ctx.rollbackAnnotations(mark);
                 }
-                return valid;
-            } finally {
-                if (!valid) ctx.rollbackAnnotations(mark);
             }
+            return _evaluateKeywords(instance, instancePs, ctx);
+        } finally {
+            if (limited) ctx.leaveEvaluation();
         }
-        return _evaluateKeywords(instance, instancePs, ctx);
     }
 
     /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
@@ -197,7 +193,7 @@ public final class SchemaPlan {
         try {
             boolean countEvaluations = ctx.limitsEvaluations();
             for (Evaluator evaluator : evaluators) {
-                if (countEvaluations) ctx.countEvaluation();
+                if (countEvaluations) ctx.countEvaluation(this, instance, ps);
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;

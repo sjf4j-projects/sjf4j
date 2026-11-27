@@ -77,21 +77,30 @@ public class ValidationContext {
         return maxEvaluations != 0;
     }
 
-    void countEvaluation() {
-        if (maxEvaluations != 0) {
-            if (evaluations >= maxEvaluations) {
-                throw new ValidationLimitException("Validation limit exceeded: maxEvaluations=" + maxEvaluations);
-            }
-            evaluations++;
+    void countEvaluation(SchemaPlan plan, Instance instance, PathSegment instancePs) {
+        if (evaluations >= maxEvaluations) {
+            throw _limitExceeded("maxEvaluations", maxEvaluations, plan, instance, instancePs);
         }
+        evaluations++;
     }
 
-    void enterEvaluation() {
+    void enterEvaluation(SchemaPlan plan, Instance instance, PathSegment instancePs) {
         if (maxEvaluationDepth != 0 && evaluationDepth >= maxEvaluationDepth) {
-            throw new ValidationLimitException("Validation limit exceeded: maxEvaluationDepth=" + maxEvaluationDepth);
+            throw _limitExceeded("maxEvaluationDepth", maxEvaluationDepth, plan, instance, instancePs);
         }
-        countEvaluation();
+        if (maxEvaluations != 0) countEvaluation(plan, instance, instancePs);
         if (maxEvaluationDepth != 0) evaluationDepth++;
+    }
+
+    private ValidationException _limitExceeded(String limit, long max, SchemaPlan plan,
+                                               Instance instance, PathSegment instancePs) {
+        if (instancePs == null) instancePs = instance.materializePath();
+        ValidationResult.Detail error = new ValidationResult.Detail(limit,
+                "validation aborted: " + limit + "=" + max + " exceeded",
+                null, instancePs, plan.keywordPs, plan.resourceUri);
+        // A limit is a terminal execution failure, never a speculative branch error.
+        // Report it even in boolean-only mode or when assertion errors are suppressed.
+        return new ValidationException(new ValidationResult(false, Collections.singletonList(error)));
     }
 
     void leaveEvaluation() {

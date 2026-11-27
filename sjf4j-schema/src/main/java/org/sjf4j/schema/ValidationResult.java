@@ -38,7 +38,7 @@ public class ValidationResult {
         return valid;
     }
 
-    /** Number of assertion errors, excluding annotations. */
+    /** Number of retained errors, excluding annotations. */
     public int count() {
         return errors == null ? 0 : errors.size();
     }

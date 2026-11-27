@@ -27,34 +27,6 @@ public final class SchemaPlanner {
 
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
-    /** Shared by roots, nested resources and lazy fragments in one compilation. */
-    static final class PlanningBudget {
-        private final int maxSchemas;
-        private final int maxSchemaDepth;
-        private int schemas;
-        private int depth;
-
-        PlanningBudget(PlanningOptions options) {
-            maxSchemas = options.getMaxSchemas();
-            maxSchemaDepth = options.getMaxSchemaDepth();
-        }
-
-        void enter() {
-            if (maxSchemas != 0 && schemas >= maxSchemas) {
-                throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
-            }
-            if (maxSchemaDepth != 0 && depth >= maxSchemaDepth) {
-                throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxSchemaDepth);
-            }
-            if (maxSchemas != 0) schemas++;
-            if (maxSchemaDepth != 0) depth++;
-        }
-
-        void leave() {
-            if (maxSchemaDepth != 0) depth--;
-        }
-    }
-
     static final class PlanningContext {
         final SchemaRegistry registry;
         final List<Evaluator.RefEvaluator> refEvaluators;
@@ -82,31 +54,24 @@ public final class SchemaPlanner {
         SchemaPlan plan = registry.resolveBuilt(resourceUri);
         if (plan != null) return plan;
 
-        PlanningBudget budget = registry.planningBudget;
-        if (budget == null) return _buildRootPlan(schema, registry, resourceUri, retrievalUri);
-        budget.enter();
+        registry.enterPlanning();
         try {
-            return _buildRootPlan(schema, registry, resourceUri, retrievalUri);
+            PlanningContext context = new PlanningContext(registry);
+            SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
+            Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
+                    resourceUri, PathSegment.Root.INSTANCE);
+            plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
+                    new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
+            context.registry.putPlan(resourceUri, plan);
+
+            if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
+                context.registry.putPlan(retrievalUri, plan);
+            }
+            _bindDeferredRefs(context);
+            return plan;
         } finally {
-            budget.leave();
+            registry.leavePlanning();
         }
-    }
-
-    private static SchemaPlan _buildRootPlan(ObjectSchema schema, SchemaRegistry registry,
-                                             URI resourceUri, URI retrievalUri) {
-        PlanningContext context = new PlanningContext(registry);
-        SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
-        Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
-                resourceUri, PathSegment.Root.INSTANCE);
-        SchemaPlan plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
-                new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-        context.registry.putPlan(resourceUri, plan);
-
-        if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
-            context.registry.putPlan(retrievalUri, plan);
-        }
-        _bindDeferredRefs(context);
-        return plan;
     }
 
     /**
@@ -515,8 +480,7 @@ public final class SchemaPlanner {
         JsonPath jsonPath = JsonPath.parse(path);
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
-        PlanningBudget budget = registry.planningBudget;
-        if (budget != null) budget.enter();
+        registry.enterPlanning();
         try {
             PlanningContext context = new PlanningContext(registry);
             SchemaPlan plan = _buildNodePlan(node, resourcePlan.resourceUri, jsonPath.tail(),
@@ -525,7 +489,7 @@ public final class SchemaPlanner {
             _bindDeferredRefs(context);
             return plan;
         } finally {
-            if (budget != null) budget.leave();
+            registry.leavePlanning();
         }
     }
 
@@ -631,17 +595,12 @@ public final class SchemaPlanner {
                                                     Map<String, SchemaPlan> byPathPlans,
                                                     PlanningContext context, SchemaDialect inheritedDialect,
                                                     Map<String, Boolean> inheritedVocabulary) {
-        PlanningBudget budget = context.registry.planningBudget;
-        if (budget == null) {
-            return _buildNodePlan(node, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                    context, inheritedDialect, inheritedVocabulary);
-        }
-        budget.enter();
+        context.registry.enterPlanning();
         try {
             return _buildNodePlan(node, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                     context, inheritedDialect, inheritedVocabulary);
         } finally {
-            budget.leave();
+            context.registry.leavePlanning();
         }
     }
 

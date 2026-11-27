@@ -32,7 +32,11 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
-    final SchemaPlanner.PlanningBudget planningBudget;
+    // These fields are used only by the isolated registry of a bounded compilation.
+    private final PlanningOptions planningOptions;
+    private final SchemaRegistry planningSource;
+    private int plannedSchemas;
+    private int planningDepth;
 
 
 
@@ -41,11 +45,12 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
-        this(defaultDialect, null);
+        this(defaultDialect, null, null);
     }
 
-    private SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions options) {
-        this.planningBudget = options == null ? null : new SchemaPlanner.PlanningBudget(options);
+    private SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions options, SchemaRegistry source) {
+        this.planningOptions = options;
+        this.planningSource = source;
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
@@ -54,9 +59,28 @@ public class SchemaRegistry {
     /** Isolated catalog for one bounded planning operation. */
     static SchemaRegistry forPlanning(SchemaRegistry source, PlanningOptions options) {
         SchemaRegistry registry = new SchemaRegistry(source == null
-                ? SchemaDialect.DRAFT_2020_12 : source.defaultDialect, options);
+                ? SchemaDialect.DRAFT_2020_12 : source.defaultDialect, options, source);
         registry.indexRegistry(source);
         return registry;
+    }
+
+    /** Counts one newly constructed schema and enters its planning frame. */
+    void enterPlanning() {
+        if (planningOptions == null) return;
+        int maxSchemas = planningOptions.getMaxSchemas();
+        int maxDepth = planningOptions.getMaxSchemaDepth();
+        if (maxSchemas != 0 && plannedSchemas >= maxSchemas) {
+            throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
+        }
+        if (maxDepth != 0 && planningDepth >= maxDepth) {
+            throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxDepth);
+        }
+        if (maxSchemas != 0) plannedSchemas++;
+        if (maxDepth != 0) planningDepth++;
+    }
+
+    void leavePlanning() {
+        if (planningOptions != null && planningOptions.getMaxSchemaDepth() != 0) planningDepth--;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -506,14 +530,41 @@ public class SchemaRegistry {
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             // Do not share cached mutable object plans or compile outside the budget.
-            if (planningBudget != null) {
+            if (planningOptions != null) {
                 if (!allowBuild) return null;
+                SchemaPlan nested = _rebuildNestedResource(id);
+                if (nested != null) return nested;
                 ObjectSchema builtin = GLOBAL_SCHEMA_REGISTRY.byIdSchemas.get(id);
                 if (builtin != null) return SchemaPlanner.buildAndPutPlan(builtin, this);
                 SchemaPlan builtinPlan = GLOBAL_SCHEMA_REGISTRY.byIdPlans.get(id);
                 return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
             }
             return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
+        }
+        return null;
+    }
+
+    /**
+     * Nested $id resources are cached as plans, not indexed as standalone
+     * schema models. Rebuild their original owning root to preserve inherited
+     * dialect, vocabulary and fragment scope without borrowing a cached plan.
+     */
+    private SchemaPlan _rebuildNestedResource(String id) {
+        if (planningSource == null) return null;
+        SchemaPlan target = planningSource.byIdPlans.get(id);
+        if (target == null || target.booleanSchema) return null;
+
+        for (Map.Entry<String, ObjectSchema> entry : planningSource.byIdSchemas.entrySet()) {
+            SchemaPlan oldRoot = planningSource.byIdPlans.get(entry.getKey());
+            if (oldRoot == null || oldRoot.byPathPlans == null) continue;
+            for (Map.Entry<String, SchemaPlan> fragment : oldRoot.byPathPlans.entrySet()) {
+                if (fragment.getValue() != target) continue;
+                SchemaPlan root = SchemaPlanner.buildAndPutPlan(entry.getValue(), this);
+                SchemaPlan rebuilt = byIdPlans.get(id);
+                if (rebuilt != null) return rebuilt;
+                // The nested resource may have been discovered by a lazy pointer.
+                return resolveFragment(root, fragment.getKey());
+            }
         }
         return null;
     }
