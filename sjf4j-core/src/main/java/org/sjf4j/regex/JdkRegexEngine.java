@@ -9,10 +9,6 @@ import java.util.regex.Pattern;
  */
 public final class JdkRegexEngine implements RegexEngine {
 
-    public static final JdkRegexEngine INSTANCE = new JdkRegexEngine();
-
-    private JdkRegexEngine() {}
-
     @Override
     public Regex compile(String expression, int flags) {
         Pattern pattern = Pattern.compile(expression, flags);
