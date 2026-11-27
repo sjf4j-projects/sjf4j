@@ -11,8 +11,7 @@ import java.util.Objects;
 public interface RegexEngine {
 
     /** The default engine, currently using JDK regex without a guard. */
-    RegexEngine DEFAULT = (expression, flags) ->
-            JdkRegexEngine.INSTANCE.compile(expression, flags);
+    RegexEngine DEFAULT = new JdkRegexEngine();
 
     /**
      * Compiles an expression with flags defined by {@link java.util.regex.Pattern}.
