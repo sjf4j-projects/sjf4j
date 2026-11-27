@@ -152,9 +152,9 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        ctx.enterEvaluation(this, instance, instancePs);
+        ctx.enterFrame(this, instance, instancePs);
         try {
-            ctx.countEvaluation(this, instance, instancePs);
+            ctx.countStep(this, instance, instancePs);
             if (ctx.isCollectAnnotations()) {
                 int mark = ctx.annotationMark();
                 boolean valid = false;
@@ -176,7 +176,7 @@ public final class SchemaPlan {
             }
             return _evaluateKeywords(instance, instancePs, ctx);
         } finally {
-            ctx.leaveEvaluation();
+            ctx.leaveFrame();
         }
     }
 
@@ -205,7 +205,7 @@ public final class SchemaPlan {
         if (hasDynamicAnchors) ctx.pushPlan(this);
         try {
             for (Evaluator evaluator : evaluators) {
-                ctx.countEvaluation(this, instance, ps);
+                ctx.countStep(this, instance, ps);
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;
