@@ -221,7 +221,8 @@ public final class SchemaPlanner {
         // pattern
         String pattern = schema.getString("pattern");
         if (pattern != null && _allowsKeyword(dialect, vocabulary, "pattern")) {
-            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), resourceUri, pattern));
+            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), resourceUri, pattern,
+                    context.registry.getRegexEngine()));
         }
 
         // minProperties / maxProperties
@@ -260,7 +261,7 @@ public final class SchemaPlanner {
                 : null;
         if (properties != null || patternProperties != null || additionalProperties != null) {
             evaluators.add(new Evaluator.PropertiesEvaluator(new PathSegment.Name(ps, "patternProperties"), resourceUri,
-                    properties, patternProperties, additionalProperties));
+                    properties, patternProperties, additionalProperties, context.registry.getRegexEngine()));
         }
 
         // dependentSchemas
