@@ -114,7 +114,7 @@ public final class SchemaPlanner {
 
         SchemaRegistry global = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY;
         if (registry == global) return null;
-        if (context.options == global.getPlanningOptions()
+        if (registry.getPlanningOptions() == global.getPlanningOptions()
                 && registry.getDefaultDialect() == global.getDefaultDialect()) {
             return _resolve(global, id, null, allowBuild);
         }

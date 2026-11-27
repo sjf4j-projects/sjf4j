@@ -13,7 +13,6 @@ import java.util.List;
  */
 final class PlanningContext {
     final SchemaRegistry registry;
-    final PlanningOptions options;
     final List<Evaluator.RefEvaluator> refEvaluators = new ArrayList<>();
     final List<Evaluator.DynamicRefEvaluator> dynamicRefEvaluators = new ArrayList<>();
 
@@ -25,7 +24,6 @@ final class PlanningContext {
 
     PlanningContext(SchemaRegistry registry) {
         this.registry = registry;
-        this.options = registry.getPlanningOptions();
     }
 
     void putPlan(URI uri, SchemaPlan plan) {
@@ -61,13 +59,14 @@ final class PlanningContext {
 
     /** Rejects oversized subschema arrays before allocating their plan array. */
     void checkRemainingSchemas(int count) {
-        int maxSchemas = options.getMaxSchemas();
+        int maxSchemas = registry.getPlanningOptions().getMaxSchemas();
         if (maxSchemas != 0 && count > maxSchemas - schemas) {
             throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
         }
     }
 
     void enter() {
+        PlanningOptions options = registry.getPlanningOptions();
         int maxSchemas = options.getMaxSchemas();
         int maxDepth = options.getMaxSchemaDepth();
         if (maxSchemas != 0 && schemas >= maxSchemas) {
@@ -81,7 +80,7 @@ final class PlanningContext {
     }
 
     void leave() {
-        if (options.getMaxSchemaDepth() != 0) depth--;
+        if (registry.getPlanningOptions().getMaxSchemaDepth() != 0) depth--;
     }
 
     /** Removes the pending references belonging to a completed resource or fragment. */
