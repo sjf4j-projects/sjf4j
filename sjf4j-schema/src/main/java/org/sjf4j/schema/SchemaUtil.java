@@ -2,6 +2,8 @@ package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
+import org.sjf4j.regex.Regex;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
@@ -238,6 +240,25 @@ public final class SchemaUtil {
         } catch (PatternSyntaxException e) {
             throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
                     "invalid regex for keyword '" + keyword + "': " + pattern,
+                    keywordPs, schemaUri), e);
+        }
+    }
+
+    /**
+     * Compiles an ECMAScript-style schema expression through the selected engine.
+     * Unsupported expressions and guard rejections are schema compilation errors,
+     * not validation mismatches.
+     */
+    public static Regex compileRegexPattern(String pattern, String keyword,
+                                            PathSegment keywordPs, URI schemaUri,
+                                            RegexEngine regexEngine) {
+        Asserts.notNull(pattern, "pattern");
+        String normalized = normalizeUnicodeProperties(normalizeEcma262Regex(pattern));
+        try {
+            return regexEngine.compile(normalized);
+        } catch (RuntimeException e) {
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
+                    "invalid or rejected regex for keyword '" + keyword + "': " + pattern,
                     keywordPs, schemaUri), e);
         }
     }
