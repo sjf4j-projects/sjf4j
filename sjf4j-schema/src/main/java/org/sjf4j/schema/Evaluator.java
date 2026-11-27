@@ -12,6 +12,8 @@ import org.sjf4j.binding.simple.SimpleJsonParser;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.regex.Regex;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.exception.NodeException;
 
@@ -27,8 +29,6 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
-import org.sjf4j.regex.Regex;
-import org.sjf4j.regex.RegexEngine;
 
 /**
  * Per-keyword evaluator used by compiled schemas.
