@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
@@ -32,6 +33,7 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
+    private final RegexEngine regexEngine;
 
 
 
@@ -40,6 +42,12 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
+        this(defaultDialect, RegexEngine.DEFAULT);
+    }
+
+    /** Creates a registry whose compiled plans use a fixed regular expression engine. */
+    public SchemaRegistry(SchemaDialect defaultDialect, RegexEngine regexEngine) {
+        this.regexEngine = Asserts.notNull(regexEngine, "regexEngine");
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
@@ -54,6 +62,11 @@ public class SchemaRegistry {
     /** Returns the dialect used when a schema does not declare a known {@code $schema}. */
     public SchemaDialect getDefaultDialect() {
         return defaultDialect;
+    }
+
+    /** Returns the engine used for all regular expressions compiled in this registry. */
+    public RegexEngine getRegexEngine() {
+        return regexEngine;
     }
 
     /**
@@ -353,7 +366,7 @@ public class SchemaRegistry {
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
 
-        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
+        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect, other.regexEngine);
         for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
             SchemaPlan plan = entry.getValue();
             SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
@@ -491,7 +504,22 @@ public class SchemaRegistry {
         }
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
-            return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
+            if (regexEngine == GLOBAL_SCHEMA_REGISTRY.regexEngine) {
+                return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
+            }
+            // Object plans compiled with a different engine must not cross the
+            // registry boundary, even when the resource is globally indexed.
+            SchemaPlan globalPlan = GLOBAL_SCHEMA_REGISTRY.byIdPlans.get(id);
+            if (globalPlan != null && globalPlan.booleanSchema) return globalPlan;
+            if (allowBuild) {
+                ObjectSchema globalSchema = GLOBAL_SCHEMA_REGISTRY.byIdSchemas.get(id);
+                if (globalSchema != null) {
+                    SchemaPlan compiled = SchemaPlanner.buildAndPutPlan(globalSchema, this);
+                    // Preserve aliases not declared by the schema itself.
+                    putPlan(URI.create(id), compiled);
+                    return compiled;
+                }
+            }
         }
         return null;
     }
