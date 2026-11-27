@@ -32,12 +32,6 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
-    // These fields are used only by the isolated registry of a bounded compilation.
-    private final PlanningOptions planningOptions;
-    private final SchemaRegistry planningSource;
-    private int plannedSchemas;
-    private int planningDepth;
-
 
 
     /**
@@ -45,42 +39,9 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
-        this(defaultDialect, null, null);
-    }
-
-    private SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions options, SchemaRegistry source) {
-        this.planningOptions = options;
-        this.planningSource = source;
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
-    }
-
-    /** Isolated catalog for one bounded planning operation. */
-    static SchemaRegistry forPlanning(SchemaRegistry source, PlanningOptions options) {
-        SchemaRegistry registry = new SchemaRegistry(source == null
-                ? SchemaDialect.DRAFT_2020_12 : source.defaultDialect, options, source);
-        registry.indexRegistry(source);
-        return registry;
-    }
-
-    /** Counts one newly constructed schema and enters its planning frame. */
-    void enterPlanning() {
-        if (planningOptions == null) return;
-        int maxSchemas = planningOptions.getMaxSchemas();
-        int maxDepth = planningOptions.getMaxSchemaDepth();
-        if (maxSchemas != 0 && plannedSchemas >= maxSchemas) {
-            throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
-        }
-        if (maxDepth != 0 && planningDepth >= maxDepth) {
-            throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxDepth);
-        }
-        if (maxSchemas != 0) plannedSchemas++;
-        if (maxDepth != 0) planningDepth++;
-    }
-
-    void leavePlanning() {
-        if (planningOptions != null && planningOptions.getMaxSchemaDepth() != 0) planningDepth--;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -426,8 +387,7 @@ public class SchemaRegistry {
         String id = uri.toString();
         String fragment = uri.getFragment();
         if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
-        SchemaPlan plan = _resolveResource(id, true);
-        return _resolveFragmentOrThrow(plan, fragment);
+        return SchemaPlanner.resolve(this, id, fragment);
     }
 
     /**
@@ -440,8 +400,7 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(String id, String fragment) {
         Asserts.notNull(id, "id");
-        SchemaPlan plan = _resolveResource(id, true);
-        return _resolveFragmentOrThrow(plan, fragment);
+        return SchemaPlanner.resolve(this, id, fragment);
     }
 
     /**
@@ -465,124 +424,33 @@ public class SchemaRegistry {
         return SchemaPlan.findDynamicTarget(initial, dynamicAnchor, scope.iterator());
     }
 
+    /** Resolves a cached resource without compiling an indexed root. */
     SchemaPlan resolveBuilt(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.toString();
-        String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
-        SchemaPlan plan = _resolveResource(id, false);
-        return _resolveFragmentOrThrow(plan, fragment);
+        return SchemaPlanner.resolveBuilt(this, uri);
     }
 
-    /**
-     * Resolves only the schema resource part of a URI.
-     * <p>
-     * Fragments are intentionally ignored here so callers that need better
-     * diagnostics can distinguish a missing resource from a missing fragment.
-     * Missing resources return {@code null}; indexed resources may still be
-     * compiled lazily.
-     */
-    SchemaPlan resolveResource(URI uri) {
-        Asserts.notNull(uri, "uri");
-        String id = SchemaUtil.documentUri(uri).toString();
-        return _resolveResource(id, true);
+    /** Looks up a normalized resource key locally, without compiling anything. */
+    SchemaPlan findLocalPlan(String id) {
+        return byIdPlans.get(id);
     }
 
-    /**
-     * Resolves a fragment within an already resolved schema resource.
-     * <p>
-     * This method does not throw for missing fragments. The public resolve API
-     * keeps the historical exception behavior, while internal callers can use
-     * {@code null} to produce context-specific messages for {@code $ref} and
-     * {@code $dynamicRef}.
-     */
-    SchemaPlan resolveFragment(SchemaPlan rootPlan, String fragment) {
-        if (rootPlan == null || fragment == null || fragment.isEmpty()) return rootPlan;
-        if (rootPlan.byAnchorPlans == null || rootPlan.byPathPlans == null) return null;
-        SchemaPlan plan = rootPlan.byAnchorPlans.get(fragment);
-        if (plan == null) {
-            plan = rootPlan.byPathPlans.get(fragment);
-        }
-        if (plan == null) {
-            plan = SchemaPlanner.lazyBuildPlanByPath(rootPlan, fragment, this);
-        }
-        return plan;
+    /** Looks up a normalized resource key locally, without a global fallback. */
+    ObjectSchema findLocalSchema(String id) {
+        return byIdSchemas.get(id);
     }
 
-    /**
-     * Resolves a resource key without fragment handling.
-     * <p>
-     * Local registry entries win; the global built-in registry is consulted only
-     * as fallback. This preserves custom registry overrides and avoids remote or
-     * filesystem loading beyond schemas explicitly indexed in the registry.
-     */
-    private SchemaPlan _resolveResource(String id, boolean allowBuild) {
-        id = SchemaUtil.normalizeUriKey(id);
-        SchemaPlan plan = byIdPlans.get(id);
-        if (plan != null) return plan;
-
-        if (allowBuild) {
-            ObjectSchema schema = byIdSchemas.get(id);
-            if (schema != null) {
-                return SchemaPlanner.buildAndPutPlan(schema, this);
-            }
-        }
-
-        if (this != GLOBAL_SCHEMA_REGISTRY) {
-            // Do not share cached mutable object plans or compile outside the budget.
-            if (planningOptions != null) {
-                if (!allowBuild) return null;
-                SchemaPlan nested = _rebuildNestedResource(id);
-                if (nested != null) return nested;
-                ObjectSchema builtin = GLOBAL_SCHEMA_REGISTRY.byIdSchemas.get(id);
-                if (builtin != null) return SchemaPlanner.buildAndPutPlan(builtin, this);
-                SchemaPlan builtinPlan = GLOBAL_SCHEMA_REGISTRY.byIdPlans.get(id);
-                return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
-            }
-            return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
-        }
-        return null;
-    }
-
-    /**
-     * Nested $id resources are cached as plans, not indexed as standalone
-     * schema models. Rebuild their original owning root to preserve inherited
-     * dialect, vocabulary and fragment scope without borrowing a cached plan.
-     */
-    private SchemaPlan _rebuildNestedResource(String id) {
-        if (planningSource == null) return null;
-        SchemaPlan target = planningSource.byIdPlans.get(id);
-        if (target == null || target.booleanSchema) return null;
-
-        for (Map.Entry<String, ObjectSchema> entry : planningSource.byIdSchemas.entrySet()) {
-            SchemaPlan oldRoot = planningSource.byIdPlans.get(entry.getKey());
-            if (oldRoot == null || oldRoot.byPathPlans == null) continue;
-            for (Map.Entry<String, SchemaPlan> fragment : oldRoot.byPathPlans.entrySet()) {
-                if (fragment.getValue() != target) continue;
-                SchemaPlan root = SchemaPlanner.buildAndPutPlan(entry.getValue(), this);
-                SchemaPlan rebuilt = byIdPlans.get(id);
-                if (rebuilt != null) return rebuilt;
-                // The nested resource may have been discovered by a lazy pointer.
-                return resolveFragment(root, fragment.getKey());
+    /** Finds the indexed root owning a previously compiled nested resource. */
+    SchemaPlan findOwningRoot(SchemaPlan target) {
+        for (String id : byIdSchemas.keySet()) {
+            SchemaPlan root = byIdPlans.get(id);
+            if (root != null && root.byPathPlans != null) {
+                for (SchemaPlan fragment : root.byPathPlans.values()) {
+                    if (fragment == target) return root;
+                }
             }
         }
         return null;
-    }
-
-    /**
-     * Adapter used by public resolve methods to preserve their existing
-     * fragment-missing exception behavior.
-     */
-    private SchemaPlan _resolveFragmentOrThrow(SchemaPlan rootPlan, String fragment) {
-        if (rootPlan == null) return null;
-        SchemaPlan plan = resolveFragment(rootPlan, fragment);
-        if (plan == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                    "cannot resolve schema fragment '#" + fragment + "'",
-                    PathSegment.Root.INSTANCE, rootPlan.resourceUri));
-        }
-
-        return plan;
     }
 
     /**

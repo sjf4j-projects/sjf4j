@@ -68,6 +68,38 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
+    void planningDepthSpansExternalResourcesAndLazyFragments() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI a = URI.create("https://example.test/a");
+        URI b = URI.create("https://example.test/b");
+        registry.index(a, JsonSchema.fromJson("{\"$ref\":\"https://example.test/b#/custom\"}"));
+        registry.index(b, JsonSchema.fromJson("{\"custom\":{\"not\":false}}"));
+        JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/a\"}");
+        // Root, a, b, lazy fragment and its child: five plans in total.
+        // b's root is finished before the fragment is built.
+        assertTrue(root.createPlan(registry, PlanningOptions.builder()
+                .maxSchemas(5).maxSchemaDepth(4).build()).isValid(1));
+        assertThrows(SchemaException.class, () -> root.createPlan(registry,
+                PlanningOptions.builder().maxSchemaDepth(3).build()));
+        assertThrows(SchemaException.class, () -> root.createPlan(registry,
+                PlanningOptions.builder().maxSchemas(4).build()));
+    }
+
+    @Test
+    void sharedPlanningContextBindsSiblingStaticAndDynamicRefs() {
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(URI.create("https://example.test/a"), JsonSchema.fromJson(
+                "{\"$ref\":\"https://example.test/b\"}"));
+        registry.index(URI.create("https://example.test/b"), JsonSchema.fromJson(
+                "{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}"));
+        JsonSchema schema = JsonSchema.fromJson(
+                "{\"$ref\":\"https://example.test/a\",\"$dynamicRef\":\"https://example.test/b#node\"}");
+        SchemaPlan plan = schema.createPlan(registry, PlanningOptions.builder().maxSchemas(3).build());
+        assertTrue(plan.isValid(1));
+        assertFalse(plan.isValid("bad"));
+    }
+
+    @Test
     void planningCountsLazyPointerTargets() {
         JsonSchema schema = JsonSchema.fromJson("{\"$ref\":\"#/custom\",\"custom\":{\"not\":false}}");
         assertThrows(SchemaException.class, () -> schema.createPlan(null,
