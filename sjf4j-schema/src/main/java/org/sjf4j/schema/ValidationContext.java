@@ -14,7 +14,7 @@ import java.util.List;
  * State for a single validation with immutable execution options.
  * A context is not reusable, thread-safe or reentrant.
  */
-public class ValidationContext {
+final class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
@@ -39,7 +39,7 @@ public class ValidationContext {
      * @param strictFormat enforce format assertions
      * @param booleanOnly skip collecting errors and annotations
      */
-    public ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
+    ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
@@ -51,7 +51,7 @@ public class ValidationContext {
     }
 
     /** Creates a context with the requested runtime validation options. */
-    public ValidationContext(ValidationOptions options, boolean booleanOnly) {
+    ValidationContext(ValidationOptions options, boolean booleanOnly) {
         Asserts.notNull(options, "options");
         this.failFast = options.isFailFast();
         this.strictFormat = options.isStrictFormat();
@@ -63,7 +63,7 @@ public class ValidationContext {
         this.reusedLeaf = Instance.infer(null);
     }
 
-    public boolean isCollectAnnotations() {
+    boolean isCollectAnnotations() {
         return collectAnnotations;
     }
 
@@ -116,7 +116,7 @@ public class ValidationContext {
     }
 
     /** Accesses the current annotation collection without copying it. */
-    public List<ValidationResult.Detail> getAnnotations() {
+    List<ValidationResult.Detail> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
@@ -145,20 +145,20 @@ public class ValidationContext {
         return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || errors == null);
     }
 
-    public boolean isBooleanOnly() {
+    boolean isBooleanOnly() {
         return booleanOnly;
     }
 
-    public boolean isFailFast() {
+    boolean isFailFast() {
         return failFast;
     }
 
-    public boolean isStrictFormat() {
+    boolean isStrictFormat() {
         return strictFormat;
     }
 
     /** Returns a result using the diagnostics collected by this validation without copying. */
-    public ValidationResult toResult(boolean valid) {
+    ValidationResult toResult(boolean valid) {
         if (valid && (errors == null || errors.isEmpty())
                 && (annotations == null || annotations.isEmpty())) {
             return ValidationResult.SUCCESS;
@@ -167,29 +167,29 @@ public class ValidationContext {
     }
 
     /** Suppresses assertion errors while evaluating a conditional/probe branch. */
-    public void pushIgnoreError() {
+    void pushIgnoreError() {
         ignoreErrorAdding++;
     }
 
-    public void popIgnoreError() {
+    void popIgnoreError() {
         ignoreErrorAdding--;
     }
 
-    public void pushPlan(SchemaPlan plan) {
+    void pushPlan(SchemaPlan plan) {
         if (planStack == null) planStack = new ArrayDeque<>();
         planStack.push(plan);
     }
 
-    public SchemaPlan popPlan() {
+    SchemaPlan popPlan() {
         if (planStack == null) return null;
         return planStack.pop();
     }
 
-    public Deque<SchemaPlan> planStack() {
+    Deque<SchemaPlan> planStack() {
         return planStack;
     }
 
-    public Instance reusedLeaf() {
+    Instance reusedLeaf() {
         return reusedLeaf;
     }
 

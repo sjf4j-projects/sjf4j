@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
  * happen earlier in {@link SchemaPlanner}. Evaluators do not write the input graph,
  * but getters, value bindings, and user extensions they invoke can have side effects.
  */
-public interface Evaluator {
+interface Evaluator {
 
     /**
      * Evaluates a keyword against the given instance.

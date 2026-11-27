@@ -97,29 +97,7 @@ public class SchemaRegistry {
      *                         or it conflicts with another resource
      */
     public void index(URI retrievalUri, JsonSchema schema) {
-        Asserts.notNull(schema, "schema");
-        if (schema instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
-            return;
-        }
-
-        ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.retrievalUri(retrievalUri);
-        retrievalUri = os.retrievalUri();
-        URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
-                : os.canonicalUri();
-        if (canonicalUri == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: specify $id or a retrieval URI",
-                    PathSegment.Root.INSTANCE, null));
-        }
-        _putSchema(canonicalUri, os);
-
-        if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
-                .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
-            _putSchema(retrievalUri, os);
-        }
+        _index(retrievalUri, schema, false);
     }
 
     /**
@@ -132,26 +110,29 @@ public class SchemaRegistry {
      * Boolean resources with a retrieval URI are indexed as plans.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
+        _index(retrievalUri, schema, true);
+    }
+
+    /** Indexes a resource and returns its canonical URI, if any. */
+    private URI _index(URI retrievalUri, JsonSchema schema, boolean ifAbsent) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, true);
-            return;
+            _indexBoolean(retrievalUri, (BooleanSchema) schema, ifAbsent);
+            return retrievalUri;
         }
 
         ObjectSchema os = (ObjectSchema) schema;
         if (retrievalUri != null) os.retrievalUri(retrievalUri);
         retrievalUri = os.retrievalUri();
-        URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
-                : os.canonicalUri();
+        URI canonicalUri = SchemaUtil.resolveUri(retrievalUri, os.canonicalUri());
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
                     PathSegment.Root.INSTANCE, null));
         }
-
-        if (_containsLocalResource(canonicalUri) || (retrievalUri != null && _containsLocalResource(retrievalUri))) {
-            return;
+        if (ifAbsent && (_containsLocalResource(canonicalUri)
+                || (retrievalUri != null && _containsLocalResource(retrievalUri)))) {
+            return canonicalUri;
         }
 
         _putSchema(canonicalUri, os);
@@ -159,7 +140,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
-
+        return canonicalUri;
     }
 
     /**
@@ -229,38 +210,17 @@ public class SchemaRegistry {
      * A missing or relative root URI without a retrieval base is rejected.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
-        Asserts.notNull(schema, "schema");
-        if (schema instanceof BooleanSchema) {
-            if (retrievalUri == null) {
-                return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
-            }
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
-            return byIdPlans.get(SchemaUtil.normalizeUriKey(retrievalUri));
-        }
-
-        ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.retrievalUri(retrievalUri);
-        URI canonicalUri = os.retrievalUri() != null
-                ? SchemaUtil.resolveUri(os.retrievalUri(), os.canonicalUri())
-                : os.canonicalUri();
+        URI canonicalUri = _index(retrievalUri, schema, false);
         if (canonicalUri == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: specify $id or a retrieval URI",
-                    PathSegment.Root.INSTANCE, null));
+            // A boolean document without a URI is not registered.
+            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
-        index(os);
-        SchemaPlan cached = findLocalPlan(SchemaUtil.normalizeUriKey(canonicalUri));
-        if (cached != null) {
-            if (os.retrievalUri() != null) {
-                String alias = SchemaUtil.normalizeUriKey(os.retrievalUri());
-                SchemaPlan old = byIdPlans.putIfAbsent(alias, cached);
-                if (old != null && old.schema != os) throw _planConflict(alias);
-            }
-            return cached;
-        }
-        return SchemaPlanner.buildAndRegisterPlan(os, this);
+        // Resolve the retrieval alias when present so it is also cached, even
+        // if the canonical resource was previously planned. Register a root,
+        // not the fragment of a legacy $id.
+        URI alias = schema instanceof ObjectSchema ? ((ObjectSchema) schema).retrievalUri() : retrievalUri;
+        return resolve((alias == null ? canonicalUri : alias).toString(), null);
     }
-
 
     /** Indexes an explicitly located boolean resource for direct and $ref resolution. */
     private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
