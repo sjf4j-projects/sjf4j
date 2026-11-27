@@ -40,6 +40,15 @@ public final class SchemaPlanner {
     }
 
 
+    /** Compiles a root using an isolated registry, with or without planning limits. */
+    static SchemaPlan createPlan(ObjectSchema schema, SchemaRegistry registry, PlanningOptions options) {
+        Objects.requireNonNull(options, "options");
+        SchemaRegistry scoped = options.hasLimits()
+                ? SchemaRegistry.forPlanning(registry, options)
+                : SchemaRegistry.copyOf(registry);
+        return buildAndPutPlan(schema, scoped);
+    }
+
     static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
         Asserts.notNull(schema, "schema");
         Asserts.notNull(registry, "registry");

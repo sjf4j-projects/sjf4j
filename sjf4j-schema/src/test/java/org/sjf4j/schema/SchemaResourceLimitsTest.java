@@ -10,6 +10,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SchemaResourceLimitsTest {
     @Test
+    void planningEntryPointsDispatchToSchemaImplementations() {
+        PlanningOptions unlimited = PlanningOptions.builder().build();
+        PlanningOptions bounded = PlanningOptions.builder().maxSchemas(1).maxSchemaDepth(1).build();
+        JsonSchema object = JsonSchema.fromJson("{\"type\":\"integer\"}");
+        assertTrue(object.createPlan().isValid(1));
+        assertTrue(object.createPlan(null, unlimited).isValid(1));
+        assertTrue(object.createPlan(null, bounded).isValid(1));
+        assertThrows(NullPointerException.class, () -> object.createPlan(null, null));
+
+        JsonSchema alwaysTrue = BooleanSchema.TRUE;
+        JsonSchema alwaysFalse = BooleanSchema.FALSE;
+        assertTrue(alwaysTrue.createPlan().isValid(1));
+        assertTrue(alwaysTrue.createPlan(null, bounded).isValid(1));
+        assertFalse(alwaysFalse.createPlan(null, bounded).isValid(1));
+        assertThrows(NullPointerException.class, () -> alwaysTrue.createPlan(null, null));
+    }
+
+    @Test
     void planningCountsBooleanEmptyAndUnusedSchemas() {
         JsonSchema schema = JsonSchema.fromJson("{\"$defs\":{\"a\":true,\"b\":false,\"c\":{}}}");
         assertThrows(SchemaException.class, () -> schema.createPlan(null,

@@ -6,6 +6,8 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.path.PathSegment;
 
+import java.util.Objects;
+
 /**
  * Boolean schema representation ({@code true}/{@code false}).
  * <p>
@@ -65,7 +67,8 @@ public final class BooleanSchema implements JsonSchema {
      * references or nested resources.
      */
     @Override
-    public SchemaPlan createPlan(SchemaRegistry registry) {
+    public SchemaPlan createPlan(SchemaRegistry registry, PlanningOptions options) {
+        Objects.requireNonNull(options, "options");
         return SchemaPlan.of(null, PathSegment.Root.INSTANCE, this);
     }
 

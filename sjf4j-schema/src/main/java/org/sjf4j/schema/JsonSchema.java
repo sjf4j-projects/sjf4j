@@ -31,18 +31,16 @@ public interface JsonSchema {
      * absolute schema resources. Passing {@code null} means "compile with an
      * empty external registry context".
      */
-    SchemaPlan createPlan(SchemaRegistry registry);
+    default SchemaPlan createPlan(SchemaRegistry registry) {
+        return createPlan(registry, PlanningOptions.DEFAULT);
+    }
 
     /**
      * Compiles with resource limits. Bounded planning uses an isolated registry
      * and rebuilds indexed object resources instead of sharing cached plans.
      * The caller's registry is not modified on failure.
      */
-    default SchemaPlan createPlan(SchemaRegistry registry, PlanningOptions options) {
-        if (options == null) throw new NullPointerException("options");
-        if (!options.hasLimits() || this instanceof BooleanSchema) return createPlan(registry);
-        return SchemaPlanner.buildAndPutPlan((ObjectSchema) this, SchemaRegistry.forPlanning(registry, options));
-    }
+    SchemaPlan createPlan(SchemaRegistry registry, PlanningOptions options);
 
 
     /*

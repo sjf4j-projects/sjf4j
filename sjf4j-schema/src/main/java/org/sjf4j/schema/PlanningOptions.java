@@ -2,6 +2,8 @@ package org.sjf4j.schema;
 
 /** Immutable schema planning options. Zero disables a resource limit. */
 public final class PlanningOptions {
+    static final PlanningOptions DEFAULT = builder().build();
+
     private final int maxSchemas;
     private final int maxSchemaDepth;
 
