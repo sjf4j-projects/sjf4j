@@ -151,10 +151,9 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        boolean limitDepth = ctx.limitsEvaluationDepth();
-        if (limitDepth) ctx.enterEvaluation(this, instance, instancePs);
+        ctx.enterEvaluation(this, instance, instancePs);
         try {
-            if (ctx.limitsEvaluations()) ctx.countEvaluation(this, instance, instancePs);
+            ctx.countEvaluation(this, instance, instancePs);
             if (ctx.isCollectAnnotations()) {
                 int mark = ctx.annotationMark();
                 boolean valid = false;
@@ -176,11 +175,11 @@ public final class SchemaPlan {
             }
             return _evaluateKeywords(instance, instancePs, ctx);
         } finally {
-            if (limitDepth) ctx.leaveEvaluation();
+            ctx.leaveEvaluation();
         }
     }
 
-    /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
+    /** Executes keyword evaluators; annotation bookkeeping is outside this loop. */
     private boolean _evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
@@ -204,9 +203,8 @@ public final class SchemaPlan {
         boolean hasDynamicAnchors = !byDynamicAnchorPlans.isEmpty();
         if (hasDynamicAnchors) ctx.pushPlan(this);
         try {
-            boolean countEvaluations = ctx.limitsEvaluations();
             for (Evaluator evaluator : evaluators) {
-                if (countEvaluations) ctx.countEvaluation(this, instance, ps);
+                ctx.countEvaluation(this, instance, ps);
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;
