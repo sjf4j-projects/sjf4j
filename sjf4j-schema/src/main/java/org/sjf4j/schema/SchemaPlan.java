@@ -55,16 +55,7 @@ public final class SchemaPlan {
      * as {@code required}.
      */
     public ValidationResult validate(Object node, boolean failFast, boolean strictFormat) {
-        if (booleanSchema) {
-            if (booleanValue) {
-                return ValidationResult.SUCCESS;
-            } else {
-                ValidationResult.Detail error = new ValidationResult.Detail(
-                        "false", "schema 'false' always fails", null,
-                        PathSegment.Root.INSTANCE, keywordPs, resourceUri);
-                return new ValidationResult(false, Collections.singletonList(error));
-            }
-        }
+        if (booleanSchema) return _validateBoolean();
 
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
         return ctx.toResult(evaluate(node, null, ctx));
@@ -77,11 +68,17 @@ public final class SchemaPlan {
      */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
-        if (!options.isCollectAnnotations() && !options.hasLimits()) {
-            return validate(node, options.isFailFast(), options.isStrictFormat());
-        }
+        if (booleanSchema) return _validateBoolean();
         ValidationContext ctx = new ValidationContext(options, false);
         return ctx.toResult(evaluate(node, null, ctx));
+    }
+
+    private ValidationResult _validateBoolean() {
+        if (booleanValue) return ValidationResult.SUCCESS;
+        ValidationResult.Detail error = new ValidationResult.Detail(
+                "false", "schema 'false' always fails", null,
+                PathSegment.Root.INSTANCE, keywordPs, resourceUri);
+        return new ValidationResult(false, Collections.singletonList(error));
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */

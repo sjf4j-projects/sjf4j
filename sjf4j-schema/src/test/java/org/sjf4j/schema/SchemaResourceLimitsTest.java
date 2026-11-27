@@ -186,6 +186,24 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
+    void booleanSchemaFastPathsPreserveValidationResults() {
+        ValidationOptions options = ValidationOptions.builder()
+                .collectAnnotations(true).maxEvaluations(1)
+                .maxEvaluationDepth(1).maxErrors(1).build();
+        SchemaPlan accepted = BooleanSchema.TRUE.createPlan();
+        SchemaPlan rejected = BooleanSchema.FALSE.createPlan();
+        assertSame(ValidationResult.SUCCESS, accepted.validate(null, options));
+        assertDoesNotThrow(() -> accepted.requireValid(null, options));
+        ValidationResult result = rejected.validate(null, options);
+        assertFalse(result.isValid());
+        assertEquals("false", result.getLastError().getKeyword());
+        assertTrue(result.getAnnotations().isEmpty());
+        ValidationException failure = assertThrows(ValidationException.class,
+                () -> rejected.requireValid(null, options));
+        assertEquals("false", failure.getResult().getLastError().getKeyword());
+    }
+
+    @Test
     void isValidOptionsAlwaysUseBooleanOnlySemantics() {
         ValidationOptions options = ValidationOptions.builder()
                 .failFast(false).collectAnnotations(true).maxErrors(1)
