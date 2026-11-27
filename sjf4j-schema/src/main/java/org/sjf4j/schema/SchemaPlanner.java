@@ -28,14 +28,11 @@ public final class SchemaPlanner {
 
     static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
         Asserts.notNull(registry, "registry");
-        synchronized (registry) {
+        synchronized (SchemaRegistry.PLANNING_LOCK) {
             PlanningContext context = new PlanningContext(registry);
-            try {
-                return _buildAndPutPlan(schema, context);
-            } catch (RuntimeException | Error e) {
-                context.rollback();
-                throw e;
-            }
+            SchemaPlan plan = _buildAndPutPlan(schema, context);
+            context.commit();
+            return plan;
         }
     }
 
@@ -85,20 +82,17 @@ public final class SchemaPlanner {
     }
 
     private static SchemaPlan _resolve(SchemaRegistry registry, String id, String fragment, boolean allowBuild) {
-        synchronized (registry) {
+        synchronized (SchemaRegistry.PLANNING_LOCK) {
             PlanningContext context = new PlanningContext(registry);
-            try {
-                return _resolveFragmentOrThrow(_resolveResource(id, allowBuild, context), fragment, context);
-            } catch (RuntimeException | Error e) {
-                context.rollback();
-                throw e;
-            }
+            SchemaPlan plan = _resolveFragmentOrThrow(_resolveResource(id, allowBuild, context), fragment, context);
+            context.commit();
+            return plan;
         }
     }
 
     private static SchemaPlan _resolveResource(String id, boolean allowBuild, PlanningContext context) {
         SchemaRegistry registry = context.registry;
-        SchemaPlan plan = registry.findLocalPlan(id);
+        SchemaPlan plan = context.findPlan(id);
         if (plan != null) return plan;
 
         if (allowBuild) {
@@ -107,7 +101,7 @@ public final class SchemaPlanner {
             URI nested = registry.findNestedResource(id);
             if (nested != null) {
                 SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), true, context);
-                SchemaPlan rebuilt = registry.findLocalPlan(id);
+                SchemaPlan rebuilt = context.findPlan(id);
                 return rebuilt != null ? rebuilt : _resolveFragment(root, nested.getFragment(), context);
             }
         }
@@ -130,8 +124,8 @@ public final class SchemaPlanner {
     private static SchemaPlan _resolveFragment(SchemaPlan root, String fragment, PlanningContext context) {
         if (root == null || fragment == null || fragment.isEmpty()) return root;
         if (root.byAnchorPlans == null || root.byPathPlans == null) return null;
-        SchemaPlan plan = root.byAnchorPlans.get(fragment);
-        if (plan == null) plan = root.byPathPlans.get(fragment);
+        SchemaPlan plan = context.findFragment(root.byAnchorPlans, fragment);
+        if (plan == null) plan = context.findFragment(root.byPathPlans, fragment);
         if (plan == null) plan = _lazyBuildPlanByPath(root, fragment, context);
         return plan;
     }
@@ -201,7 +195,7 @@ public final class SchemaPlanner {
                 SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                         schema, dialect, vocabulary);
-                byPathPlans.put(ps.rootedPointerExpr(), plan);
+                context.putFragment(byPathPlans, ps.rootedPointerExpr(), plan);
                 return plan;
             }
         }
@@ -535,12 +529,12 @@ public final class SchemaPlanner {
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                 schema, dialect, vocabulary, annotations);
-        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
+        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps, context);
         if (dynamicAnchor != null) {
-            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);
-            byDynamicAnchorPlans.put(dynamicAnchor, plan);
+            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps, context);
+            context.putFragment(byDynamicAnchorPlans, dynamicAnchor, plan);
         }
-        byPathPlans.put(ps.rootedPointerExpr(), plan);
+        context.putFragment(byPathPlans, ps.rootedPointerExpr(), plan);
         return plan;
     }
 
@@ -551,7 +545,7 @@ public final class SchemaPlanner {
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
         context.enter();
-        context.beforeLazyBuild(resourcePlan);
+        context.stageFragments(resourcePlan);
         int refStart = context.refEvaluators.size();
         int dynamicRefStart = context.dynamicRefEvaluators.size();
         try {
@@ -567,13 +561,15 @@ public final class SchemaPlanner {
     }
 
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
-                                          SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps) {
-        SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
+                                          SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps,
+                                          PlanningContext context) {
+        SchemaPlan old = context.findFragment(byAnchorPlans, fragment);
         if (old != null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate named fragment '" + fragment + "' from " + keyword,
                     ps, resourceUri));
         }
+        context.putFragment(byAnchorPlans, fragment, plan);
     }
 
     /**
@@ -724,12 +720,12 @@ public final class SchemaPlanner {
                     context.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
-                        byPathPlans.put(path + entry.getKey(), entry.getValue());
+                        context.putFragment(byPathPlans, path + entry.getKey(), entry.getValue());
                     }
                 }
             }
         }
-        byPathPlans.put(path, plan);
+        context.putFragment(byPathPlans, path, plan);
         return plan;
     }
 

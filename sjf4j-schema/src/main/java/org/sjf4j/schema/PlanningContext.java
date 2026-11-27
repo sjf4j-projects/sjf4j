@@ -1,5 +1,7 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.path.PathSegment;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,8 +23,8 @@ final class PlanningContext {
     private int schemas;
     private int depth;
 
-    private final Map<String, SchemaPlan> publishedPlans = new HashMap<>();
-    private Map<Map<String, SchemaPlan>, Map<String, SchemaPlan>> fragmentSnapshots;
+    private final Map<String, SchemaPlan> pendingPlans = new HashMap<>();
+    private Map<Map<String, SchemaPlan>, Map<String, SchemaPlan>> pendingFragments;
 
     PlanningContext(SchemaRegistry registry) {
         this.registry = registry;
@@ -31,35 +33,49 @@ final class PlanningContext {
         this.maxSchemaDepth = options.getMaxSchemaDepth();
     }
 
+    SchemaPlan findPlan(String id) {
+        SchemaPlan plan = pendingPlans.get(id);
+        return plan != null ? plan : registry.findLocalPlan(id);
+    }
+
     void putPlan(URI uri, SchemaPlan plan) {
-        if (registry.putPlan(uri, plan)) {
-            publishedPlans.put(SchemaUtil.normalizeUriKey(uri), plan);
+        String id = registry.checkPlanUri(uri);
+        SchemaPlan old = findPlan(id);
+        if (old != null && old != plan) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
+        if (old == null) pendingPlans.put(id, plan);
     }
 
-    void beforeLazyBuild(SchemaPlan root) {
-        if (fragmentSnapshots == null) fragmentSnapshots = new IdentityHashMap<>();
-        snapshot(root.byAnchorPlans);
-        snapshot(root.byDynamicAnchorPlans);
-        snapshot(root.byPathPlans);
+    /** Existing resource maps are updated only after all references are bound. */
+    void stageFragments(SchemaPlan root) {
+        if (pendingFragments == null) pendingFragments = new IdentityHashMap<>();
+        pendingFragments.computeIfAbsent(root.byAnchorPlans, key -> new HashMap<>());
+        pendingFragments.computeIfAbsent(root.byDynamicAnchorPlans, key -> new HashMap<>());
+        pendingFragments.computeIfAbsent(root.byPathPlans, key -> new HashMap<>());
     }
 
-    private void snapshot(Map<String, SchemaPlan> map) {
-        if (map != null && !fragmentSnapshots.containsKey(map)) {
-            fragmentSnapshots.put(map, new HashMap<>(map));
-        }
-    }
-
-    void rollback() {
-        for (Map.Entry<String, SchemaPlan> entry : publishedPlans.entrySet()) {
-            registry.removePlan(entry.getKey(), entry.getValue());
-        }
-        if (fragmentSnapshots != null) {
-            for (Map.Entry<Map<String, SchemaPlan>, Map<String, SchemaPlan>> entry : fragmentSnapshots.entrySet()) {
-                entry.getKey().clear();
-                entry.getKey().putAll(entry.getValue());
+    SchemaPlan findFragment(Map<String, SchemaPlan> fragments, String key) {
+        if (pendingFragments != null) {
+            Map<String, SchemaPlan> pending = pendingFragments.get(fragments);
+            if (pending != null) {
+                SchemaPlan plan = pending.get(key);
+                if (plan != null) return plan;
             }
         }
+        return fragments.get(key);
+    }
+
+    void putFragment(Map<String, SchemaPlan> fragments, String key, SchemaPlan plan) {
+        Map<String, SchemaPlan> pending = pendingFragments == null ? null : pendingFragments.get(fragments);
+        (pending == null ? fragments : pending).put(key, plan);
+    }
+
+    /** Publishes only fully built plans. Planning holds the shared registry lock. */
+    void commit() {
+        if (pendingFragments != null) pendingFragments.forEach(Map::putAll);
+        registry.putPlans(pendingPlans);
     }
 
     /** Rejects oversized subschema arrays before allocating their plan array. */

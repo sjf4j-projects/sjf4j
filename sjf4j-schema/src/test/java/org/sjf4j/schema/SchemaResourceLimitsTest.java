@@ -112,7 +112,7 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void registryRegisterAndResolveSharePolicyAndRollbackFailedPlans() {
+    void registryRegisterAndResolveSharePolicyAndDiscardFailedPlans() {
         SchemaRegistry registry = registry(2, 0);
         URI root = URI.create("https://example.test/root");
         URI external = URI.create("https://example.test/external");
@@ -138,6 +138,42 @@ class SchemaResourceLimitsTest {
         assertFalse(plan.byPathPlans.containsKey("/custom"));
         assertFalse(plan.byPathPlans.containsKey("/custom/$defs/a"));
         assertThrows(SchemaException.class, () -> registry.resolve(fragment));
+    }
+
+    @Test
+    void stagedLazyFragmentsAreVisibleToRefsAndCommittedOnlyOnSuccess() {
+        SchemaRegistry registry = registry(20, 0);
+        URI root = URI.create("https://example.test/staged");
+        registry.register(root, JsonSchema.fromJson("{\"first\":{\"$anchor\":\"first\",\"$ref\":\"#/second\"},"
+                + "\"second\":{\"$anchor\":\"second\",\"type\":\"integer\",\"allOf\":[{\"$ref\":\"#first\"}]}}"));
+        SchemaPlan original = registry.resolve(root);
+        SchemaPlan first = registry.resolve(URI.create(root + "#/first"));
+        assertSame(first, original.byAnchorPlans.get("first"));
+        assertSame(first, original.byPathPlans.get("/first"));
+        assertSame(first, registry.resolve(URI.create(root + "#first")));
+        assertNotNull(original.byAnchorPlans.get("second"));
+        assertNotNull(original.byPathPlans.get("/second"));
+    }
+
+    @Test
+    void failedLazyRefsDoNotPublishAnchorsOrNestedResources() {
+        SchemaRegistry registry = registry(20, 0);
+        URI root = URI.create("https://example.test/staged");
+        URI child = URI.create("https://example.test/child");
+        registry.register(root, JsonSchema.fromJson("{\"custom\":{\"$dynamicAnchor\":\"custom\","
+                + "\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}},"
+                + "\"$ref\":\"https://example.test/missing\"}}"));
+        SchemaPlan original = registry.resolve(root);
+        assertThrows(SchemaException.class, () -> registry.resolve(URI.create(root + "#/custom")));
+        assertNull(original.byAnchorPlans.get("custom"));
+        assertNull(original.byDynamicAnchorPlans.get("custom"));
+        assertNull(original.byPathPlans.get("/custom"));
+        assertNull(registry.resolveBuilt(child));
+        registry.register(URI.create("https://example.test/missing"), JsonSchema.fromJson("true"));
+        SchemaPlan custom = registry.resolve(URI.create(root + "#/custom"));
+        assertSame(custom, original.byDynamicAnchorPlans.get("custom"));
+        assertNotNull(registry.resolveBuilt(child));
+        assertTrue(custom.isValid(1));
     }
 
     @Test
