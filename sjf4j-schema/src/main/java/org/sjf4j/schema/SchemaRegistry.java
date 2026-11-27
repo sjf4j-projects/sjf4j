@@ -20,10 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
- * cached by absolute resource URI after compilation. Fragment resolution stays
- * inside each compiled plan. The implementation is safe for concurrent access
- * at the map level, but root schema objects stored in the registry still carry
- * mutable retrieval-URI metadata.
+ * cached by absolute resource URI after compilation. Additional lazily resolved
+ * fragments are cached separately, leaving published plan graphs unchanged.
+ * Concurrent compilation against a fixed catalog is supported; callers must
+ * not mutate indexed schema models or concurrently change resource definitions.
+ * Multi-resource registration is not a transaction.
  * Lookup first checks local mappings and then the built-in global meta-schemas;
  * it does not fetch arbitrary remote resources.
  */
@@ -252,7 +253,15 @@ public class SchemaRegistry {
         }
         index(os);
         SchemaPlan cached = findLocalPlan(SchemaUtil.normalizeUriKey(canonicalUri));
-        return cached != null ? cached : SchemaPlanner.buildAndRegisterPlan(os, this);
+        if (cached != null) {
+            if (os.retrievalUri() != null) {
+                String alias = SchemaUtil.normalizeUriKey(os.retrievalUri());
+                SchemaPlan old = byIdPlans.putIfAbsent(alias, cached);
+                if (old != null && old.schema != os) throw _planConflict(alias);
+            }
+            return cached;
+        }
+        return SchemaPlanner.buildAndRegisterPlan(os, this);
     }
 
 
@@ -262,8 +271,8 @@ public class SchemaRegistry {
         if (retrievalUri == null) return;
         _checkUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
-        if (ifAbsent && (byIdPlans.containsKey(id) || byIdSchemas.containsKey(id))) return;
-        if (byIdSchemas.containsKey(id)) {
+        if (ifAbsent && _containsLocalResource(retrievalUri)) return;
+        if (byIdSchemas.containsKey(id) || byIdNestedResources.containsKey(id)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
@@ -276,7 +285,7 @@ public class SchemaRegistry {
     }
 
     /**
-     * Registers one URI mapping after validation checks.
+     * Validates and normalizes a resource URI for planning.
      *
      * @throws SchemaException on invalid URI shape
      */
@@ -345,7 +354,7 @@ public class SchemaRegistry {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
-        if (indexed != null && indexed.booleanSchema) {
+        if (byIdNestedResources.containsKey(id) || (indexed != null && indexed.schema != schema)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }

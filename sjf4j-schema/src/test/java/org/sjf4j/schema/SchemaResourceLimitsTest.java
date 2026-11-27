@@ -196,6 +196,29 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
+    void globalAliasIsCachedInTheResolvingRegistry() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI alias = URI.create("https://json-schema.org/draft-07/schema");
+        SchemaPlan plan = registry.resolve(alias);
+        assertNotNull(plan);
+        assertSame(plan, registry.resolveBuilt(alias));
+        assertSame(plan, registry.resolve(alias));
+    }
+
+    @Test
+    void indexedRootCannotReplacePreviouslyRegisteredNestedResource() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI root = URI.create("https://example.test/root");
+        URI child = URI.create("https://example.test/child");
+        registry.register(root, JsonSchema.fromJson(
+                "{\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}}}"));
+        SchemaPlan plan = registry.resolve(child);
+        assertThrows(SchemaException.class, () -> registry.index(child, JsonSchema.fromJson("{\"type\":\"string\"}")));
+        assertThrows(SchemaException.class, () -> registry.index(child, BooleanSchema.TRUE));
+        assertSame(plan, registry.resolve(child));
+    }
+
+    @Test
     void boundedRegistryDoesNotBorrowGlobalPlans() {
         URI meta = URI.create("https://json-schema.org/draft/2020-12/schema");
         assertNotNull(SchemaRegistry.globalResolve(meta));

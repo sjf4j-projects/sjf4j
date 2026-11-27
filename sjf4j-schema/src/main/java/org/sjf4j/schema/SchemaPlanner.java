@@ -97,7 +97,11 @@ public final class SchemaPlanner {
         if (plan != null) return plan;
         SchemaRegistry registry = context.registry;
         ObjectSchema schema = registry.findLocalSchema(id);
-        if (schema != null) return _buildPlan(schema, context);
+        if (schema != null) {
+            plan = _buildPlan(schema, context);
+            context.putPlan(URI.create(id), plan);
+            return plan;
+        }
         URI nested = registry.findNestedResource(id);
         if (nested != null) {
             SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), context);
@@ -110,7 +114,11 @@ public final class SchemaPlanner {
         SchemaRegistry global = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY;
         if (registry == global) return null;
         ObjectSchema builtin = global.findLocalSchema(id);
-        if (builtin != null) return _buildPlan(builtin, context);
+        if (builtin != null) {
+            plan = _buildPlan(builtin, context);
+            context.putPlan(URI.create(id), plan);
+            return plan;
+        }
         SchemaPlan builtinPlan = global.findLocalPlan(id);
         return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
     }
@@ -533,9 +541,9 @@ public final class SchemaPlanner {
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                 schema, dialect, vocabulary, annotations);
-        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps, context);
+        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
-            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps, context);
+            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);
             byDynamicAnchorPlans.put(dynamicAnchor, plan);
         }
         byPathPlans.put(ps.rootedPointerExpr(), plan);
@@ -564,15 +572,13 @@ public final class SchemaPlanner {
     }
 
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
-                                          SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps,
-                                          PlanningContext context) {
-        SchemaPlan old = byAnchorPlans.get(fragment);
+                                          SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps) {
+        SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
         if (old != null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate named fragment '" + fragment + "' from " + keyword,
                     ps, resourceUri));
         }
-        byAnchorPlans.put(fragment, plan);
     }
 
     /**
