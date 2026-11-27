@@ -94,7 +94,8 @@ public final class SchemaPlan {
 
     /**
      * Returns whether the instance is valid, with optional execution limits and
-     * no error collection. Returns false if an execution limit is exhausted.
+     * no error collection. Fail-fast behavior follows the supplied options.
+     * Returns false if an execution limit is exhausted.
      */
     public boolean isValid(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
@@ -151,19 +152,9 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        if (ctx.maxEvaluationDepth != 0) {
-            if (ctx.evaluationDepth >= ctx.maxEvaluationDepth) {
-                throw ctx.limitExceeded("maxEvaluationDepth", ctx.maxEvaluationDepth, this, instance, instancePs);
-            }
-            ctx.evaluationDepth++;
-        }
+        ctx.enterEvaluation(this, instance, instancePs);
         try {
-            if (ctx.maxEvaluations != 0) {
-                if (ctx.evaluations >= ctx.maxEvaluations) {
-                    throw ctx.limitExceeded("maxEvaluations", ctx.maxEvaluations, this, instance, instancePs);
-                }
-                ctx.evaluations++;
-            }
+            ctx.countEvaluation(this, instance, instancePs);
             if (ctx.isCollectAnnotations()) {
                 int mark = ctx.annotationMark();
                 boolean valid = false;
@@ -185,7 +176,7 @@ public final class SchemaPlan {
             }
             return _evaluateKeywords(instance, instancePs, ctx);
         } finally {
-            if (ctx.maxEvaluationDepth != 0) ctx.evaluationDepth--;
+            ctx.leaveEvaluation();
         }
     }
 
@@ -214,12 +205,7 @@ public final class SchemaPlan {
         if (hasDynamicAnchors) ctx.pushPlan(this);
         try {
             for (Evaluator evaluator : evaluators) {
-                if (ctx.maxEvaluations != 0) {
-                    if (ctx.evaluations >= ctx.maxEvaluations) {
-                        throw ctx.limitExceeded("maxEvaluations", ctx.maxEvaluations, this, instance, ps);
-                    }
-                    ctx.evaluations++;
-                }
+                ctx.countEvaluation(this, instance, ps);
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;

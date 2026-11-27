@@ -204,6 +204,18 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
+    void booleanOnlyDoesNotOverrideFailFast() {
+        for (boolean failFast : new boolean[]{false, true}) {
+            ValidationOptions options = ValidationOptions.builder().failFast(failFast).build();
+            for (boolean booleanOnly : new boolean[]{false, true}) {
+                ValidationContext ctx = new ValidationContext(options, booleanOnly);
+                assertEquals(failFast, ctx.isFailFast());
+                assertEquals(booleanOnly, ctx.isBooleanOnly());
+            }
+        }
+    }
+
+    @Test
     void isValidOptionsAlwaysUseBooleanOnlySemantics() {
         ValidationOptions options = ValidationOptions.builder()
                 .failFast(false).collectAnnotations(true).maxErrors(1)

@@ -21,11 +21,11 @@ public class ValidationContext {
     private final boolean strictFormat;
     private final boolean booleanOnly;
     private final boolean collectAnnotations;
-    final long maxEvaluations;
-    final int maxEvaluationDepth;
+    private final long maxEvaluations;
+    private final int maxEvaluationDepth;
     private final int maxErrors;
-    long evaluations;
-    int evaluationDepth;
+    private long evaluations;
+    private int evaluationDepth;
     private ValidationException limitFailure;
     private List<ValidationResult.Detail> errors;
     private List<ValidationResult.Detail> annotations;
@@ -56,7 +56,7 @@ public class ValidationContext {
     /** Creates a context with the requested runtime validation options. */
     public ValidationContext(ValidationOptions options, boolean booleanOnly) {
         Asserts.notNull(options, "options");
-        this.failFast = booleanOnly || options.isFailFast();
+        this.failFast = options.isFailFast();
         this.strictFormat = options.isStrictFormat();
         this.booleanOnly = booleanOnly;
         this.collectAnnotations = options.isCollectAnnotations() && !booleanOnly;
@@ -70,8 +70,24 @@ public class ValidationContext {
         return collectAnnotations;
     }
 
-    ValidationException limitExceeded(String limit, long max, SchemaPlan plan,
-                                      Instance instance, PathSegment instancePs) {
+    void countEvaluation(SchemaPlan plan, Instance instance, PathSegment instancePs) {
+        if (maxEvaluations == 0) return;
+        if (evaluations >= maxEvaluations) {
+            throw _limitExceeded("maxEvaluations", maxEvaluations, plan, instance, instancePs);
+        }
+        evaluations++;
+    }
+
+    void enterEvaluation(SchemaPlan plan, Instance instance, PathSegment instancePs) {
+        if (maxEvaluationDepth == 0) return;
+        if (evaluationDepth >= maxEvaluationDepth) {
+            throw _limitExceeded("maxEvaluationDepth", maxEvaluationDepth, plan, instance, instancePs);
+        }
+        evaluationDepth++;
+    }
+
+    private ValidationException _limitExceeded(String limit, long max, SchemaPlan plan,
+                                               Instance instance, PathSegment instancePs) {
         if (instancePs == null) instancePs = instance.materializePath();
         ValidationResult.Detail error = new ValidationResult.Detail(limit,
                 "validation aborted: " + limit + "=" + max + " exceeded",
@@ -96,6 +112,10 @@ public class ValidationContext {
             }
         }
         return true;
+    }
+
+    void leaveEvaluation() {
+        if (maxEvaluationDepth != 0) evaluationDepth--;
     }
 
     /** Releases per-evaluation state, preserving configuration and output. */
