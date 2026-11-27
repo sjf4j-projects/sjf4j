@@ -57,7 +57,7 @@ class CompiledBinderConformanceTest {
         assertTrue(generated.contains("catch (BindingException failure2)"), backend);
         assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
         assertTrue(generated.contains("failed to write node type '"), backend);
-        assertFalse(generated.contains("Objects.requireNonNull"), backend);
+        assertTrue(generated.contains("Asserts.notNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);
             assertFalse(generated.contains("FastStringWriter"), backend);

@@ -4,6 +4,7 @@ import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Asserts;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpInputMessage;
@@ -21,7 +22,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 
 /**
  * Example application-owned Spring MVC converter for SJF4J runtime JSON/YAML binding.
@@ -46,8 +46,8 @@ public final class Sjf4jHttpMessageConverter extends AbstractGenericHttpMessageC
         super(MediaType.APPLICATION_JSON,
                 MediaType.parseMediaType("application/*+json"),
                 MediaType.parseMediaType("application/yaml"));
-        this.json = Objects.requireNonNull(json, "json");
-        this.yaml = Objects.requireNonNull(yaml, "yaml");
+        this.json = Asserts.notNull(json, "json");
+        this.yaml = Asserts.notNull(yaml, "yaml");
     }
 
     @Override
