@@ -1,6 +1,10 @@
 package org.sjf4j.schema;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -9,7 +13,6 @@ import java.util.List;
  */
 final class PlanningContext {
     final SchemaRegistry registry;
-    final SchemaRegistry source;
     final PlanningOptions options;
     final List<Evaluator.RefEvaluator> refEvaluators = new ArrayList<>();
     final List<Evaluator.DynamicRefEvaluator> dynamicRefEvaluators = new ArrayList<>();
@@ -17,14 +20,51 @@ final class PlanningContext {
     private int schemas;
     private int depth;
 
+    private final Map<String, SchemaPlan> publishedPlans = new HashMap<>();
+    private Map<Map<String, SchemaPlan>, Map<String, SchemaPlan>> fragmentSnapshots;
+
     PlanningContext(SchemaRegistry registry) {
-        this(registry, null, PlanningOptions.DEFAULT);
+        this.registry = registry;
+        this.options = registry.getPlanningOptions();
     }
 
-    PlanningContext(SchemaRegistry registry, SchemaRegistry source, PlanningOptions options) {
-        this.registry = registry;
-        this.source = source;
-        this.options = options;
+    void putPlan(URI uri, SchemaPlan plan) {
+        if (registry.putPlan(uri, plan)) {
+            publishedPlans.put(SchemaUtil.normalizeUriKey(uri), plan);
+        }
+    }
+
+    void beforeLazyBuild(SchemaPlan root) {
+        if (fragmentSnapshots == null) fragmentSnapshots = new IdentityHashMap<>();
+        snapshot(root.byAnchorPlans);
+        snapshot(root.byDynamicAnchorPlans);
+        snapshot(root.byPathPlans);
+    }
+
+    private void snapshot(Map<String, SchemaPlan> map) {
+        if (map != null && !fragmentSnapshots.containsKey(map)) {
+            fragmentSnapshots.put(map, new HashMap<>(map));
+        }
+    }
+
+    void rollback() {
+        for (Map.Entry<String, SchemaPlan> entry : publishedPlans.entrySet()) {
+            registry.removePlan(entry.getKey(), entry.getValue());
+        }
+        if (fragmentSnapshots != null) {
+            for (Map.Entry<Map<String, SchemaPlan>, Map<String, SchemaPlan>> entry : fragmentSnapshots.entrySet()) {
+                entry.getKey().clear();
+                entry.getKey().putAll(entry.getValue());
+            }
+        }
+    }
+
+    /** Rejects oversized subschema arrays before allocating their plan array. */
+    void checkRemainingSchemas(int count) {
+        int maxSchemas = options.getMaxSchemas();
+        if (maxSchemas != 0 && count > maxSchemas - schemas) {
+            throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
+        }
     }
 
     void enter() {

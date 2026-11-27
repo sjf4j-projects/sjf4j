@@ -79,8 +79,8 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * planner to lazily cache referenced plans during compilation.
      */
     @Override
-    public SchemaPlan createPlan(SchemaRegistry registry, PlanningOptions options) {
-        return SchemaPlanner.createPlan(this, registry, options);
+    public SchemaPlan createPlan(SchemaRegistry registry) {
+        return SchemaPlanner.buildAndPutPlan(this, SchemaRegistry.copyOf(registry));
     }
 
 

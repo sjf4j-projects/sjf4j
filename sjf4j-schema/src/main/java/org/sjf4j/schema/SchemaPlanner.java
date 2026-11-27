@@ -26,19 +26,17 @@ public final class SchemaPlanner {
 
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
-    /** Compiles a root using an isolated registry, with or without planning limits. */
-    static SchemaPlan createPlan(ObjectSchema schema, SchemaRegistry registry, PlanningOptions options) {
-        Asserts.notNull(options, "options");
-        if (!options.hasLimits()) return buildAndPutPlan(schema, SchemaRegistry.copyOf(registry));
-        SchemaRegistry scoped = new SchemaRegistry(registry == null
-                ? SchemaDialect.DRAFT_2020_12 : registry.getDefaultDialect());
-        scoped.indexRegistry(registry);
-        return _buildAndPutPlan(schema, new PlanningContext(scoped, registry, options));
-    }
-
     static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
         Asserts.notNull(registry, "registry");
-        return _buildAndPutPlan(schema, new PlanningContext(registry));
+        synchronized (registry) {
+            PlanningContext context = new PlanningContext(registry);
+            try {
+                return _buildAndPutPlan(schema, context);
+            } catch (RuntimeException | Error e) {
+                context.rollback();
+                throw e;
+            }
+        }
     }
 
     private static SchemaPlan _buildAndPutPlan(ObjectSchema schema, PlanningContext context) {
@@ -65,10 +63,10 @@ public final class SchemaPlanner {
                     resourceUri, PathSegment.Root.INSTANCE);
             plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
                     new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-            context.registry.putPlan(resourceUri, plan);
+            context.putPlan(resourceUri, plan);
 
             if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
-                context.registry.putPlan(retrievalUri, plan);
+                context.putPlan(retrievalUri, plan);
             }
             _bindDeferredRefs(context, refStart, dynamicRefStart);
             return plan;
@@ -78,20 +76,26 @@ public final class SchemaPlanner {
         }
     }
 
-    /** Registry convenience entry point. All lazy work stays in the planner. */
     static SchemaPlan resolve(SchemaRegistry registry, String id, String fragment) {
-        PlanningContext context = new PlanningContext(registry);
-        return _resolveFragmentOrThrow(_resolveResource(SchemaUtil.normalizeUriKey(id), true, context),
-                fragment, context);
+        return _resolve(registry, SchemaUtil.normalizeUriKey(id), fragment, true);
     }
 
     static SchemaPlan resolveBuilt(SchemaRegistry registry, URI uri) {
-        PlanningContext context = new PlanningContext(registry);
-        return _resolveFragmentOrThrow(_resolveResource(SchemaUtil.normalizeUriKey(uri), false, context),
-                uri.getFragment(), context);
+        return _resolve(registry, SchemaUtil.normalizeUriKey(uri), uri.getFragment(), false);
     }
 
-    /** Looks up a resource and compiles it lazily if required. */
+    private static SchemaPlan _resolve(SchemaRegistry registry, String id, String fragment, boolean allowBuild) {
+        synchronized (registry) {
+            PlanningContext context = new PlanningContext(registry);
+            try {
+                return _resolveFragmentOrThrow(_resolveResource(id, allowBuild, context), fragment, context);
+            } catch (RuntimeException | Error e) {
+                context.rollback();
+                throw e;
+            }
+        }
+    }
+
     private static SchemaPlan _resolveResource(String id, boolean allowBuild, PlanningContext context) {
         SchemaRegistry registry = context.registry;
         SchemaPlan plan = registry.findLocalPlan(id);
@@ -100,41 +104,27 @@ public final class SchemaPlanner {
         if (allowBuild) {
             ObjectSchema schema = registry.findLocalSchema(id);
             if (schema != null) return _buildAndPutPlan(schema, context);
+            URI nested = registry.findNestedResource(id);
+            if (nested != null) {
+                SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), true, context);
+                SchemaPlan rebuilt = registry.findLocalPlan(id);
+                return rebuilt != null ? rebuilt : _resolveFragment(root, nested.getFragment(), context);
+            }
         }
 
         SchemaRegistry global = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY;
         if (registry == global) return null;
-        if (!context.options.hasLimits()) {
-            // Built-ins retain their independent catalog and cached reference bindings.
-            return _resolveResource(id, allowBuild, new PlanningContext(global));
+        if (context.options == global.getPlanningOptions()
+                && registry.getDefaultDialect() == global.getDefaultDialect()) {
+            return _resolve(global, id, null, allowBuild);
         }
         if (!allowBuild) return null;
 
-        SchemaPlan nested = _rebuildNestedResource(id, context);
-        if (nested != null) return nested;
+        // Different policies compile built-ins in the local environment.
         ObjectSchema builtin = global.findLocalSchema(id);
         if (builtin != null) return _buildAndPutPlan(builtin, context);
         SchemaPlan builtinPlan = global.findLocalPlan(id);
         return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
-    }
-
-    /** Rebuilds a nested resource with its owning root's inherited schema semantics. */
-    private static SchemaPlan _rebuildNestedResource(String id, PlanningContext context) {
-        if (context.source == null) return null;
-        SchemaPlan target = context.source.findLocalPlan(id);
-        if (target == null || target.booleanSchema) return null;
-        SchemaPlan oldRoot = context.source.findOwningRoot(target);
-        if (oldRoot == null) return null;
-        SchemaPlan root = _buildAndPutPlan((ObjectSchema) oldRoot.schema, context);
-        SchemaPlan rebuilt = context.registry.findLocalPlan(id);
-        if (rebuilt != null) return rebuilt;
-        for (Map.Entry<String, SchemaPlan> fragment : oldRoot.byPathPlans.entrySet()) {
-            if (fragment.getValue() == target) {
-                // A nested resource may originally have been discovered by a lazy pointer.
-                return _resolveFragment(root, fragment.getKey(), context);
-            }
-        }
-        return null;
     }
 
     private static SchemaPlan _resolveFragment(SchemaPlan root, String fragment, PlanningContext context) {
@@ -561,6 +551,7 @@ public final class SchemaPlanner {
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
         context.enter();
+        context.beforeLazyBuild(resourcePlan);
         int refStart = context.refEvaluators.size();
         int dynamicRefStart = context.dynamicRefEvaluators.size();
         try {
@@ -640,6 +631,7 @@ public final class SchemaPlanner {
                     cps, resourceUri));
         }
         int size = Nodes.sizeInArray(arrayNode);
+        context.checkRemainingSchemas(size);
         SchemaPlan[] planArr = new SchemaPlan[size];
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(arrayNode, i);
@@ -729,7 +721,7 @@ public final class SchemaPlanner {
                 } else {
                     plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    context.registry.putPlan(childResourceUri, plan);
+                    context.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
                         byPathPlans.put(path + entry.getKey(), entry.getValue());

@@ -26,14 +26,12 @@ public interface JsonSchema {
      * Compiles this schema into runtime evaluators.
      * <p>
      * Compilation resolves references, anchors, and keyword evaluators against
-     * the provided registry context. Root schemas may use the registry both for
+     * the provided registry's immutable planning policy and resource context. Root schemas may use the registry both for
      * delayed compilation of other indexed schemas and for lookup of referenced
      * absolute schema resources. Passing {@code null} means "compile with an
      * empty external registry context".
      */
-    default SchemaPlan createPlan(SchemaRegistry registry) {
-        return createPlan(registry, PlanningOptions.DEFAULT);
-    }
+    SchemaPlan createPlan(SchemaRegistry registry);
 
     /**
      * Compiles with resource limits. Bounded planning uses an isolated registry

@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +33,9 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
+    private final PlanningOptions planningOptions;
+    // Imported nested resources retain their owning document and pointer, not foreign plans.
+    private final Map<String, URI> byIdNestedResources = new ConcurrentHashMap<>();
 
 
     /**
@@ -39,9 +43,24 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
+        this(defaultDialect, PlanningOptions.DEFAULT);
+    }
+
+    /** Creates a registry with immutable planning options and default dialect. */
+    public SchemaRegistry(PlanningOptions planningOptions) {
+        this(SchemaDialect.DRAFT_2020_12, planningOptions);
+    }
+
+    /** Creates a registry with a fixed compilation environment. */
+    public SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions planningOptions) {
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
-        this.defaultDialect = defaultDialect;
+        this.defaultDialect = Asserts.notNull(defaultDialect, "defaultDialect");
+        this.planningOptions = Asserts.notNull(planningOptions, "planningOptions");
+    }
+
+    public PlanningOptions getPlanningOptions() {
+        return planningOptions;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -259,7 +278,7 @@ public class SchemaRegistry {
      *
      * @throws SchemaException on invalid URI shape or duplicate/conflicting map
      */
-    void putPlan(URI uri, SchemaPlan plan) {
+    boolean putPlan(URI uri, SchemaPlan plan) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
@@ -267,6 +286,12 @@ public class SchemaRegistry {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
+        return old == null;
+    }
+
+    /** Removes only the plan published by a failed planning operation. */
+    void removePlan(String id, SchemaPlan plan) {
+        byIdPlans.remove(id, plan);
     }
 
     private void _putSchema(URI uri, ObjectSchema schema) {
@@ -286,7 +311,7 @@ public class SchemaRegistry {
 
     private boolean _containsLocalResource(URI uri) {
         String id = SchemaUtil.normalizeUriKey(uri);
-        return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id);
+        return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id) || byIdNestedResources.containsKey(id);
     }
 
     private void _checkUri(URI uri) {
@@ -326,7 +351,7 @@ public class SchemaRegistry {
         for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
             boolean conflicting = false;
             for (String key : group.getValue()) {
-                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key)) {
+                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key) || byIdNestedResources.containsKey(key)) {
                     conflicting = true;
                     break;
                 }
@@ -338,21 +363,54 @@ public class SchemaRegistry {
         }
         for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
             if (entry.getValue().booleanSchema
-                    && !byIdSchemas.containsKey(entry.getKey())) {
+                    && !byIdSchemas.containsKey(entry.getKey()) && !byIdNestedResources.containsKey(entry.getKey())) {
                 byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
             }
+        }
+        // Retain resource locations, not plans, when importing nested $id mappings.
+        for (Map.Entry<String, URI> entry : source.byIdNestedResources.entrySet()) {
+            String rootId = SchemaUtil.normalizeUriKey(entry.getValue());
+            if (byIdSchemas.get(rootId) != null
+                    && byIdSchemas.get(rootId) == source.byIdSchemas.get(rootId)) {
+                _putNestedResource(entry.getKey(), entry.getValue());
+            }
+        }
+        for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
+            String id = entry.getKey();
+            SchemaPlan target = entry.getValue();
+            if (target.booleanSchema || source.byIdSchemas.containsKey(id)) continue;
+            SchemaPlan root = source.findOwningRoot(target);
+            if (root == null || byIdSchemas.get(SchemaUtil.normalizeUriKey(root.resourceUri)) != root.schema) continue;
+            for (Map.Entry<String, SchemaPlan> fragment : root.byPathPlans.entrySet()) {
+                if (fragment.getValue() != target) continue;
+                try {
+                    URI location = URI.create(SchemaUtil.documentUri(root.resourceUri).toString()
+                            + new URI(null, null, fragment.getKey()).toASCIIString());
+                    _putNestedResource(id, location);
+                } catch (URISyntaxException e) {
+                    throw new SchemaException("Invalid nested resource pointer: " + fragment.getKey(), e);
+                }
+                break;
+            }
+        }
+    }
+
+    private void _putNestedResource(String id, URI location) {
+        if (!byIdSchemas.containsKey(id) && !byIdPlans.containsKey(id)) {
+            byIdNestedResources.putIfAbsent(id, location);
         }
     }
 
     /**
      * Imports all schema mappings from another registry.
      * The returned registry has independent maps but shares indexed schema
-     * models and compiled plans. Null creates a default registry.
+     * models and compiled plans under the same planning policy. Null creates a default registry.
      */
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
 
-        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
+        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect, other.planningOptions);
+        registry.byIdNestedResources.putAll(other.byIdNestedResources);
         for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
             SchemaPlan plan = entry.getValue();
             SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
@@ -440,8 +498,13 @@ public class SchemaRegistry {
         return byIdSchemas.get(id);
     }
 
+    /** Looks up the owning resource pointer of an imported nested schema. */
+    URI findNestedResource(String id) {
+        return byIdNestedResources.get(id);
+    }
+
     /** Finds the indexed root owning a previously compiled nested resource. */
-    SchemaPlan findOwningRoot(SchemaPlan target) {
+    private SchemaPlan findOwningRoot(SchemaPlan target) {
         for (String id : byIdSchemas.keySet()) {
             SchemaPlan root = byIdPlans.get(id);
             if (root != null && root.byPathPlans != null) {
@@ -494,7 +557,7 @@ public class SchemaRegistry {
     }
 
     private boolean _contains(String id) {
-        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
+        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) || byIdNestedResources.containsKey(id) ||
                 (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
     }
 
@@ -505,6 +568,7 @@ public class SchemaRegistry {
     public Set<String> idSet() {
         Set<String> idSet = new HashSet<>(byIdPlans.keySet());
         idSet.addAll(byIdSchemas.keySet());
+        idSet.addAll(byIdNestedResources.keySet());
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             idSet.addAll(GLOBAL_SCHEMA_REGISTRY.idSet());
         }

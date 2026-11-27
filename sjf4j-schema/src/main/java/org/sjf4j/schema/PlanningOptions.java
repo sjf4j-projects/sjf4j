@@ -2,7 +2,7 @@ package org.sjf4j.schema;
 
 /** Immutable schema planning options. Zero disables a resource limit. */
 public final class PlanningOptions {
-    static final PlanningOptions DEFAULT = builder().build();
+    public static final PlanningOptions DEFAULT = builder().build();
 
     private final int maxSchemas;
     private final int maxSchemaDepth;
@@ -12,7 +12,7 @@ public final class PlanningOptions {
         this.maxSchemaDepth = builder.maxSchemaDepth;
     }
 
-    /** Maximum number of newly constructed SchemaPlans, including boolean and empty plans. */
+    /** Maximum newly constructed SchemaPlans per operation, including boolean and empty plans. Cached plans do not count again. */
     public int getMaxSchemas() {
         return maxSchemas;
     }

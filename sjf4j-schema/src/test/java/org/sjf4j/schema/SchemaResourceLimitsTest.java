@@ -9,92 +9,97 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SchemaResourceLimitsTest {
+    private static SchemaRegistry registry(int maxSchemas, int maxDepth) {
+        return new SchemaRegistry(PlanningOptions.builder()
+                .maxSchemas(maxSchemas).maxSchemaDepth(maxDepth).build());
+    }
+
     @Test
-    void planningEntryPointsDispatchToSchemaImplementations() {
-        PlanningOptions unlimited = PlanningOptions.builder().build();
-        PlanningOptions bounded = PlanningOptions.builder().maxSchemas(1).maxSchemaDepth(1).build();
+    void planningOptionsBelongToRegistry() {
+        SchemaRegistry bounded = registry(1, 1);
+        assertSame(bounded.getPlanningOptions(), SchemaRegistry.copyOf(bounded).getPlanningOptions());
+        assertThrows(NullPointerException.class, () -> new SchemaRegistry((PlanningOptions) null));
         JsonSchema object = JsonSchema.fromJson("{\"type\":\"integer\"}");
         assertTrue(object.createPlan().isValid(1));
-        assertTrue(object.createPlan(null, unlimited).isValid(1));
-        assertTrue(object.createPlan(null, bounded).isValid(1));
-        assertThrows(NullPointerException.class, () -> object.createPlan(null, null));
-
-        JsonSchema alwaysTrue = BooleanSchema.TRUE;
-        JsonSchema alwaysFalse = BooleanSchema.FALSE;
-        assertTrue(alwaysTrue.createPlan().isValid(1));
-        assertTrue(alwaysTrue.createPlan(null, bounded).isValid(1));
-        assertFalse(alwaysFalse.createPlan(null, bounded).isValid(1));
-        assertThrows(NullPointerException.class, () -> alwaysTrue.createPlan(null, null));
+        assertTrue(object.createPlan(bounded).isValid(1));
+        assertTrue(BooleanSchema.TRUE.createPlan(bounded).isValid(1));
+        assertFalse(BooleanSchema.FALSE.createPlan(bounded).isValid(1));
     }
 
     @Test
     void planningCountsBooleanEmptyAndUnusedSchemas() {
         JsonSchema schema = JsonSchema.fromJson("{\"$defs\":{\"a\":true,\"b\":false,\"c\":{}}}");
-        assertThrows(SchemaException.class, () -> schema.createPlan(null,
-                PlanningOptions.builder().maxSchemas(3).build()));
-        assertTrue(schema.createPlan(null, PlanningOptions.builder().maxSchemas(4).build()).isValid(1));
-        assertThrows(SchemaException.class, () -> schema.createPlan(null,
-                PlanningOptions.builder().maxSchemaDepth(1).build()));
-        assertTrue(schema.createPlan(null, PlanningOptions.builder().maxSchemaDepth(2).build()).isValid(1));
+        assertThrows(SchemaException.class, () -> schema.createPlan(registry(3, 0)));
+        assertTrue(schema.createPlan(registry(4, 0)).isValid(1));
+        assertThrows(SchemaException.class, () -> schema.createPlan(registry(0, 1)));
+        assertTrue(schema.createPlan(registry(0, 2)).isValid(1));
     }
 
     @Test
-    void planningSharesLimitsAcrossCachedExternalResources() {
-        SchemaRegistry registry = new SchemaRegistry();
+    void differentRegistriesRecompileExternalResources() {
+        SchemaRegistry source = new SchemaRegistry();
         URI uri = URI.create("https://example.test/external");
-        registry.register(uri, JsonSchema.fromJson("{\"allOf\":[true,{}]}"));
+        SchemaPlan cached = source.register(uri, JsonSchema.fromJson("{\"allOf\":[true,{}]}"));
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/external\"}");
-        assertThrows(SchemaException.class, () -> root.createPlan(registry,
-                PlanningOptions.builder().maxSchemas(3).build()));
-        assertTrue(root.createPlan(registry,
-                PlanningOptions.builder().maxSchemas(4).build()).isValid(1));
-        assertTrue(registry.resolve(uri).isValid(1));
+        SchemaRegistry strict = registry(3, 0);
+        strict.indexRegistry(source);
+        assertThrows(SchemaException.class, () -> root.createPlan(strict));
+        SchemaRegistry relaxed = registry(4, 0);
+        relaxed.indexRegistry(source);
+        assertTrue(root.createPlan(relaxed).isValid(1));
+        assertNotSame(cached, relaxed.resolve(uri));
+        assertSame(cached, source.resolve(uri));
+        assertTrue(root.createPlan(relaxed).isValid(1));
     }
 
     @Test
     void boundedPlanningPreservesNestedResourceMappings() {
-        SchemaRegistry registry = new SchemaRegistry();
+        SchemaRegistry source = new SchemaRegistry();
         URI rootUri = URI.create("https://example.test/root");
         URI childUri = URI.create("https://example.test/child");
-        registry.register(rootUri, JsonSchema.fromJson(
+        source.register(rootUri, JsonSchema.fromJson(
                 "{\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}}}"));
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/child\"}");
-        SchemaPlan plan = root.createPlan(registry, PlanningOptions.builder().maxSchemas(3).build());
+        SchemaRegistry bounded = registry(3, 0);
+        bounded.indexRegistry(source);
+        SchemaPlan plan = root.createPlan(bounded);
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("bad"));
-        assertThrows(SchemaException.class, () -> root.createPlan(registry,
-                PlanningOptions.builder().maxSchemas(2).build()));
-        assertTrue(registry.resolve(childUri).isValid(1));
+        SchemaRegistry strict = registry(2, 0);
+        strict.indexRegistry(source);
+        assertThrows(SchemaException.class, () -> root.createPlan(strict));
+        assertTrue(source.resolve(childUri).isValid(1));
     }
 
     @Test
     void planningDepthSpansExternalResourcesAndLazyFragments() {
-        SchemaRegistry registry = new SchemaRegistry();
         URI a = URI.create("https://example.test/a");
         URI b = URI.create("https://example.test/b");
-        registry.index(a, JsonSchema.fromJson("{\"$ref\":\"https://example.test/b#/custom\"}"));
-        registry.index(b, JsonSchema.fromJson("{\"custom\":{\"not\":false}}"));
+        SchemaRegistry source = new SchemaRegistry();
+        source.index(a, JsonSchema.fromJson("{\"$ref\":\"https://example.test/b#/custom\"}"));
+        source.index(b, JsonSchema.fromJson("{\"custom\":{\"not\":false}}"));
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/a\"}");
-        // Root, a, b, lazy fragment and its child: five plans in total.
-        // b's root is finished before the fragment is built.
-        assertTrue(root.createPlan(registry, PlanningOptions.builder()
-                .maxSchemas(5).maxSchemaDepth(4).build()).isValid(1));
-        assertThrows(SchemaException.class, () -> root.createPlan(registry,
-                PlanningOptions.builder().maxSchemaDepth(3).build()));
-        assertThrows(SchemaException.class, () -> root.createPlan(registry,
-                PlanningOptions.builder().maxSchemas(4).build()));
+        SchemaRegistry enough = registry(5, 4);
+        enough.indexRegistry(source);
+        assertTrue(root.createPlan(enough).isValid(1));
+        SchemaRegistry shallow = registry(0, 3);
+        shallow.indexRegistry(source);
+        assertThrows(SchemaException.class, () -> root.createPlan(shallow));
+        SchemaRegistry small = registry(4, 0);
+        small.indexRegistry(source);
+        assertThrows(SchemaException.class, () -> root.createPlan(small));
     }
 
     @Test
     void sharedPlanningContextBindsSiblingStaticAndDynamicRefs() {
-        SchemaRegistry registry = new SchemaRegistry();
+        SchemaRegistry registry = registry(3, 0);
         registry.index(URI.create("https://example.test/a"), JsonSchema.fromJson(
                 "{\"$ref\":\"https://example.test/b\"}"));
         registry.index(URI.create("https://example.test/b"), JsonSchema.fromJson(
                 "{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}"));
         JsonSchema schema = JsonSchema.fromJson(
                 "{\"$ref\":\"https://example.test/a\",\"$dynamicRef\":\"https://example.test/b#node\"}");
-        SchemaPlan plan = schema.createPlan(registry, PlanningOptions.builder().maxSchemas(3).build());
+        SchemaPlan plan = schema.createPlan(registry);
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("bad"));
     }
@@ -102,9 +107,46 @@ class SchemaResourceLimitsTest {
     @Test
     void planningCountsLazyPointerTargets() {
         JsonSchema schema = JsonSchema.fromJson("{\"$ref\":\"#/custom\",\"custom\":{\"not\":false}}");
-        assertThrows(SchemaException.class, () -> schema.createPlan(null,
-                PlanningOptions.builder().maxSchemas(2).build()));
-        assertTrue(schema.createPlan(null, PlanningOptions.builder().maxSchemas(3).build()).isValid(1));
+        assertThrows(SchemaException.class, () -> schema.createPlan(registry(2, 0)));
+        assertTrue(schema.createPlan(registry(3, 0)).isValid(1));
+    }
+
+    @Test
+    void registryRegisterAndResolveSharePolicyAndRollbackFailedPlans() {
+        SchemaRegistry registry = registry(2, 0);
+        URI root = URI.create("https://example.test/root");
+        URI external = URI.create("https://example.test/external");
+        registry.index(external, JsonSchema.fromJson("{\"not\":false}"));
+        JsonSchema schema = JsonSchema.fromJson("{\"$ref\":\"https://example.test/external\"}");
+        assertThrows(SchemaException.class, () -> registry.register(root, schema));
+        assertNull(registry.resolveBuilt(root));
+        assertNull(registry.resolveBuilt(external));
+        assertThrows(SchemaException.class, () -> registry.resolve(root));
+        assertTrue(registry.resolve(external).isValid(1));
+        assertTrue(registry.resolve(root).isValid(1));
+    }
+
+    @Test
+    void failedLazyPointerDoesNotPolluteCachedRoot() {
+        SchemaRegistry registry = registry(2, 0);
+        URI root = URI.create("https://example.test/root");
+        URI fragment = URI.create(root + "#/custom");
+        registry.register(root, JsonSchema.fromJson(
+                "{\"custom\":{\"$defs\":{\"a\":true,\"b\":false}}}"));
+        SchemaPlan plan = registry.resolve(root);
+        assertThrows(SchemaException.class, () -> registry.resolve(fragment));
+        assertFalse(plan.byPathPlans.containsKey("/custom"));
+        assertFalse(plan.byPathPlans.containsKey("/custom/$defs/a"));
+        assertThrows(SchemaException.class, () -> registry.resolve(fragment));
+    }
+
+    @Test
+    void boundedRegistryDoesNotBorrowGlobalPlans() {
+        URI meta = URI.create("https://json-schema.org/draft/2020-12/schema");
+        assertNotNull(SchemaRegistry.globalResolve(meta));
+        SchemaRegistry bounded = registry(1, 0);
+        assertThrows(SchemaException.class, () -> bounded.resolve(meta));
+        assertNull(bounded.resolveBuilt(meta));
     }
 
     @Test
