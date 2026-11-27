@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.List;
 
 /**
- * State shared by one schema planning operation, including lazy resources
- * and fragment targets. Not thread-safe; never stored in the registry.
+ * State shared by one schema planning operation, including referenced resources.
+ * Not thread-safe; never stored in the registry.
  */
 final class PlanningContext {
     final SchemaRegistry registry;

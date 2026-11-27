@@ -30,17 +30,21 @@ class SchemaResourceLimitsTest {
     void createPlanDoesNotRegisterOrMutatePublishedResources() {
         SchemaRegistry registry = new SchemaRegistry();
         URI resource = URI.create("https://example.test/resource");
-        SchemaPlan cached = registry.register(resource,
-                JsonSchema.fromJson("{\"custom\":{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}}"));
+        SchemaPlan cached = registry.register(resource, JsonSchema.fromJson(
+                "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}}}"));
         JsonSchema schema = JsonSchema.fromJson("{\"$id\":\"https://example.test/temporary\","
-                + "\"$ref\":\"https://example.test/resource#/custom\"}");
+                + "\"$ref\":\"https://example.test/resource#/$defs/value\"}");
         assertTrue(schema.createPlan(registry).isValid(1));
         assertFalse(schema.createPlan(registry).isValid("bad"));
         assertFalse(registry.contains("https://example.test/temporary"));
-        assertNull(cached.byPathPlans.get("/custom"));
-        assertNull(cached.byDynamicAnchorPlans.get("node"));
-        assertNull(registry.resolveBuilt(URI.create(resource + "#/custom")));
         assertSame(cached, registry.resolve(resource));
+        assertSame(cached.byPathPlans.get("/$defs/value"), registry.resolve(URI.create(resource + "#node")));
+
+        URI uncached = URI.create("https://example.test/uncached");
+        registry.index(uncached, JsonSchema.fromJson("{\"type\":\"integer\"}"));
+        assertTrue(JsonSchema.fromJson("{\"$ref\":\"https://example.test/uncached\"}")
+                .createPlan(registry).isValid(1));
+        assertNull(registry.resolveBuilt(uncached));
     }
 
     @Test
@@ -89,17 +93,17 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void planningDepthSpansExternalResourcesAndLazyFragments() {
+    void planningDepthSpansExternalResourcesAndSubschemas() {
         URI a = URI.create("https://example.test/a");
         URI b = URI.create("https://example.test/b");
         SchemaRegistry source = new SchemaRegistry();
-        source.index(a, JsonSchema.fromJson("{\"$ref\":\"https://example.test/b#/custom\"}"));
-        source.index(b, JsonSchema.fromJson("{\"custom\":{\"not\":false}}"));
+        source.index(a, JsonSchema.fromJson("{\"$ref\":\"https://example.test/b#/$defs/target\"}"));
+        source.index(b, JsonSchema.fromJson("{\"$defs\":{\"target\":{\"not\":false}}}"));
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/a\"}");
-        SchemaRegistry enough = registry(5, 4);
+        SchemaRegistry enough = registry(5, 5);
         enough.indexRegistry(source);
         assertTrue(root.createPlan(enough).isValid(1));
-        SchemaRegistry shallow = registry(0, 3);
+        SchemaRegistry shallow = registry(0, 4);
         shallow.indexRegistry(source);
         assertThrows(SchemaException.class, () -> root.createPlan(shallow));
         SchemaRegistry small = registry(4, 0);
@@ -122,10 +126,17 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void planningCountsLazyPointerTargets() {
-        JsonSchema schema = JsonSchema.fromJson("{\"$ref\":\"#/custom\",\"custom\":{\"not\":false}}");
-        assertThrows(SchemaException.class, () -> schema.createPlan(registry(2, 0)));
-        assertTrue(schema.createPlan(registry(3, 0)).isValid(1));
+    void referencesToUnknownKeywordValuesAreRejected() {
+        for (String keyword : new String[]{"$ref", "$dynamicRef"}) {
+            JsonSchema schema = JsonSchema.fromJson("{\"" + keyword + "\":\"#/custom\","
+                    + "\"custom\":{\"not\":false}}");
+            SchemaException failure = assertThrows(SchemaException.class, schema::createPlan);
+            assertTrue(failure.getMessage().contains("cannot resolve schema fragment '#/custom'"));
+        }
+        JsonSchema known = JsonSchema.fromJson("{\"$ref\":\"#/$defs/target\","
+                + "\"$defs\":{\"target\":{\"not\":false}}}");
+        assertThrows(SchemaException.class, () -> known.createPlan(registry(2, 0)));
+        assertTrue(known.createPlan(registry(3, 0)).isValid(1));
     }
 
     @Test
@@ -144,55 +155,26 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void failedLazyPointerDoesNotPolluteCachedRoot() {
-        SchemaRegistry registry = registry(2, 0);
+    void registryRejectsUnknownFragmentsBeforeAndAfterPublication() {
+        SchemaRegistry registry = new SchemaRegistry();
         URI root = URI.create("https://example.test/root");
         URI fragment = URI.create(root + "#/custom");
-        registry.register(root, JsonSchema.fromJson(
-                "{\"custom\":{\"$defs\":{\"a\":true,\"b\":false}}}"));
+        URI child = URI.create("https://example.test/child");
+        registry.index(root, JsonSchema.fromJson(
+                "{\"custom\":{\"$id\":\"https://example.test/child\",\"$anchor\":\"hidden\","
+                        + "\"type\":\"integer\"},\"$defs\":{\"known\":{\"type\":\"string\"}}}"));
+        SchemaException first = assertThrows(SchemaException.class, () -> registry.resolve(fragment));
+        assertTrue(first.getMessage().contains("cannot resolve schema fragment '#/custom'"));
+        assertNull(registry.resolveBuilt(root));
+
         SchemaPlan plan = registry.resolve(root);
         assertThrows(SchemaException.class, () -> registry.resolve(fragment));
+        assertNull(registry.resolveBuilt(fragment));
+        assertThrows(SchemaException.class, () -> registry.resolve(URI.create(root + "#hidden")));
+        assertNull(registry.resolve(child));
         assertFalse(plan.byPathPlans.containsKey("/custom"));
-        assertFalse(plan.byPathPlans.containsKey("/custom/$defs/a"));
-        assertThrows(SchemaException.class, () -> registry.resolve(fragment));
-    }
-
-    @Test
-    void stagedLazyFragmentsAreVisibleToRefsAndCommittedOnlyOnSuccess() {
-        SchemaRegistry registry = registry(20, 0);
-        URI root = URI.create("https://example.test/staged");
-        registry.register(root, JsonSchema.fromJson("{\"first\":{\"$anchor\":\"first\",\"$ref\":\"#/second\"},"
-                + "\"second\":{\"$anchor\":\"second\",\"type\":\"integer\",\"allOf\":[{\"$ref\":\"#first\"}]}}"));
-        SchemaPlan original = registry.resolve(root);
-        SchemaPlan first = registry.resolve(URI.create(root + "#/first"));
-        assertNull(original.byAnchorPlans.get("first"));
-        assertNull(original.byPathPlans.get("/first"));
-        assertSame(first, registry.resolve(URI.create(root + "#first")));
-        assertSame(first, registry.resolve(URI.create(root + "#/first")));
-        assertNotNull(first.byAnchorPlans.get("second"));
-        assertNotNull(first.byPathPlans.get("/second"));
-    }
-
-    @Test
-    void failedLazyRefsDoNotPublishAnchorsOrNestedResources() {
-        SchemaRegistry registry = registry(20, 0);
-        URI root = URI.create("https://example.test/staged");
-        URI child = URI.create("https://example.test/child");
-        registry.register(root, JsonSchema.fromJson("{\"custom\":{\"$dynamicAnchor\":\"custom\","
-                + "\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}},"
-                + "\"$ref\":\"https://example.test/missing\"}}"));
-        SchemaPlan original = registry.resolve(root);
-        assertThrows(SchemaException.class, () -> registry.resolve(URI.create(root + "#/custom")));
-        assertNull(original.byAnchorPlans.get("custom"));
-        assertNull(original.byDynamicAnchorPlans.get("custom"));
-        assertNull(original.byPathPlans.get("/custom"));
-        assertNull(registry.resolveBuilt(child));
-        registry.register(URI.create("https://example.test/missing"), JsonSchema.fromJson("true"));
-        SchemaPlan custom = registry.resolve(URI.create(root + "#/custom"));
-        assertNull(original.byDynamicAnchorPlans.get("custom"));
-        assertSame(custom, custom.byDynamicAnchorPlans.get("custom"));
-        assertNotNull(registry.resolveBuilt(child));
-        assertTrue(custom.isValid(1));
+        assertSame(plan, registry.resolve(root));
+        assertTrue(registry.resolve(URI.create(root + "#/$defs/known")).isValid("text"));
     }
 
     @Test

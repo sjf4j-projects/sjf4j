@@ -29,7 +29,8 @@ public interface JsonSchema {
      * the provided registry's immutable planning policy and resource context.
      * Root schemas may use the registry both for delayed compilation of other
      * indexed schemas and for lookup of referenced
-     * absolute schema resources. No compiled plans are registered. Passing {@code null} means "compile with an
+     * absolute schema resources. References may target only recognized subschemas.
+     * No compiled plans are registered. Passing {@code null} means "compile with an
      * empty external registry context".
      */
     SchemaPlan createPlan(SchemaRegistry registry);

@@ -20,8 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
- * cached by absolute resource URI after compilation. Additional lazily resolved
- * fragments are cached separately, leaving published plan graphs unchanged.
+ * cached by absolute resource URI after compilation. Fragment lookup is limited
+ * to subschemas recognized during planning; published plan graphs are unchanged.
  * Concurrent compilation against a fixed catalog is supported; callers must
  * not mutate indexed schema models or concurrently change resource definitions.
  * Multi-resource registration is not a transaction.
@@ -31,8 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaRegistry {
 
     private final Map<String, SchemaPlan> byIdPlans;
-    // Additional fragments compiled after the original resource was published.
-    private final Map<String, SchemaPlan> byIdFragments = new ConcurrentHashMap<>();
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
     private final PlanningOptions planningOptions;
@@ -312,22 +310,6 @@ public class SchemaRegistry {
             SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
             if (old != null && old != plan) {
                 _checkPlanConflict(id, plan, nestedResources.get(id));
-                if (!plan.booleanSchema) {
-                    // Keep the first published graph intact. Cache only newly discovered fragments.
-                    _registerFragments(old, plan.byAnchorPlans);
-                    _registerFragments(old, plan.byPathPlans);
-                }
-            }
-        }
-    }
-
-    private void _registerFragments(SchemaPlan root, Map<String, SchemaPlan> fragments) {
-        String id = SchemaUtil.normalizeUriKey(root.resourceUri);
-        for (Map.Entry<String, SchemaPlan> entry : fragments.entrySet()) {
-            String fragment = entry.getKey();
-            if (!fragment.isEmpty() && !root.byAnchorPlans.containsKey(fragment)
-                    && !root.byPathPlans.containsKey(fragment)) {
-                byIdFragments.putIfAbsent(id + "#" + fragment, entry.getValue());
             }
         }
     }
@@ -448,10 +430,7 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.toString();
-        String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
-        return SchemaPlanner.resolve(this, id, fragment);
+        return resolve(SchemaUtil.documentUri(uri).toString(), uri.getFragment());
     }
 
     /**
@@ -464,6 +443,9 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(String id, String fragment) {
         Asserts.notNull(id, "id");
+        id = SchemaUtil.normalizeUriKey(id);
+        SchemaPlan root = byIdPlans.get(id);
+        if (root != null) return resolveFragmentOrThrow(root, fragment);
         return SchemaPlanner.resolve(this, id, fragment);
     }
 
@@ -491,7 +473,8 @@ public class SchemaRegistry {
     /** Resolves a cached resource without compiling an indexed root. */
     SchemaPlan resolveBuilt(URI uri) {
         Asserts.notNull(uri, "uri");
-        return SchemaPlanner.resolveBuilt(this, uri);
+        SchemaPlan root = byIdPlans.get(SchemaUtil.normalizeUriKey(uri));
+        return root == null ? null : root.findFragment(uri.getFragment());
     }
 
     /** Looks up a normalized resource key locally, without compiling anything. */
@@ -509,14 +492,15 @@ public class SchemaRegistry {
         return byIdNestedResources.get(id);
     }
 
-    /** Looks up a fully published resource or fragment without starting planning. */
-    SchemaPlan findLocalFragment(String id, String fragment) {
-        SchemaPlan root = byIdPlans.get(id);
-        if (root == null || fragment == null || fragment.isEmpty()) return root;
-        if (root.booleanSchema) return null;
-        SchemaPlan plan = root.byAnchorPlans.get(fragment);
-        if (plan == null) plan = root.byPathPlans.get(fragment);
-        if (plan == null) plan = byIdFragments.get(SchemaUtil.normalizeUriKey(root.resourceUri) + "#" + fragment);
+    /** Resolves an already planned fragment; never starts planning. */
+    static SchemaPlan resolveFragmentOrThrow(SchemaPlan root, String fragment) {
+        if (root == null) return null;
+        SchemaPlan plan = root.findFragment(fragment);
+        if (plan == null) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cannot resolve schema fragment '#" + fragment + "'",
+                    PathSegment.Root.INSTANCE, root.resourceUri));
+        }
         return plan;
     }
 

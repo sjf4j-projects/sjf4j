@@ -18,7 +18,7 @@ import java.util.Map;
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
  * its own {@code $id} compiles into a different resource and therefore gets a
  * different set of fragment maps. Fragment maps are populated during planning;
- * resolving additional fragments never mutates a published plan graph.
+ * only recognized subschemas can be resolved, and published maps are not modified.
  * Call {@link #validate(Object)} to collect validation errors, {@link #isValid(Object)}
  * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */
@@ -221,6 +221,13 @@ public final class SchemaPlan {
      * Planning
      * --------------------------------------------------------------
      */
+
+    /** Finds a fragment in the completed resource without planning new schemas. */
+    SchemaPlan findFragment(String fragment) {
+        if (fragment == null || fragment.isEmpty()) return this;
+        if (booleanSchema) return null;
+        return fragment.startsWith("/") ? byPathPlans.get(fragment) : byAnchorPlans.get(fragment);
+    }
 
     /** Original parsed BooleanSchema or ObjectSchema, without conversion. */
     public JsonSchema schema() {

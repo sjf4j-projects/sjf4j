@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -72,24 +71,15 @@ public final class SchemaPlanner {
         }
     }
 
+    /** Plans an uncached resource and publishes it only after fragment resolution succeeds. */
     static SchemaPlan resolve(SchemaRegistry registry, String id, String fragment) {
-        return _resolve(registry, SchemaUtil.normalizeUriKey(id), fragment, true);
-    }
-
-    static SchemaPlan resolveBuilt(SchemaRegistry registry, URI uri) {
-        return _resolve(registry, SchemaUtil.normalizeUriKey(uri), uri.getFragment(), false);
-    }
-
-    private static SchemaPlan _resolve(SchemaRegistry registry, String id, String fragment, boolean allowBuild) {
-        SchemaPlan cached = registry.findLocalFragment(id, fragment);
-        if (cached != null || !allowBuild) return cached;
-
         PlanningContext context = new PlanningContext(registry);
-        SchemaPlan plan = _resolveFragmentOrThrow(_resolveResource(id, context), fragment, context);
+        SchemaPlan root = _resolveResource(id, context);
+        SchemaPlan plan = SchemaRegistry.resolveFragmentOrThrow(root, fragment);
         if (plan == null) return null;
         context.register();
-        SchemaPlan published = registry.findLocalFragment(id, fragment);
-        return published != null ? published : plan;
+        SchemaPlan published = registry.findLocalPlan(id);
+        return published != null ? SchemaRegistry.resolveFragmentOrThrow(published, fragment) : plan;
     }
 
     private static SchemaPlan _resolveResource(String id, PlanningContext context) {
@@ -104,9 +94,8 @@ public final class SchemaPlanner {
         }
         URI nested = registry.findNestedResource(id);
         if (nested != null) {
-            SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), context);
-            SchemaPlan rebuilt = context.findPlan(id);
-            return rebuilt != null ? rebuilt : _resolveFragment(root, nested.getFragment(), context);
+            _resolveResource(SchemaUtil.normalizeUriKey(nested), context);
+            return context.findPlan(id);
         }
         plan = registry.findLocalPlan(id);
         if (plan != null && plan.booleanSchema) return plan;
@@ -121,36 +110,6 @@ public final class SchemaPlanner {
         }
         SchemaPlan builtinPlan = global.findLocalPlan(id);
         return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
-    }
-
-    private static SchemaPlan _resolveFragment(SchemaPlan root, String fragment, PlanningContext context) {
-        if (root == null || fragment == null || fragment.isEmpty()) return root;
-        if (root.byAnchorPlans == null || root.byPathPlans == null) return null;
-        SchemaPlan plan = root.byAnchorPlans.get(fragment);
-        if (plan == null) plan = root.byPathPlans.get(fragment);
-        if (plan == null && !fragment.startsWith("/")) {
-            SchemaPlan known = context.registry.findLocalFragment(SchemaUtil.normalizeUriKey(root.resourceUri), fragment);
-            if (known != null && known.resourceUri.equals(root.resourceUri)) {
-                String path = known.keywordPs.rootedPointerExpr();
-                if (!path.isEmpty()) {
-                    _lazyBuildPlanByPath(root, path, context);
-                    plan = root.byAnchorPlans.get(fragment);
-                }
-            }
-        }
-        if (plan == null) plan = _lazyBuildPlanByPath(root, fragment, context);
-        return plan;
-    }
-
-    private static SchemaPlan _resolveFragmentOrThrow(SchemaPlan root, String fragment, PlanningContext context) {
-        if (root == null) return null;
-        SchemaPlan plan = _resolveFragment(root, fragment, context);
-        if (plan == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                    "cannot resolve schema fragment '#" + fragment + "'",
-                    PathSegment.Root.INSTANCE, root.resourceUri));
-        }
-        return plan;
     }
 
     /**
@@ -550,27 +509,6 @@ public final class SchemaPlanner {
         return plan;
     }
 
-    private static SchemaPlan _lazyBuildPlanByPath(SchemaPlan resourcePlan, String path, PlanningContext context) {
-        if (!path.startsWith("/") || !(resourcePlan.schema instanceof ObjectSchema)) return null;
-
-        JsonPath jsonPath = JsonPath.parse(path);
-        Object node = jsonPath.getNode(resourcePlan.schema);
-        if (node == null) return null;
-        context.enter();
-        int refStart = context.refEvaluators.size();
-        int dynamicRefStart = context.dynamicRefEvaluators.size();
-        try {
-            SchemaPlan plan = _buildNodePlan(node, resourcePlan.resourceUri, jsonPath.tail(),
-                    resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
-                    context, resourcePlan.dialect, resourcePlan.vocabulary);
-            _bindDeferredRefs(context, refStart, dynamicRefStart);
-            return plan;
-        } finally {
-            context.clearRefs(refStart, dynamicRefStart);
-            context.leave();
-        }
-    }
-
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
                                           SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps) {
         SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
@@ -765,7 +703,7 @@ public final class SchemaPlanner {
                         refEvaluator.keywordPs, refEvaluator.schemaUri));
             }
             String fragment = refUri.getFragment();
-            SchemaPlan refPlan = _resolveFragment(resourcePlan, fragment, context);
+            SchemaPlan refPlan = resourcePlan.findFragment(fragment);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
@@ -797,7 +735,7 @@ public final class SchemaPlanner {
                         dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
             }
             String fragment = refUri.getFragment();
-            SchemaPlan refPlan = _resolveFragment(resourcePlan, fragment, context);
+            SchemaPlan refPlan = resourcePlan.findFragment(fragment);
             if (refPlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
