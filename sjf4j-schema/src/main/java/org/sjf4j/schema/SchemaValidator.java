@@ -160,7 +160,7 @@ public final class SchemaValidator {
         if (!external.isEmpty()) {
             // A binding with external resources owns its registry; neither the
             // caller's registry nor sibling POJO plans are modified.
-            scoped = new SchemaRegistry(registry.getDefaultDialect());
+            scoped = new SchemaRegistry(registry.getDefaultDialect(), registry.getRegexEngine());
             for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
                 scoped.index(entry.getKey(), entry.getValue());
             }
