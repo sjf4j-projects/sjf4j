@@ -17,9 +17,8 @@ import java.util.Map;
  * Plans from the same schema resource share fragment lookup maps:
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
  * its own {@code $id} compiles into a different resource and therefore gets a
- * different set of fragment maps. Additional JSON Pointer fragment targets may
- * be compiled lazily on first resolution and cached back into the same resource
- * lookup maps for reuse.
+ * different set of fragment maps. Fragment maps are populated during planning;
+ * resolving additional fragments never mutates a published plan graph.
  * Call {@link #validate(Object)} to collect validation errors, {@link #isValid(Object)}
  * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */

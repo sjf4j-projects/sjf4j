@@ -4,7 +4,6 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,10 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SchemaRegistry {
 
-    // Copies share compiled plans and their fragment maps. Serialize planning writes.
-    static final Object PLANNING_LOCK = new Object();
-
     private final Map<String, SchemaPlan> byIdPlans;
+    // Additional fragments compiled after the original resource was published.
+    private final Map<String, SchemaPlan> byIdFragments = new ConcurrentHashMap<>();
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
     private final PlanningOptions planningOptions;
@@ -253,44 +251,94 @@ public class SchemaRegistry {
                     PathSegment.Root.INSTANCE, null));
         }
         index(os);
-        return SchemaPlanner.buildAndPutPlan(os, this);
+        SchemaPlan cached = findLocalPlan(SchemaUtil.normalizeUriKey(canonicalUri));
+        return cached != null ? cached : SchemaPlanner.buildAndRegisterPlan(os, this);
     }
 
 
     /** Indexes an explicitly located boolean resource for direct and $ref resolution. */
     private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
-        synchronized (PLANNING_LOCK) {
-            // An inline boolean schema with no retrieval URI remains an independent plan.
-            if (retrievalUri == null) return;
-            _checkUri(retrievalUri);
-            String id = SchemaUtil.normalizeUriKey(retrievalUri);
-            if (ifAbsent && (byIdPlans.containsKey(id) || byIdSchemas.containsKey(id))) return;
-            if (byIdSchemas.containsKey(id)) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
-            }
-            SchemaPlan plan = SchemaPlan.of(retrievalUri, PathSegment.Root.INSTANCE, schema);
-            SchemaPlan existing = byIdPlans.putIfAbsent(id, plan);
-            if (existing != null && (!existing.booleanSchema || existing.booleanValue != schema.booleanValue())) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
-            }
+        // An inline boolean schema with no retrieval URI remains an independent plan.
+        if (retrievalUri == null) return;
+        _checkUri(retrievalUri);
+        String id = SchemaUtil.normalizeUriKey(retrievalUri);
+        if (ifAbsent && (byIdPlans.containsKey(id) || byIdSchemas.containsKey(id))) return;
+        if (byIdSchemas.containsKey(id)) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
+        }
+        SchemaPlan plan = SchemaPlan.of(retrievalUri, PathSegment.Root.INSTANCE, schema);
+        SchemaPlan existing = byIdPlans.putIfAbsent(id, plan);
+        if (existing != null && (!existing.booleanSchema || existing.booleanValue != schema.booleanValue())) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
     }
 
     /**
      * Registers one URI mapping after validation checks.
      *
-     * @throws SchemaException on invalid URI shape or duplicate/conflicting map
+     * @throws SchemaException on invalid URI shape
      */
     String checkPlanUri(URI uri) {
         _checkUri(uri);
         return SchemaUtil.normalizeUriKey(uri);
     }
 
-    /** Publishes a fully bound batch while the shared planning lock is held. */
-    void putPlans(Map<String, SchemaPlan> plans) {
-        byIdPlans.putAll(plans);
+    /**
+     * Publishes complete graphs without overwriting an existing resource.
+     * Independent compilations may race; publication is atomic per key, not a batch transaction.
+     */
+    void registerPlans(Map<String, SchemaPlan> plans, Map<String, URI> nestedResources) {
+        for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
+            _checkPlanConflict(entry.getKey(), entry.getValue(), nestedResources.get(entry.getKey()));
+        }
+        for (Map.Entry<String, URI> entry : nestedResources.entrySet()) {
+            URI old = byIdNestedResources.putIfAbsent(entry.getKey(), entry.getValue());
+            if (old != null && !old.equals(entry.getValue())) throw _planConflict(entry.getKey());
+        }
+        for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
+            String id = entry.getKey();
+            SchemaPlan plan = entry.getValue();
+            SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
+            if (old != null && old != plan) {
+                _checkPlanConflict(id, plan, nestedResources.get(id));
+                if (!plan.booleanSchema) {
+                    // Keep the first published graph intact. Cache only newly discovered fragments.
+                    _registerFragments(old, plan.byAnchorPlans);
+                    _registerFragments(old, plan.byPathPlans);
+                }
+            }
+        }
+    }
+
+    private void _registerFragments(SchemaPlan root, Map<String, SchemaPlan> fragments) {
+        String id = SchemaUtil.normalizeUriKey(root.resourceUri);
+        for (Map.Entry<String, SchemaPlan> entry : fragments.entrySet()) {
+            String fragment = entry.getKey();
+            if (!fragment.isEmpty() && !root.byAnchorPlans.containsKey(fragment)
+                    && !root.byPathPlans.containsKey(fragment)) {
+                byIdFragments.putIfAbsent(id + "#" + fragment, entry.getValue());
+            }
+        }
+    }
+
+    private void _checkPlanConflict(String id, SchemaPlan plan, URI location) {
+        ObjectSchema model = byIdSchemas.get(id);
+        URI indexedLocation = byIdNestedResources.get(id);
+        SchemaPlan old = byIdPlans.get(id);
+        if (model != null && (location != null || model != plan.schema)
+                || indexedLocation != null && !indexedLocation.equals(location)
+                || old != null && (old.booleanSchema != plan.booleanSchema
+                || (old.booleanSchema ? old.booleanValue != plan.booleanValue
+                : location == null && old.schema != plan.schema))) {
+            throw _planConflict(id);
+        }
+    }
+
+    private SchemaException _planConflict(String id) {
+        return new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, URI.create(id)));
     }
 
     private void _putSchema(URI uri, ObjectSchema schema) {
@@ -336,102 +384,48 @@ public class SchemaRegistry {
      * locally registered resource.
      */
     void indexRegistry(SchemaRegistry source) {
-        synchronized (PLANNING_LOCK) {
-            if (source == null || source == this) return;
-            java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
-                    new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
-            for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
-                Set<String> aliases = groups.get(entry.getValue());
-                if (aliases == null) {
-                    aliases = new HashSet<String>();
-                    groups.put(entry.getValue(), aliases);
-                }
-                aliases.add(entry.getKey());
+        if (source == null || source == this) return;
+        java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
+                new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
+        for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
+            Set<String> aliases = groups.get(entry.getValue());
+            if (aliases == null) {
+                aliases = new HashSet<String>();
+                groups.put(entry.getValue(), aliases);
             }
-            for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
-                boolean conflicting = false;
-                for (String key : group.getValue()) {
-                    if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key) || byIdNestedResources.containsKey(key)) {
-                        conflicting = true;
-                        break;
-                    }
-                }
-                if (conflicting) continue;
-                for (String key : group.getValue()) {
-                    byIdSchemas.putIfAbsent(key, group.getKey());
-                }
-            }
-            for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
-                if (entry.getValue().booleanSchema
-                        && !byIdSchemas.containsKey(entry.getKey()) && !byIdNestedResources.containsKey(entry.getKey())) {
-                    byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
-                }
-            }
-            // Retain resource locations, not plans, when importing nested $id mappings.
-            for (Map.Entry<String, URI> entry : source.byIdNestedResources.entrySet()) {
-                String rootId = SchemaUtil.normalizeUriKey(entry.getValue());
-                if (byIdSchemas.get(rootId) != null
-                        && byIdSchemas.get(rootId) == source.byIdSchemas.get(rootId)) {
-                    _putNestedResource(entry.getKey(), entry.getValue());
-                }
-            }
-            for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
-                String id = entry.getKey();
-                SchemaPlan target = entry.getValue();
-                if (target.booleanSchema || source.byIdSchemas.containsKey(id)) continue;
-                SchemaPlan root = source.findOwningRoot(target);
-                if (root == null || byIdSchemas.get(SchemaUtil.normalizeUriKey(root.resourceUri)) != root.schema) continue;
-                for (Map.Entry<String, SchemaPlan> fragment : root.byPathPlans.entrySet()) {
-                    if (fragment.getValue() != target) continue;
-                    try {
-                        URI location = URI.create(SchemaUtil.documentUri(root.resourceUri).toString()
-                                + new URI(null, null, fragment.getKey()).toASCIIString());
-                        _putNestedResource(id, location);
-                    } catch (URISyntaxException e) {
-                        throw new SchemaException("Invalid nested resource pointer: " + fragment.getKey(), e);
-                    }
+            aliases.add(entry.getKey());
+        }
+        for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
+            boolean conflicting = false;
+            for (String key : group.getValue()) {
+                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key) || byIdNestedResources.containsKey(key)) {
+                    conflicting = true;
                     break;
                 }
             }
-        }
-    }
-
-    private void _putNestedResource(String id, URI location) {
-        if (!byIdSchemas.containsKey(id) && !byIdPlans.containsKey(id)) {
-            byIdNestedResources.putIfAbsent(id, location);
-        }
-    }
-
-    /**
-     * Imports all schema mappings from another registry.
-     * The returned registry has independent maps but shares indexed schema
-     * models and compiled plans under the same planning policy. Null creates a default registry.
-     */
-    public static SchemaRegistry copyOf(SchemaRegistry other) {
-        synchronized (PLANNING_LOCK) {
-            if (other == null) return new SchemaRegistry();
-
-            SchemaRegistry registry = new SchemaRegistry(other.defaultDialect, other.planningOptions);
-            registry.byIdNestedResources.putAll(other.byIdNestedResources);
-            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
-                SchemaPlan plan = entry.getValue();
-                SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
-                if (old != null && old != plan) {
-                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                            "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                            URI.create(entry.getKey())));
-                }
+            if (conflicting) continue;
+            for (String key : group.getValue()) {
+                byIdSchemas.putIfAbsent(key, group.getKey());
             }
-            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
-                ObjectSchema schema = entry.getValue();
-                ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
-                if (old != null && old != schema) {
-                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                            "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                            URI.create(entry.getKey())));
-                }
+        }
+        for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
+            if (entry.getValue().booleanSchema
+                    && !byIdSchemas.containsKey(entry.getKey()) && !byIdNestedResources.containsKey(entry.getKey())) {
+                byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
             }
-            return registry;
+        }
+        // Import discovered nested resource locations without scanning compiled plans.
+        for (Map.Entry<String, URI> entry : source.byIdNestedResources.entrySet()) {
+            String rootId = SchemaUtil.normalizeUriKey(entry.getValue());
+            URI parent;
+            while ((parent = source.byIdNestedResources.get(rootId)) != null) {
+                rootId = SchemaUtil.normalizeUriKey(parent);
+            }
+            if (byIdSchemas.get(rootId) != null
+                    && byIdSchemas.get(rootId) == source.byIdSchemas.get(rootId)
+                    && !byIdSchemas.containsKey(entry.getKey()) && !byIdPlans.containsKey(entry.getKey())) {
+                byIdNestedResources.putIfAbsent(entry.getKey(), entry.getValue());
+            }
         }
     }
 
@@ -506,17 +500,15 @@ public class SchemaRegistry {
         return byIdNestedResources.get(id);
     }
 
-    /** Finds the indexed root owning a previously compiled nested resource. */
-    private SchemaPlan findOwningRoot(SchemaPlan target) {
-        for (String id : byIdSchemas.keySet()) {
-            SchemaPlan root = byIdPlans.get(id);
-            if (root != null && root.byPathPlans != null) {
-                for (SchemaPlan fragment : root.byPathPlans.values()) {
-                    if (fragment == target) return root;
-                }
-            }
-        }
-        return null;
+    /** Looks up a fully published resource or fragment without starting planning. */
+    SchemaPlan findLocalFragment(String id, String fragment) {
+        SchemaPlan root = byIdPlans.get(id);
+        if (root == null || fragment == null || fragment.isEmpty()) return root;
+        if (root.booleanSchema) return null;
+        SchemaPlan plan = root.byAnchorPlans.get(fragment);
+        if (plan == null) plan = root.byPathPlans.get(fragment);
+        if (plan == null) plan = byIdFragments.get(SchemaUtil.normalizeUriKey(root.resourceUri) + "#" + fragment);
+        return plan;
     }
 
     /**

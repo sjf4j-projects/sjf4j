@@ -17,13 +17,30 @@ class SchemaResourceLimitsTest {
     @Test
     void planningOptionsBelongToRegistry() {
         SchemaRegistry bounded = registry(1, 1);
-        assertSame(bounded.getPlanningOptions(), SchemaRegistry.copyOf(bounded).getPlanningOptions());
+        assertEquals(1, bounded.getPlanningOptions().getMaxSchemas());
         assertThrows(NullPointerException.class, () -> new SchemaRegistry((PlanningOptions) null));
         JsonSchema object = JsonSchema.fromJson("{\"type\":\"integer\"}");
         assertTrue(object.createPlan().isValid(1));
         assertTrue(object.createPlan(bounded).isValid(1));
         assertTrue(BooleanSchema.TRUE.createPlan(bounded).isValid(1));
         assertFalse(BooleanSchema.FALSE.createPlan(bounded).isValid(1));
+    }
+
+    @Test
+    void createPlanDoesNotRegisterOrMutatePublishedResources() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI resource = URI.create("https://example.test/resource");
+        SchemaPlan cached = registry.register(resource,
+                JsonSchema.fromJson("{\"custom\":{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}}"));
+        JsonSchema schema = JsonSchema.fromJson("{\"$id\":\"https://example.test/temporary\","
+                + "\"$ref\":\"https://example.test/resource#/custom\"}");
+        assertTrue(schema.createPlan(registry).isValid(1));
+        assertFalse(schema.createPlan(registry).isValid("bad"));
+        assertFalse(registry.contains("https://example.test/temporary"));
+        assertNull(cached.byPathPlans.get("/custom"));
+        assertNull(cached.byDynamicAnchorPlans.get("node"));
+        assertNull(registry.resolveBuilt(URI.create(resource + "#/custom")));
+        assertSame(cached, registry.resolve(resource));
     }
 
     @Test
@@ -123,7 +140,7 @@ class SchemaResourceLimitsTest {
         assertNull(registry.resolveBuilt(external));
         assertThrows(SchemaException.class, () -> registry.resolve(root));
         assertTrue(registry.resolve(external).isValid(1));
-        assertTrue(registry.resolve(root).isValid(1));
+        assertThrows(SchemaException.class, () -> registry.resolve(root));
     }
 
     @Test
@@ -148,11 +165,12 @@ class SchemaResourceLimitsTest {
                 + "\"second\":{\"$anchor\":\"second\",\"type\":\"integer\",\"allOf\":[{\"$ref\":\"#first\"}]}}"));
         SchemaPlan original = registry.resolve(root);
         SchemaPlan first = registry.resolve(URI.create(root + "#/first"));
-        assertSame(first, original.byAnchorPlans.get("first"));
-        assertSame(first, original.byPathPlans.get("/first"));
+        assertNull(original.byAnchorPlans.get("first"));
+        assertNull(original.byPathPlans.get("/first"));
         assertSame(first, registry.resolve(URI.create(root + "#first")));
-        assertNotNull(original.byAnchorPlans.get("second"));
-        assertNotNull(original.byPathPlans.get("/second"));
+        assertSame(first, registry.resolve(URI.create(root + "#/first")));
+        assertNotNull(first.byAnchorPlans.get("second"));
+        assertNotNull(first.byPathPlans.get("/second"));
     }
 
     @Test
@@ -171,7 +189,8 @@ class SchemaResourceLimitsTest {
         assertNull(registry.resolveBuilt(child));
         registry.register(URI.create("https://example.test/missing"), JsonSchema.fromJson("true"));
         SchemaPlan custom = registry.resolve(URI.create(root + "#/custom"));
-        assertSame(custom, original.byDynamicAnchorPlans.get("custom"));
+        assertNull(original.byDynamicAnchorPlans.get("custom"));
+        assertSame(custom, custom.byDynamicAnchorPlans.get("custom"));
         assertNotNull(registry.resolveBuilt(child));
         assertTrue(custom.isValid(1));
     }

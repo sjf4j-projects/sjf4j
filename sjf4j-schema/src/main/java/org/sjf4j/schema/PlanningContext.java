@@ -3,9 +3,9 @@ package org.sjf4j.schema;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.List;
 
@@ -24,7 +24,7 @@ final class PlanningContext {
     private int depth;
 
     private final Map<String, SchemaPlan> pendingPlans = new HashMap<>();
-    private Map<Map<String, SchemaPlan>, Map<String, SchemaPlan>> pendingFragments;
+    private final Map<String, URI> nestedResources = new HashMap<>();
 
     PlanningContext(SchemaRegistry registry) {
         this.registry = registry;
@@ -34,48 +34,32 @@ final class PlanningContext {
     }
 
     SchemaPlan findPlan(String id) {
-        SchemaPlan plan = pendingPlans.get(id);
-        return plan != null ? plan : registry.findLocalPlan(id);
+        return pendingPlans.get(id);
     }
 
     void putPlan(URI uri, SchemaPlan plan) {
         String id = registry.checkPlanUri(uri);
-        SchemaPlan old = findPlan(id);
+        SchemaPlan old = pendingPlans.putIfAbsent(id, plan);
         if (old != null && old != plan) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
-        if (old == null) pendingPlans.put(id, plan);
     }
 
-    /** Existing resource maps are updated only after all references are bound. */
-    void stageFragments(SchemaPlan root) {
-        if (pendingFragments == null) pendingFragments = new IdentityHashMap<>();
-        pendingFragments.computeIfAbsent(root.byAnchorPlans, key -> new HashMap<>());
-        pendingFragments.computeIfAbsent(root.byDynamicAnchorPlans, key -> new HashMap<>());
-        pendingFragments.computeIfAbsent(root.byPathPlans, key -> new HashMap<>());
-    }
-
-    SchemaPlan findFragment(Map<String, SchemaPlan> fragments, String key) {
-        if (pendingFragments != null) {
-            Map<String, SchemaPlan> pending = pendingFragments.get(fragments);
-            if (pending != null) {
-                SchemaPlan plan = pending.get(key);
-                if (plan != null) return plan;
-            }
+    void putNestedPlan(URI uri, URI parentUri, String path, SchemaPlan plan) {
+        putPlan(uri, plan);
+        try {
+            URI location = URI.create(SchemaUtil.documentUri(parentUri).toString()
+                    + new URI(null, null, path).toASCIIString());
+            nestedResources.put(SchemaUtil.normalizeUriKey(uri), location);
+        } catch (URISyntaxException e) {
+            throw new SchemaException("Invalid nested resource pointer: " + path, e);
         }
-        return fragments.get(key);
     }
 
-    void putFragment(Map<String, SchemaPlan> fragments, String key, SchemaPlan plan) {
-        Map<String, SchemaPlan> pending = pendingFragments == null ? null : pendingFragments.get(fragments);
-        (pending == null ? fragments : pending).put(key, plan);
-    }
-
-    /** Publishes only fully built plans. Planning holds the shared registry lock. */
-    void commit() {
-        if (pendingFragments != null) pendingFragments.forEach(Map::putAll);
-        registry.putPlans(pendingPlans);
+    /** Registers completed plan graphs; standalone compilation never calls this method. */
+    void register() {
+        registry.registerPlans(pendingPlans, nestedResources);
     }
 
     /** Rejects oversized subschema arrays before allocating their plan array. */

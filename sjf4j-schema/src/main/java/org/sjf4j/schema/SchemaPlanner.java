@@ -26,17 +26,18 @@ public final class SchemaPlanner {
 
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
-    static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
-        Asserts.notNull(registry, "registry");
-        synchronized (SchemaRegistry.PLANNING_LOCK) {
-            PlanningContext context = new PlanningContext(registry);
-            SchemaPlan plan = _buildAndPutPlan(schema, context);
-            context.commit();
-            return plan;
-        }
+    static SchemaPlan buildPlan(ObjectSchema schema, SchemaRegistry registry) {
+        return _buildPlan(schema, new PlanningContext(registry == null ? new SchemaRegistry() : registry));
     }
 
-    private static SchemaPlan _buildAndPutPlan(ObjectSchema schema, PlanningContext context) {
+    static SchemaPlan buildAndRegisterPlan(ObjectSchema schema, SchemaRegistry registry) {
+        PlanningContext context = new PlanningContext(registry);
+        SchemaPlan plan = _buildPlan(schema, context);
+        context.register();
+        return registry.findLocalPlan(SchemaUtil.normalizeUriKey(plan.resourceUri));
+    }
+
+    private static SchemaPlan _buildPlan(ObjectSchema schema, PlanningContext context) {
         Asserts.notNull(schema, "schema");
         SchemaRegistry registry = context.registry;
         URI retrievalUri = schema.retrievalUri();
@@ -46,9 +47,7 @@ public final class SchemaPlanner {
             baseUri = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
         }
         URI resourceUri = SchemaUtil.resolveUri(baseUri, canonicalUri);
-        SchemaPlan plan = _resolveFragmentOrThrow(
-                _resolveResource(SchemaUtil.normalizeUriKey(resourceUri), false, context),
-                resourceUri.getFragment(), context);
+        SchemaPlan plan = context.findPlan(SchemaUtil.normalizeUriKey(resourceUri));
         if (plan != null) return plan;
 
         context.enter();
@@ -82,41 +81,36 @@ public final class SchemaPlanner {
     }
 
     private static SchemaPlan _resolve(SchemaRegistry registry, String id, String fragment, boolean allowBuild) {
-        synchronized (SchemaRegistry.PLANNING_LOCK) {
-            PlanningContext context = new PlanningContext(registry);
-            SchemaPlan plan = _resolveFragmentOrThrow(_resolveResource(id, allowBuild, context), fragment, context);
-            context.commit();
-            return plan;
-        }
+        SchemaPlan cached = registry.findLocalFragment(id, fragment);
+        if (cached != null || !allowBuild) return cached;
+
+        PlanningContext context = new PlanningContext(registry);
+        SchemaPlan plan = _resolveFragmentOrThrow(_resolveResource(id, context), fragment, context);
+        if (plan == null) return null;
+        context.register();
+        SchemaPlan published = registry.findLocalFragment(id, fragment);
+        return published != null ? published : plan;
     }
 
-    private static SchemaPlan _resolveResource(String id, boolean allowBuild, PlanningContext context) {
-        SchemaRegistry registry = context.registry;
+    private static SchemaPlan _resolveResource(String id, PlanningContext context) {
         SchemaPlan plan = context.findPlan(id);
         if (plan != null) return plan;
-
-        if (allowBuild) {
-            ObjectSchema schema = registry.findLocalSchema(id);
-            if (schema != null) return _buildAndPutPlan(schema, context);
-            URI nested = registry.findNestedResource(id);
-            if (nested != null) {
-                SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), true, context);
-                SchemaPlan rebuilt = context.findPlan(id);
-                return rebuilt != null ? rebuilt : _resolveFragment(root, nested.getFragment(), context);
-            }
+        SchemaRegistry registry = context.registry;
+        ObjectSchema schema = registry.findLocalSchema(id);
+        if (schema != null) return _buildPlan(schema, context);
+        URI nested = registry.findNestedResource(id);
+        if (nested != null) {
+            SchemaPlan root = _resolveResource(SchemaUtil.normalizeUriKey(nested), context);
+            SchemaPlan rebuilt = context.findPlan(id);
+            return rebuilt != null ? rebuilt : _resolveFragment(root, nested.getFragment(), context);
         }
+        plan = registry.findLocalPlan(id);
+        if (plan != null && plan.booleanSchema) return plan;
 
         SchemaRegistry global = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY;
         if (registry == global) return null;
-        if (registry.getPlanningOptions() == global.getPlanningOptions()
-                && registry.getDefaultDialect() == global.getDefaultDialect()) {
-            return _resolve(global, id, null, allowBuild);
-        }
-        if (!allowBuild) return null;
-
-        // Different policies compile built-ins in the local environment.
         ObjectSchema builtin = global.findLocalSchema(id);
-        if (builtin != null) return _buildAndPutPlan(builtin, context);
+        if (builtin != null) return _buildPlan(builtin, context);
         SchemaPlan builtinPlan = global.findLocalPlan(id);
         return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
     }
@@ -124,8 +118,18 @@ public final class SchemaPlanner {
     private static SchemaPlan _resolveFragment(SchemaPlan root, String fragment, PlanningContext context) {
         if (root == null || fragment == null || fragment.isEmpty()) return root;
         if (root.byAnchorPlans == null || root.byPathPlans == null) return null;
-        SchemaPlan plan = context.findFragment(root.byAnchorPlans, fragment);
-        if (plan == null) plan = context.findFragment(root.byPathPlans, fragment);
+        SchemaPlan plan = root.byAnchorPlans.get(fragment);
+        if (plan == null) plan = root.byPathPlans.get(fragment);
+        if (plan == null && !fragment.startsWith("/")) {
+            SchemaPlan known = context.registry.findLocalFragment(SchemaUtil.normalizeUriKey(root.resourceUri), fragment);
+            if (known != null && known.resourceUri.equals(root.resourceUri)) {
+                String path = known.keywordPs.rootedPointerExpr();
+                if (!path.isEmpty()) {
+                    _lazyBuildPlanByPath(root, path, context);
+                    plan = root.byAnchorPlans.get(fragment);
+                }
+            }
+        }
         if (plan == null) plan = _lazyBuildPlanByPath(root, fragment, context);
         return plan;
     }
@@ -195,7 +199,7 @@ public final class SchemaPlanner {
                 SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                         schema, dialect, vocabulary);
-                context.putFragment(byPathPlans, ps.rootedPointerExpr(), plan);
+                byPathPlans.put(ps.rootedPointerExpr(), plan);
                 return plan;
             }
         }
@@ -532,9 +536,9 @@ public final class SchemaPlanner {
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps, context);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps, context);
-            context.putFragment(byDynamicAnchorPlans, dynamicAnchor, plan);
+            byDynamicAnchorPlans.put(dynamicAnchor, plan);
         }
-        context.putFragment(byPathPlans, ps.rootedPointerExpr(), plan);
+        byPathPlans.put(ps.rootedPointerExpr(), plan);
         return plan;
     }
 
@@ -545,7 +549,6 @@ public final class SchemaPlanner {
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
         context.enter();
-        context.stageFragments(resourcePlan);
         int refStart = context.refEvaluators.size();
         int dynamicRefStart = context.dynamicRefEvaluators.size();
         try {
@@ -563,13 +566,13 @@ public final class SchemaPlanner {
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
                                           SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps,
                                           PlanningContext context) {
-        SchemaPlan old = context.findFragment(byAnchorPlans, fragment);
+        SchemaPlan old = byAnchorPlans.get(fragment);
         if (old != null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate named fragment '" + fragment + "' from " + keyword,
                     ps, resourceUri));
         }
-        context.putFragment(byAnchorPlans, fragment, plan);
+        byAnchorPlans.put(fragment, plan);
     }
 
     /**
@@ -717,15 +720,15 @@ public final class SchemaPlanner {
                 } else {
                     plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    context.putPlan(childResourceUri, plan);
+                    context.putNestedPlan(childResourceUri, resourceUri, path, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
-                        context.putFragment(byPathPlans, path + entry.getKey(), entry.getValue());
+                        byPathPlans.put(path + entry.getKey(), entry.getValue());
                     }
                 }
             }
         }
-        context.putFragment(byPathPlans, path, plan);
+        byPathPlans.put(path, plan);
         return plan;
     }
 
@@ -748,7 +751,7 @@ public final class SchemaPlanner {
             // Resolve resource and fragment separately so diagnostics can tell
             // callers whether they forgot to preload a remote schema or simply
             // referenced a bad anchor / JSON Pointer inside an existing one.
-            SchemaPlan resourcePlan = _resolveResource(SchemaUtil.normalizeUriKey(refUri), true, context);
+            SchemaPlan resourcePlan = _resolveResource(SchemaUtil.normalizeUriKey(refUri), context);
             if (resourcePlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema resource '" + resource + "' while resolving $ref '"
@@ -780,7 +783,7 @@ public final class SchemaPlanner {
 
             // Dynamic references use the same static target resolution first;
             // runtime rebinding only happens after this initial plan is known.
-            SchemaPlan resourcePlan = _resolveResource(SchemaUtil.normalizeUriKey(refUri), true, context);
+            SchemaPlan resourcePlan = _resolveResource(SchemaUtil.normalizeUriKey(refUri), context);
             if (resourcePlan == null) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                         "cannot resolve schema resource '" + resource + "' while resolving $dynamicRef '"
