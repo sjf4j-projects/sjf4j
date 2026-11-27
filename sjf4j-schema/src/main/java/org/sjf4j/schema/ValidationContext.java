@@ -21,6 +21,11 @@ public class ValidationContext {
     private final boolean strictFormat;
     private final boolean booleanOnly;
     private final boolean collectAnnotations;
+    private final long maxEvaluations;
+    private final int maxEvaluationDepth;
+    private final int maxErrors;
+    private long evaluations;
+    private int evaluationDepth;
     private List<ValidationResult.Detail> errors;
     private List<ValidationResult.Detail> annotations;
 
@@ -41,16 +46,22 @@ public class ValidationContext {
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
         this.collectAnnotations = false;
+        this.maxEvaluations = 0;
+        this.maxEvaluationDepth = 0;
+        this.maxErrors = 0;
         this.reusedLeaf = Instance.infer(null);
     }
 
     /** Creates a context with the requested runtime validation options. */
     public ValidationContext(ValidationOptions options, boolean booleanOnly) {
         Asserts.notNull(options, "options");
-        this.failFast = options.isFailFast();
+        this.failFast = booleanOnly || options.isFailFast();
         this.strictFormat = options.isStrictFormat();
         this.booleanOnly = booleanOnly;
         this.collectAnnotations = options.isCollectAnnotations() && !booleanOnly;
+        this.maxEvaluations = options.getMaxEvaluations();
+        this.maxEvaluationDepth = options.getMaxEvaluationDepth();
+        this.maxErrors = options.getMaxErrors();
         this.reusedLeaf = Instance.infer(null);
     }
 
@@ -58,8 +69,39 @@ public class ValidationContext {
         return collectAnnotations;
     }
 
+    boolean limitsEvaluation() {
+        return maxEvaluations != 0 || maxEvaluationDepth != 0;
+    }
+
+    boolean limitsEvaluations() {
+        return maxEvaluations != 0;
+    }
+
+    void countEvaluation() {
+        if (maxEvaluations != 0) {
+            if (evaluations >= maxEvaluations) {
+                throw new ValidationLimitException("Validation limit exceeded: maxEvaluations=" + maxEvaluations);
+            }
+            evaluations++;
+        }
+    }
+
+    void enterEvaluation() {
+        if (maxEvaluationDepth != 0 && evaluationDepth >= maxEvaluationDepth) {
+            throw new ValidationLimitException("Validation limit exceeded: maxEvaluationDepth=" + maxEvaluationDepth);
+        }
+        countEvaluation();
+        if (maxEvaluationDepth != 0) evaluationDepth++;
+    }
+
+    void leaveEvaluation() {
+        if (maxEvaluationDepth != 0) evaluationDepth--;
+    }
+
     /** Releases per-evaluation state, preserving configuration and output. */
     void reset() {
+        evaluations = 0;
+        evaluationDepth = 0;
         ignoreErrorAdding = 0;
         failFastErrorAdded = false;
         if (planStack != null) planStack.clear();
@@ -103,7 +145,8 @@ public class ValidationContext {
     }
 
     boolean needsErrorDetail() {
-        return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || !failFastErrorAdded);
+        return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || !failFastErrorAdded)
+                && (maxErrors == 0 || errors == null || errors.size() < maxErrors);
     }
 
     public boolean isBooleanOnly() {
@@ -160,7 +203,7 @@ public class ValidationContext {
     /** Accumulates an assertion error, unless errors are being suppressed. */
     void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs,
                   URI schemaUri, String keyword, String message) {
-        if (ignoreErrorAdding != 0 || booleanOnly || (failFast && failFastErrorAdded)) return;
+        if (!needsErrorDetail()) return;
         if (instancePs == null && instance != null) instancePs = instance.materializePath();
         if (errors == null) errors = new ArrayList<>();
         errors.add(new ValidationResult.Detail(keyword, message, null, instancePs, keywordPs, schemaUri));

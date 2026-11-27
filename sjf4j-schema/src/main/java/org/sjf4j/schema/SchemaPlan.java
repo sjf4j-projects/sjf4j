@@ -73,7 +73,7 @@ public final class SchemaPlan {
     /** Validates with optional annotation collection. */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
-        if (!options.isCollectAnnotations()) {
+        if (!options.isCollectAnnotations() && !options.hasLimits()) {
             return validate(node, options.isFailFast(), options.isStrictFormat());
         }
         ValidationContext ctx = new ValidationContext(options, false);
@@ -90,6 +90,13 @@ public final class SchemaPlan {
         if (booleanSchema) return booleanValue;
         ValidationContext ctx = new ValidationContext(true, strictFormat, true);
         return evaluate(node, null, ctx);
+    }
+
+    /** Returns whether the instance is valid, with optional execution limits and no error collection. */
+    public boolean isValid(Object node, ValidationOptions options) {
+        Asserts.notNull(options, "options");
+        if (!options.hasLimits()) return isValid(node, options.isStrictFormat());
+        return evaluate(node, null, new ValidationContext(options, true));
     }
 
     /**
@@ -132,6 +139,16 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
+        if (!ctx.limitsEvaluation()) return _evaluate(instance, instancePs, ctx);
+        ctx.enterEvaluation();
+        try {
+            return _evaluate(instance, instancePs, ctx);
+        } finally {
+            ctx.leaveEvaluation();
+        }
+    }
+
+    private boolean _evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
         if (ctx.isCollectAnnotations()) {
             int mark = ctx.annotationMark();
             boolean valid = false;
@@ -178,7 +195,9 @@ public final class SchemaPlan {
         boolean hasDynamicAnchors = !byDynamicAnchorPlans.isEmpty();
         if (hasDynamicAnchors) ctx.pushPlan(this);
         try {
+            boolean countEvaluations = ctx.limitsEvaluations();
             for (Evaluator evaluator : evaluators) {
+                if (countEvaluations) ctx.countEvaluation();
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;

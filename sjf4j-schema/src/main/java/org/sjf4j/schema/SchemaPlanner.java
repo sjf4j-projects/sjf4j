@@ -27,6 +27,34 @@ public final class SchemaPlanner {
 
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
+    /** Shared by roots, nested resources and lazy fragments in one compilation. */
+    static final class PlanningBudget {
+        private final int maxSchemas;
+        private final int maxSchemaDepth;
+        private int schemas;
+        private int depth;
+
+        PlanningBudget(PlanningOptions options) {
+            maxSchemas = options.getMaxSchemas();
+            maxSchemaDepth = options.getMaxSchemaDepth();
+        }
+
+        void enter() {
+            if (maxSchemas != 0 && schemas >= maxSchemas) {
+                throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
+            }
+            if (maxSchemaDepth != 0 && depth >= maxSchemaDepth) {
+                throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxSchemaDepth);
+            }
+            if (maxSchemas != 0) schemas++;
+            if (maxSchemaDepth != 0) depth++;
+        }
+
+        void leave() {
+            if (maxSchemaDepth != 0) depth--;
+        }
+    }
+
     static final class PlanningContext {
         final SchemaRegistry registry;
         final List<Evaluator.RefEvaluator> refEvaluators;
@@ -54,11 +82,23 @@ public final class SchemaPlanner {
         SchemaPlan plan = registry.resolveBuilt(resourceUri);
         if (plan != null) return plan;
 
+        PlanningBudget budget = registry.planningBudget;
+        if (budget == null) return _buildRootPlan(schema, registry, resourceUri, retrievalUri);
+        budget.enter();
+        try {
+            return _buildRootPlan(schema, registry, resourceUri, retrievalUri);
+        } finally {
+            budget.leave();
+        }
+    }
+
+    private static SchemaPlan _buildRootPlan(ObjectSchema schema, SchemaRegistry registry,
+                                             URI resourceUri, URI retrievalUri) {
         PlanningContext context = new PlanningContext(registry);
         SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
         Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
                 resourceUri, PathSegment.Root.INSTANCE);
-        plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
+        SchemaPlan plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
         context.registry.putPlan(resourceUri, plan);
 
@@ -475,12 +515,18 @@ public final class SchemaPlanner {
         JsonPath jsonPath = JsonPath.parse(path);
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
-        PlanningContext context = new PlanningContext(registry);
-        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.resourceUri, jsonPath.tail(),
-                resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
-                context, resourcePlan.dialect, resourcePlan.vocabulary);
-        _bindDeferredRefs(context);
-        return plan;
+        PlanningBudget budget = registry.planningBudget;
+        if (budget != null) budget.enter();
+        try {
+            PlanningContext context = new PlanningContext(registry);
+            SchemaPlan plan = _buildNodePlan(node, resourcePlan.resourceUri, jsonPath.tail(),
+                    resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
+                    context, resourcePlan.dialect, resourcePlan.vocabulary);
+            _bindDeferredRefs(context);
+            return plan;
+        } finally {
+            if (budget != null) budget.leave();
+        }
     }
 
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
@@ -585,6 +631,26 @@ public final class SchemaPlanner {
                                                     Map<String, SchemaPlan> byPathPlans,
                                                     PlanningContext context, SchemaDialect inheritedDialect,
                                                     Map<String, Boolean> inheritedVocabulary) {
+        PlanningBudget budget = context.registry.planningBudget;
+        if (budget == null) {
+            return _buildNodePlan(node, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                    context, inheritedDialect, inheritedVocabulary);
+        }
+        budget.enter();
+        try {
+            return _buildNodePlan(node, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                    context, inheritedDialect, inheritedVocabulary);
+        } finally {
+            budget.leave();
+        }
+    }
+
+    private static SchemaPlan _buildNodePlan(Object node, URI resourceUri, PathSegment ps,
+                                              Map<String, SchemaPlan> byAnchorPlans,
+                                              Map<String, SchemaPlan> byDynamicAnchorPlans,
+                                              Map<String, SchemaPlan> byPathPlans,
+                                              PlanningContext context, SchemaDialect inheritedDialect,
+                                              Map<String, Boolean> inheritedVocabulary) {
         if (node == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                     "invalid schema node: schema is null", ps, resourceUri));

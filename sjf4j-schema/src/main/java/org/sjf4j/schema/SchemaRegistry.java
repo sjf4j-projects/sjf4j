@@ -32,6 +32,7 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
+    final SchemaPlanner.PlanningBudget planningBudget;
 
 
 
@@ -40,9 +41,22 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
+        this(defaultDialect, null);
+    }
+
+    private SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions options) {
+        this.planningBudget = options == null ? null : new SchemaPlanner.PlanningBudget(options);
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
+    }
+
+    /** Isolated catalog for one bounded planning operation. */
+    static SchemaRegistry forPlanning(SchemaRegistry source, PlanningOptions options) {
+        SchemaRegistry registry = new SchemaRegistry(source == null
+                ? SchemaDialect.DRAFT_2020_12 : source.defaultDialect, options);
+        registry.indexRegistry(source);
+        return registry;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -491,6 +505,14 @@ public class SchemaRegistry {
         }
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
+            // Do not share cached mutable object plans or compile outside the budget.
+            if (planningBudget != null) {
+                if (!allowBuild) return null;
+                ObjectSchema builtin = GLOBAL_SCHEMA_REGISTRY.byIdSchemas.get(id);
+                if (builtin != null) return SchemaPlanner.buildAndPutPlan(builtin, this);
+                SchemaPlan builtinPlan = GLOBAL_SCHEMA_REGISTRY.byIdPlans.get(id);
+                return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
+            }
             return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
         }
         return null;

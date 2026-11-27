@@ -33,6 +33,17 @@ public interface JsonSchema {
      */
     SchemaPlan createPlan(SchemaRegistry registry);
 
+    /**
+     * Compiles with resource limits. Bounded planning uses an isolated registry
+     * and rebuilds indexed object resources instead of sharing cached plans.
+     * The caller's registry is not modified on failure.
+     */
+    default SchemaPlan createPlan(SchemaRegistry registry, PlanningOptions options) {
+        if (options == null) throw new NullPointerException("options");
+        if (!options.hasLimits() || this instanceof BooleanSchema) return createPlan(registry);
+        return SchemaPlanner.buildAndPutPlan((ObjectSchema) this, SchemaRegistry.forPlanning(registry, options));
+    }
+
 
     /*
      * --------------------------------------------------------------
