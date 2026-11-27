@@ -257,8 +257,9 @@ public final class SchemaUtil {
         try {
             return regexEngine.compile(normalized);
         } catch (RuntimeException e) {
+            String reason = e instanceof PatternSyntaxException ? "invalid regex" : "rejected or unsupported regex";
             throw new SchemaException(formatSchemaLine(Code.SCHEMA_INVALID,
-                    "invalid or rejected regex for keyword '" + keyword + "': " + pattern,
+                    reason + " for keyword '" + keyword + "': " + pattern,
                     keywordPs, schemaUri), e);
         }
     }
