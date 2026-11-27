@@ -186,6 +186,21 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
+    void isValidOptionsAlwaysUseBooleanOnlySemantics() {
+        ValidationOptions options = ValidationOptions.builder()
+                .failFast(false).collectAnnotations(true).maxErrors(1)
+                .maxEvaluations(1).maxEvaluationDepth(1).build();
+        assertTrue(BooleanSchema.TRUE.createPlan().isValid(null, options));
+        assertFalse(BooleanSchema.FALSE.createPlan().isValid(null, options));
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"integer\"}").createPlan();
+        assertFalse(plan.isValid(1, options));
+        ValidationOptions enough = ValidationOptions.builder().maxEvaluations(2)
+                .collectAnnotations(true).build();
+        assertTrue(plan.isValid(1, enough));
+        assertFalse(plan.isValid("bad", enough));
+    }
+
+    @Test
     void evaluationCountsSchemaAndEvaluatorCalls() {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}").createPlan();
         Object data = Arrays.asList(1, 2);

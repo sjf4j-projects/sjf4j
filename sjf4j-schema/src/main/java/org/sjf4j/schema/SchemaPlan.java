@@ -92,8 +92,7 @@ public final class SchemaPlan {
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        return evaluate(node, null, ctx);
+        return evaluate(node, null, new ValidationContext(true, strictFormat, true));
     }
 
     /**
@@ -102,7 +101,7 @@ public final class SchemaPlan {
      */
     public boolean isValid(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
-        if (!options.hasLimits()) return isValid(node, options.isStrictFormat());
+        if (booleanSchema) return booleanValue;
         return evaluate(node, null, new ValidationContext(options, true));
     }
 
