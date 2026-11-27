@@ -63,7 +63,7 @@ public final class SchemaPlan {
     /**
      * Validates with optional annotations and resource limits.
      * An exhausted execution limit aborts validation and returns a failed
-     * result containing the limit diagnostic.
+     * result. Reaching the error limit retains the collected errors and stops validation.
      */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
@@ -133,17 +133,15 @@ public final class SchemaPlan {
 
     /**
      * Evaluates a nested instance using an explicit enclosing instance path.
-     * Used by compiled fallback support; resets per-evaluation context state.
+     * Used by compiled fallback support; the context belongs to this validation only.
      */
     boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
         try {
             return evaluate(Instance.infer(node), instancePs, ctx);
         } catch (ValidationException failure) {
-            if (!ctx.handleLimitFailure(failure)) throw failure;
+            if (!ctx.isAbortFailure(failure)) throw failure;
             return false;
-        } finally {
-            ctx.reset();
         }
     }
 

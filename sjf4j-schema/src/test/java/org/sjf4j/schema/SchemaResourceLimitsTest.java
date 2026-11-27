@@ -304,7 +304,7 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void maxErrorsCapsOutputWithoutChangingValidityOrBranchSemantics() {
+    void maxErrorsStopsValidationWithoutCountingProbeFailures() {
         SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").createPlan();
         ValidationOptions options = ValidationOptions.builder().maxErrors(2).build();
         ValidationResult invalid = plan.validate(Arrays.asList("a", "b", "c"), options);
@@ -312,6 +312,7 @@ class SchemaResourceLimitsTest {
         assertEquals(2, invalid.getErrors().size());
         assertTrue(plan.validate(Arrays.asList(1, 2, 3), options).isValid());
         SchemaPlan probe = JsonSchema.fromJson("{\"anyOf\":[false,{\"type\":\"integer\"}]}").createPlan();
+        options = ValidationOptions.builder().maxErrors(1).build();
         assertTrue(probe.validate(1, options).isValid());
         assertTrue(probe.validate(1, options).getErrors().isEmpty());
         assertFalse(probe.validate("bad", options).isValid());
@@ -336,13 +337,33 @@ class SchemaResourceLimitsTest {
     }
 
     @Test
-    void terminalErrorTakesPriorityWithinErrorCap() {
+    void maxErrorsAbortsBeforeLaterExecutionLimit() {
         SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").createPlan();
         ValidationOptions options = ValidationOptions.builder().maxErrors(1).maxEvaluations(4).build();
         ValidationResult result = plan.validate(Arrays.asList("bad", "also bad"), options);
         assertFalse(result.isValid());
         assertEquals(1, result.count());
-        assertEquals("maxEvaluations", result.getLastError().getKeyword());
+        assertEquals("type", result.getLastError().getKeyword());
+        ValidationException required = assertThrows(ValidationException.class,
+                () -> plan.requireValid(Arrays.asList("bad", "also bad"), options));
+        assertEquals("type", required.getResult().getLastError().getKeyword());
+
+        // If the error cap has not been reached, the next execution limit still aborts.
+        ValidationOptions stepsFirst = ValidationOptions.builder().maxErrors(2).maxEvaluations(4).build();
+        ValidationResult exhausted = plan.validate(Arrays.asList("bad", "also bad"), stepsFirst);
+        assertEquals(2, exhausted.count());
+        assertEquals("maxEvaluations", exhausted.getLastError().getKeyword());
+    }
+
+    @Test
+    void maxErrorsStopsInsideSingleEvaluator() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"a\",\"b\",\"c\"]}").createPlan();
+        ValidationResult result = plan.validate(java.util.Collections.emptyMap(),
+                ValidationOptions.builder().maxErrors(2).build());
+        assertFalse(result.isValid());
+        assertEquals(2, result.count());
+        assertEquals("required", result.getLastError().getKeyword());
+        assertTrue(result.getLastError().getMessage().contains("'b'"));
     }
 
     @Test

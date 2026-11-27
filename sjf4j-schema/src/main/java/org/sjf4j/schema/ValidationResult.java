@@ -11,9 +11,8 @@ import java.util.List;
  * Validation outcome with separate errors and schema annotations.
  * A failed result may indicate an aborted validation due to an execution limit.
  *
- * <p>The two lists are independent. Results built from a reusable
- * {@link ValidationContext} refer to its live lists until the next explicit
- * clear; other results may own their lists.
+ * <p>The two lists are independent. Results use the diagnostics collected
+ * during a single validation without copying.
  */
 public class ValidationResult {
     private final boolean valid;

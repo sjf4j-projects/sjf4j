@@ -43,13 +43,9 @@ public final class ValidationOptions {
         return maxEvaluationDepth;
     }
 
-    /** Maximum retained errors; does not change validity. Terminal limit errors take priority. */
+    /** Stops validation after collecting this many assertion errors. Ignored in boolean-only mode. */
     public int getMaxErrors() {
         return maxErrors;
-    }
-
-    boolean hasLimits() {
-        return maxEvaluations != 0 || maxEvaluationDepth != 0 || maxErrors != 0;
     }
 
     public static Builder builder() {

@@ -11,10 +11,8 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * Reusable validation state with immutable execution options.
- *
- * <p>Errors and annotations accumulate across sequential evaluations until
- * explicitly cleared. A context is not thread-safe or reentrant.
+ * State for a single validation with immutable execution options.
+ * A context is not reusable, thread-safe or reentrant.
  */
 public class ValidationContext {
     private final boolean failFast;
@@ -26,7 +24,7 @@ public class ValidationContext {
     private final int maxErrors;
     private long evaluations;
     private int evaluationDepth;
-    private ValidationException limitFailure;
+    private ValidationException abortFailure;
     private List<ValidationResult.Detail> errors;
     private List<ValidationResult.Detail> annotations;
 
@@ -34,7 +32,6 @@ public class ValidationContext {
     private final Instance reusedLeaf;
 
     private int ignoreErrorAdding;
-    private boolean failFastErrorAdded;
     private Deque<SchemaPlan> planStack;
 
     /**
@@ -88,55 +85,34 @@ public class ValidationContext {
 
     private ValidationException _limitExceeded(String limit, long max, SchemaPlan plan,
                                                Instance instance, PathSegment instancePs) {
-        if (instancePs == null) instancePs = instance.materializePath();
-        ValidationResult.Detail error = new ValidationResult.Detail(limit,
-                "validation aborted: " + limit + "=" + max + " exceeded",
-                null, instancePs, plan.keywordPs, plan.resourceUri);
-        // A limit is a terminal execution failure, never a speculative branch error.
-        // Report it even in boolean-only mode or when assertion errors are suppressed.
-        limitFailure = new ValidationException(new ValidationResult(false, Collections.singletonList(error)));
-        return limitFailure;
-    }
-
-    /** Handles only the terminal failure raised by this context, not user exceptions. */
-    boolean handleLimitFailure(ValidationException failure) {
-        if (failure != limitFailure) return false;
+        // Execution limits are terminal even inside suppressed probe branches.
         if (!booleanOnly) {
-            ValidationResult.Detail error = failure.getResult().getLastError();
+            if (instancePs == null) instancePs = instance.materializePath();
+            ValidationResult.Detail error = new ValidationResult.Detail(limit,
+                    "validation aborted: " + limit + "=" + max + " exceeded",
+                    null, instancePs, plan.keywordPs, plan.resourceUri);
             if (errors == null) errors = new ArrayList<>();
-            // Always retain the terminal diagnostic without exceeding the error cap.
-            if ((failFast && failFastErrorAdded) || (maxErrors != 0 && errors.size() >= maxErrors)) {
+            if (failFast && !errors.isEmpty()) {
                 errors.set(errors.size() - 1, error);
             } else {
                 errors.add(error);
             }
         }
-        return true;
+        return _abort();
+    }
+
+    private ValidationException _abort() {
+        abortFailure = new ValidationException(toResult(false));
+        return abortFailure;
+    }
+
+    /** Identifies this context's terminal failure without swallowing user exceptions. */
+    boolean isAbortFailure(ValidationException failure) {
+        return failure == abortFailure;
     }
 
     void leaveEvaluation() {
         if (maxEvaluationDepth != 0) evaluationDepth--;
-    }
-
-    /** Releases per-evaluation state, preserving configuration and output. */
-    void reset() {
-        evaluations = 0;
-        evaluationDepth = 0;
-        limitFailure = null;
-        ignoreErrorAdding = 0;
-        failFastErrorAdded = false;
-        if (planStack != null) planStack.clear();
-        reusedLeaf.clear();
-    }
-
-    /** Clears previously accumulated assertion errors. */
-    public void clearErrors() {
-        if (errors != null) errors.clear();
-    }
-
-    /** Clears previously accumulated annotations. */
-    public void clearAnnotations() {
-        if (annotations != null) annotations.clear();
     }
 
     /** Accesses the current annotation collection without copying it. */
@@ -166,8 +142,7 @@ public class ValidationContext {
     }
 
     boolean needsErrorDetail() {
-        return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || !failFastErrorAdded)
-                && (maxErrors == 0 || errors == null || errors.size() < maxErrors);
+        return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || errors == null);
     }
 
     public boolean isBooleanOnly() {
@@ -182,10 +157,7 @@ public class ValidationContext {
         return strictFormat;
     }
 
-    /**
-     * Returns a result over the context's current accumulated errors and annotations.
-     * Lists are live: clearing this context also affects previously obtained results.
-     */
+    /** Returns a result using the diagnostics collected by this validation without copying. */
     public ValidationResult toResult(boolean valid) {
         if (valid && (errors == null || errors.isEmpty())
                 && (annotations == null || annotations.isEmpty())) {
@@ -228,6 +200,6 @@ public class ValidationContext {
         if (instancePs == null && instance != null) instancePs = instance.materializePath();
         if (errors == null) errors = new ArrayList<>();
         errors.add(new ValidationResult.Detail(keyword, message, null, instancePs, keywordPs, schemaUri));
-        if (failFast) failFastErrorAdded = true;
+        if (maxErrors != 0 && errors.size() >= maxErrors) throw _abort();
     }
 }
