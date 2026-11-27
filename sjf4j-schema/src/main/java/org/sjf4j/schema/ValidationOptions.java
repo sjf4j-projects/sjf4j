@@ -33,17 +33,17 @@ public final class ValidationOptions {
         return collectAnnotations;
     }
 
-    /** Maximum combined SchemaPlan and Evaluator invocations per evaluation. */
+    /** Maximum combined SchemaPlan and Evaluator invocations per evaluation; exhaustion aborts validation. */
     public long getMaxEvaluations() {
         return maxEvaluations;
     }
 
-    /** Maximum active SchemaPlan evaluation frames, including the root. */
+    /** Maximum active SchemaPlan evaluation frames, including the root; exhaustion aborts validation. */
     public int getMaxEvaluationDepth() {
         return maxEvaluationDepth;
     }
 
-    /** Maximum retained assertion errors; does not change validity. */
+    /** Maximum retained errors; does not change validity. Terminal limit errors take priority. */
     public int getMaxErrors() {
         return maxErrors;
     }

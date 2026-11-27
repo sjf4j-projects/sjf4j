@@ -14,10 +14,9 @@ import java.util.Objects;
  * Exception wrapper carrying a {@link ValidationResult}.
  * <p>
  * Thrown by convenience APIs such as {@link SchemaPlan#requireValid(Object)}
- * and {@link SchemaValidator#requireValid(Object)}, or when a configured
- * execution limit aborts validation before a validity decision can be made.
- * Limit failures carry a detail named maxEvaluations or maxEvaluationDepth;
- * they are not ordinary assertion failures.
+ * and {@link SchemaValidator#requireValid(Object)}. A failed result may
+ * contain an execution-limit diagnostic (maxEvaluations or maxEvaluationDepth)
+ * if validation could not complete.
  * The exception message summarizes the error count and the first error;
  * the full result remains available through {@link #getResult()}.
  */

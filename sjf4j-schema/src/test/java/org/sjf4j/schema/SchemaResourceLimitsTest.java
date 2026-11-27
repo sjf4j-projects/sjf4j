@@ -62,13 +62,16 @@ class SchemaResourceLimitsTest {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}").createPlan();
         Object data = Arrays.asList(1, 2);
         assertTrue(plan.isValid(data, ValidationOptions.builder().maxEvaluations(7).build()));
-        assertThrows(ValidationException.class, () -> plan.isValid(data,
-                ValidationOptions.builder().maxEvaluations(6).build()));
-        assertThrows(ValidationException.class, () -> plan.validate(data,
-                ValidationOptions.builder().maxEvaluations(6).build()));
+        ValidationOptions exhausted = ValidationOptions.builder().maxEvaluations(6).build();
+        assertFalse(plan.isValid(data, exhausted));
+        ValidationResult result = plan.validate(data, exhausted);
+        assertFalse(result.isValid());
+        assertEquals("maxEvaluations", result.getLastError().getKeyword());
+        ValidationException required = assertThrows(ValidationException.class,
+                () -> plan.requireValid(data, exhausted));
+        assertEquals("maxEvaluations", required.getResult().getLastError().getKeyword());
         SchemaPlan empty = JsonSchema.fromJson("{\"items\":true}").createPlan();
-        assertThrows(ValidationException.class, () -> empty.isValid(data,
-                ValidationOptions.builder().maxEvaluations(3).build()));
+        assertFalse(empty.isValid(data, ValidationOptions.builder().maxEvaluations(3).build()));
         assertTrue(empty.isValid(data, ValidationOptions.builder().maxEvaluations(4).build()));
     }
 
@@ -76,15 +79,13 @@ class SchemaResourceLimitsTest {
     void evaluationDepthIncludesReferencesAndResetsForSiblings() {
         SchemaPlan refs = JsonSchema.fromJson("{\"$ref\":\"#/$defs/a\",\"$defs\":{\"a\":{\"$ref\":\"#/$defs/b\"},\"b\":true}}").createPlan();
         assertTrue(refs.isValid(1, ValidationOptions.builder().maxEvaluationDepth(3).build()));
-        assertThrows(ValidationException.class, () -> refs.isValid(1,
-                ValidationOptions.builder().maxEvaluationDepth(2).build()));
+        assertFalse(refs.isValid(1, ValidationOptions.builder().maxEvaluationDepth(2).build()));
         SchemaPlan items = JsonSchema.fromJson("{\"items\":true}").createPlan();
         assertTrue(items.isValid(Arrays.asList(1, 2, 3), ValidationOptions.builder().maxEvaluationDepth(2).build()));
         SchemaPlan recursive = JsonSchema.fromJson("{\"properties\":{\"next\":{\"$ref\":\"#\"}}}").createPlan();
         Map<String, Object> cycle = new HashMap<>();
         cycle.put("next", cycle);
-        assertThrows(ValidationException.class, () -> recursive.isValid(cycle,
-                ValidationOptions.builder().maxEvaluationDepth(8).build()));
+        assertFalse(recursive.isValid(cycle, ValidationOptions.builder().maxEvaluationDepth(8).build()));
     }
 
     @Test
@@ -105,17 +106,28 @@ class SchemaResourceLimitsTest {
     void limitErrorsAbortEvenIgnoredBranches() {
         SchemaPlan plan = JsonSchema.fromJson("{\"not\":{\"type\":\"integer\"}}").createPlan();
         ValidationOptions options = ValidationOptions.builder().maxEvaluationDepth(1).build();
-        ValidationException e = assertThrows(ValidationException.class, () -> plan.validate("text", options));
-        assertFalse(e.getResult().isValid());
-        assertEquals(1, e.getResult().count());
-        assertEquals("maxEvaluationDepth", e.getResult().getErrors().get(0).getKeyword());
-        ValidationException bool = assertThrows(ValidationException.class, () -> plan.isValid("text", options));
-        assertEquals("maxEvaluationDepth", bool.getResult().getErrors().get(0).getKeyword());
+        ValidationResult result = plan.validate("text", options);
+        assertFalse(result.isValid());
+        assertEquals(1, result.count());
+        assertEquals("maxEvaluationDepth", result.getLastError().getKeyword());
+        assertFalse(plan.isValid("text", options));
 
         SchemaPlan any = JsonSchema.fromJson("{\"anyOf\":[false,true]}").createPlan();
-        ValidationException steps = assertThrows(ValidationException.class, () -> any.validate(1,
-                ValidationOptions.builder().maxEvaluations(3).build()));
-        assertEquals("maxEvaluations", steps.getResult().getErrors().get(0).getKeyword());
+        ValidationOptions limited = ValidationOptions.builder().maxEvaluations(3).build();
+        ValidationResult steps = any.validate(1, limited);
+        assertFalse(steps.isValid());
+        assertEquals("maxEvaluations", steps.getLastError().getKeyword());
+        assertFalse(any.isValid(1, limited));
+    }
+
+    @Test
+    void terminalErrorTakesPriorityWithinErrorCap() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").createPlan();
+        ValidationOptions options = ValidationOptions.builder().maxErrors(1).maxEvaluations(4).build();
+        ValidationResult result = plan.validate(Arrays.asList("bad", "also bad"), options);
+        assertFalse(result.isValid());
+        assertEquals(1, result.count());
+        assertEquals("maxEvaluations", result.getLastError().getKeyword());
     }
 
     @Test

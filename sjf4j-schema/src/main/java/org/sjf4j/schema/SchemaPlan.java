@@ -70,7 +70,11 @@ public final class SchemaPlan {
         return ctx.toResult(evaluate(node, null, ctx));
     }
 
-    /** Validates with optional annotation collection. */
+    /**
+     * Validates with optional annotations and resource limits.
+     * An exhausted execution limit aborts validation and returns a failed
+     * result containing the limit diagnostic.
+     */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
         if (!options.isCollectAnnotations() && !options.hasLimits()) {
@@ -92,7 +96,10 @@ public final class SchemaPlan {
         return evaluate(node, null, ctx);
     }
 
-    /** Returns whether the instance is valid, with optional execution limits and no error collection. */
+    /**
+     * Returns whether the instance is valid, with optional execution limits and
+     * no error collection. Returns false if an execution limit is exhausted.
+     */
     public boolean isValid(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
         if (!options.hasLimits()) return isValid(node, options.isStrictFormat());
@@ -115,6 +122,12 @@ public final class SchemaPlan {
         if (!result.isValid()) throw new ValidationException(result);
     }
 
+    /** Validates with the supplied options and throws if validation fails or is aborted. */
+    public void requireValid(Object node, ValidationOptions options) {
+        ValidationResult result = validate(node, options);
+        if (!result.isValid()) throw new ValidationException(result);
+    }
+
 
     /*
      * --------------------------------------------------------------
@@ -130,6 +143,9 @@ public final class SchemaPlan {
         Asserts.notNull(ctx, "ctx");
         try {
             return evaluate(Instance.infer(node), instancePs, ctx);
+        } catch (ValidationException failure) {
+            if (!ctx.handleLimitFailure(failure)) throw failure;
+            return false;
         } finally {
             ctx.reset();
         }

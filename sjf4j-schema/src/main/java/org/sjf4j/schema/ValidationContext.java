@@ -26,6 +26,7 @@ public class ValidationContext {
     private final int maxErrors;
     private long evaluations;
     private int evaluationDepth;
+    private ValidationException limitFailure;
     private List<ValidationResult.Detail> errors;
     private List<ValidationResult.Detail> annotations;
 
@@ -100,7 +101,24 @@ public class ValidationContext {
                 null, instancePs, plan.keywordPs, plan.resourceUri);
         // A limit is a terminal execution failure, never a speculative branch error.
         // Report it even in boolean-only mode or when assertion errors are suppressed.
-        return new ValidationException(new ValidationResult(false, Collections.singletonList(error)));
+        limitFailure = new ValidationException(new ValidationResult(false, Collections.singletonList(error)));
+        return limitFailure;
+    }
+
+    /** Handles only the terminal failure raised by this context, not user exceptions. */
+    boolean handleLimitFailure(ValidationException failure) {
+        if (failure != limitFailure) return false;
+        if (!booleanOnly) {
+            ValidationResult.Detail error = failure.getResult().getLastError();
+            if (errors == null) errors = new ArrayList<>();
+            // Always retain the terminal diagnostic without exceeding the error cap.
+            if ((failFast && failFastErrorAdded) || (maxErrors != 0 && errors.size() >= maxErrors)) {
+                errors.set(errors.size() - 1, error);
+            } else {
+                errors.add(error);
+            }
+        }
+        return true;
     }
 
     void leaveEvaluation() {
@@ -111,6 +129,7 @@ public class ValidationContext {
     void reset() {
         evaluations = 0;
         evaluationDepth = 0;
+        limitFailure = null;
         ignoreErrorAdding = 0;
         failFastErrorAdded = false;
         if (planStack != null) planStack.clear();
