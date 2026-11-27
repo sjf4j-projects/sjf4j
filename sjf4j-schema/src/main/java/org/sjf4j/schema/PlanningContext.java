@@ -16,6 +16,8 @@ final class PlanningContext {
     final List<Evaluator.RefEvaluator> refEvaluators = new ArrayList<>();
     final List<Evaluator.DynamicRefEvaluator> dynamicRefEvaluators = new ArrayList<>();
 
+    private final int maxSchemas;
+    private final int maxSchemaDepth;
     private int schemas;
     private int depth;
 
@@ -24,6 +26,9 @@ final class PlanningContext {
 
     PlanningContext(SchemaRegistry registry) {
         this.registry = registry;
+        PlanningOptions options = registry.getPlanningOptions();
+        this.maxSchemas = options.getMaxSchemas();
+        this.maxSchemaDepth = options.getMaxSchemaDepth();
     }
 
     void putPlan(URI uri, SchemaPlan plan) {
@@ -59,28 +64,24 @@ final class PlanningContext {
 
     /** Rejects oversized subschema arrays before allocating their plan array. */
     void checkRemainingSchemas(int count) {
-        int maxSchemas = registry.getPlanningOptions().getMaxSchemas();
         if (maxSchemas != 0 && count > maxSchemas - schemas) {
             throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
         }
     }
 
     void enter() {
-        PlanningOptions options = registry.getPlanningOptions();
-        int maxSchemas = options.getMaxSchemas();
-        int maxDepth = options.getMaxSchemaDepth();
         if (maxSchemas != 0 && schemas >= maxSchemas) {
             throw new SchemaException("Planning limit exceeded: maxSchemas=" + maxSchemas);
         }
-        if (maxDepth != 0 && depth >= maxDepth) {
-            throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxDepth);
+        if (maxSchemaDepth != 0 && depth >= maxSchemaDepth) {
+            throw new SchemaException("Planning limit exceeded: maxSchemaDepth=" + maxSchemaDepth);
         }
         if (maxSchemas != 0) schemas++;
-        if (maxDepth != 0) depth++;
+        if (maxSchemaDepth != 0) depth++;
     }
 
     void leave() {
-        if (registry.getPlanningOptions().getMaxSchemaDepth() != 0) depth--;
+        if (maxSchemaDepth != 0) depth--;
     }
 
     /** Removes the pending references belonging to a completed resource or fragment. */
