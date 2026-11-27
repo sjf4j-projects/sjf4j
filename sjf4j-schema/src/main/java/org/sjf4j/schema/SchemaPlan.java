@@ -191,8 +191,6 @@ public final class SchemaPlan {
             }
         }
 
-        int len = evaluators.length;
-        boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
         if (tracksEvaluated) {
             instance.createEvaluated();
         }
@@ -292,6 +290,7 @@ public final class SchemaPlan {
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
+    final boolean tracksEvaluated;
     final Annotation[] annotations;
     final boolean booleanSchema;
     final boolean booleanValue;
@@ -315,6 +314,8 @@ public final class SchemaPlan {
         this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
+        this.tracksEvaluated = evaluators.length > 0
+                && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator;
         this.schema = Asserts.notNull(schema, "schema");
         this.booleanSchema = schema instanceof BooleanSchema;
         this.booleanValue = booleanSchema && ((BooleanSchema) schema).booleanValue();
