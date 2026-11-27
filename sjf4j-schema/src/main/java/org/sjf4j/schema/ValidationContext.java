@@ -70,8 +70,8 @@ public class ValidationContext {
         return collectAnnotations;
     }
 
-    boolean limitsEvaluation() {
-        return maxEvaluations != 0 || maxEvaluationDepth != 0;
+    boolean limitsEvaluationDepth() {
+        return maxEvaluationDepth != 0;
     }
 
     boolean limitsEvaluations() {
@@ -86,11 +86,10 @@ public class ValidationContext {
     }
 
     void enterEvaluation(SchemaPlan plan, Instance instance, PathSegment instancePs) {
-        if (maxEvaluationDepth != 0 && evaluationDepth >= maxEvaluationDepth) {
+        if (evaluationDepth >= maxEvaluationDepth) {
             throw _limitExceeded("maxEvaluationDepth", maxEvaluationDepth, plan, instance, instancePs);
         }
-        if (maxEvaluations != 0) countEvaluation(plan, instance, instancePs);
-        if (maxEvaluationDepth != 0) evaluationDepth++;
+        evaluationDepth++;
     }
 
     private ValidationException _limitExceeded(String limit, long max, SchemaPlan plan,
@@ -122,7 +121,7 @@ public class ValidationContext {
     }
 
     void leaveEvaluation() {
-        if (maxEvaluationDepth != 0) evaluationDepth--;
+        evaluationDepth--;
     }
 
     /** Releases per-evaluation state, preserving configuration and output. */

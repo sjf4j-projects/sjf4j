@@ -151,9 +151,10 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        boolean limited = ctx.limitsEvaluation();
-        if (limited) ctx.enterEvaluation(this, instance, instancePs);
+        boolean limitDepth = ctx.limitsEvaluationDepth();
+        if (limitDepth) ctx.enterEvaluation(this, instance, instancePs);
         try {
+            if (ctx.limitsEvaluations()) ctx.countEvaluation(this, instance, instancePs);
             if (ctx.isCollectAnnotations()) {
                 int mark = ctx.annotationMark();
                 boolean valid = false;
@@ -175,7 +176,7 @@ public final class SchemaPlan {
             }
             return _evaluateKeywords(instance, instancePs, ctx);
         } finally {
-            if (limited) ctx.leaveEvaluation();
+            if (limitDepth) ctx.leaveEvaluation();
         }
     }
 
