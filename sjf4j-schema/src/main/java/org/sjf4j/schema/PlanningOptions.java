@@ -12,7 +12,7 @@ public final class PlanningOptions {
         this.maxSchemaDepth = builder.maxSchemaDepth;
     }
 
-    /** Maximum newly constructed SchemaPlans per operation, including boolean and empty plans. A new compilation includes referenced object resources; direct cache hits do not count again. */
+    /** Maximum newly constructed SchemaPlans per operation, including boolean and empty plans. Includes uncached referenced resources; cached plans do not count again. */
     public int getMaxSchemas() {
         return maxSchemas;
     }

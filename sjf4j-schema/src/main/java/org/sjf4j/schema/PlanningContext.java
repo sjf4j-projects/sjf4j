@@ -3,7 +3,6 @@ package org.sjf4j.schema;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,7 +23,6 @@ final class PlanningContext {
     private int depth;
 
     private final Map<String, SchemaPlan> pendingPlans = new HashMap<>();
-    private final Map<String, URI> nestedResources = new HashMap<>();
 
     PlanningContext(SchemaRegistry registry) {
         this.registry = registry;
@@ -46,20 +44,9 @@ final class PlanningContext {
         }
     }
 
-    void putNestedPlan(URI uri, URI parentUri, String path, SchemaPlan plan) {
-        putPlan(uri, plan);
-        try {
-            URI location = URI.create(SchemaUtil.documentUri(parentUri).toString()
-                    + new URI(null, null, path).toASCIIString());
-            nestedResources.put(SchemaUtil.normalizeUriKey(uri), location);
-        } catch (URISyntaxException e) {
-            throw new SchemaException("Invalid nested resource pointer: " + path, e);
-        }
-    }
-
     /** Registers completed plan graphs; standalone compilation never calls this method. */
     void register() {
-        registry.registerPlans(pendingPlans, nestedResources);
+        registry.registerPlans(pendingPlans);
     }
 
     /** Rejects oversized subschema arrays before allocating their plan array. */

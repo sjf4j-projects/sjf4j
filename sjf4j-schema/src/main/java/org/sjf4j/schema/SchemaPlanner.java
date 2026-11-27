@@ -86,30 +86,34 @@ public final class SchemaPlanner {
         SchemaPlan plan = context.findPlan(id);
         if (plan != null) return plan;
         SchemaRegistry registry = context.registry;
-        ObjectSchema schema = registry.findLocalSchema(id);
-        if (schema != null) {
-            plan = _buildPlan(schema, context);
-            context.putPlan(URI.create(id), plan);
-            return plan;
-        }
-        URI nested = registry.findNestedResource(id);
-        if (nested != null) {
-            _resolveResource(SchemaUtil.normalizeUriKey(nested), context);
-            return context.findPlan(id);
-        }
         plan = registry.findLocalPlan(id);
-        if (plan != null && plan.booleanSchema) return plan;
+        if (plan != null) return plan;
 
-        SchemaRegistry global = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY;
-        if (registry == global) return null;
-        ObjectSchema builtin = global.findLocalSchema(id);
-        if (builtin != null) {
-            plan = _buildPlan(builtin, context);
-            context.putPlan(URI.create(id), plan);
-            return plan;
+        ObjectSchema schema = registry.findLocalSchema(id);
+        if (schema == null && registry != SchemaRegistry.GLOBAL_SCHEMA_REGISTRY) {
+            // Built-ins are compiled in the local registry's policy and context.
+            schema = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalSchema(id);
+            if (schema == null) {
+                SchemaPlan builtin = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalPlan(id);
+                return builtin != null && builtin.booleanSchema ? builtin : null;
+            }
         }
-        SchemaPlan builtinPlan = global.findLocalPlan(id);
-        return builtinPlan != null && builtinPlan.booleanSchema ? builtinPlan : null;
+        if (schema == null) return null;
+
+        // An indexed alias may point to an already planned canonical resource.
+        String canonical = SchemaUtil.normalizeUriKey(
+                SchemaUtil.resolveUri(schema.retrievalUri(), schema.canonicalUri()));
+        plan = context.findPlan(canonical);
+        if (plan == null) {
+            plan = registry.findLocalPlan(canonical);
+            if (plan != null && plan.schema != schema) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                        "duplicate schema uri '" + canonical + "'", PathSegment.Root.INSTANCE, URI.create(canonical)));
+            }
+        }
+        if (plan == null) plan = _buildPlan(schema, context);
+        context.putPlan(URI.create(id), plan);
+        return plan;
     }
 
     /**
@@ -664,7 +668,8 @@ public final class SchemaPlanner {
                 } else {
                     plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    context.putNestedPlan(childResourceUri, resourceUri, path, plan);
+                    plan.nestedLocation = SchemaUtil.normalizeUriKey(resourceUri) + "#" + path;
+                    context.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
                         byPathPlans.put(path + entry.getKey(), entry.getValue());

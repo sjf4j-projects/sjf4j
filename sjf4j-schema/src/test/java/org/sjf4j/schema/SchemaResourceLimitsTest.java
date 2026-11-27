@@ -71,25 +71,30 @@ class SchemaResourceLimitsTest {
         assertNotSame(cached, relaxed.resolve(uri));
         assertSame(cached, source.resolve(uri));
         assertTrue(root.createPlan(relaxed).isValid(1));
+        SchemaPlan local = relaxed.resolve(uri);
+        assertSame(local, ((Evaluator.RefEvaluator) root.createPlan(relaxed).evaluators[0]).plan);
     }
 
     @Test
-    void boundedPlanningPreservesNestedResourceMappings() {
+    void nestedResourcesAreReusedAfterTheirOwningDocumentIsRegistered() {
         SchemaRegistry source = new SchemaRegistry();
         URI rootUri = URI.create("https://example.test/root");
         URI childUri = URI.create("https://example.test/child");
         source.register(rootUri, JsonSchema.fromJson(
                 "{\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}}}"));
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/child\"}");
-        SchemaRegistry bounded = registry(3, 0);
+        SchemaRegistry bounded = registry(2, 0);
         bounded.indexRegistry(source);
+        assertNull(bounded.resolve(childUri));
+        assertThrows(SchemaException.class, () -> root.createPlan(bounded));
+        SchemaPlan owner = bounded.resolve(rootUri);
+        SchemaPlan child = bounded.resolve(childUri);
+        assertSame(owner.byPathPlans.get("/$defs/child"), child);
+        assertNotSame(source.resolve(childUri), child);
         SchemaPlan plan = root.createPlan(bounded);
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("bad"));
-        SchemaRegistry strict = registry(2, 0);
-        strict.indexRegistry(source);
-        assertThrows(SchemaException.class, () -> root.createPlan(strict));
-        assertTrue(source.resolve(childUri).isValid(1));
+        assertSame(child, ((Evaluator.RefEvaluator) plan.evaluators[0]).plan);
     }
 
     @Test
@@ -150,8 +155,11 @@ class SchemaResourceLimitsTest {
         assertNull(registry.resolveBuilt(root));
         assertNull(registry.resolveBuilt(external));
         assertThrows(SchemaException.class, () -> registry.resolve(root));
-        assertTrue(registry.resolve(external).isValid(1));
-        assertThrows(SchemaException.class, () -> registry.resolve(root));
+        SchemaPlan cached = registry.resolve(external);
+        assertTrue(cached.isValid(1));
+        SchemaPlan resolved = registry.resolve(root);
+        assertTrue(resolved.isValid(1));
+        assertSame(cached, ((Evaluator.RefEvaluator) resolved.evaluators[0]).plan);
     }
 
     @Test
@@ -198,6 +206,31 @@ class SchemaResourceLimitsTest {
         assertThrows(SchemaException.class, () -> registry.index(child, JsonSchema.fromJson("{\"type\":\"string\"}")));
         assertThrows(SchemaException.class, () -> registry.index(child, BooleanSchema.TRUE));
         assertSame(plan, registry.resolve(child));
+    }
+
+    @Test
+    void nestedIdConflictsBetweenDifferentDocumentsAreRejected() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI first = URI.create("https://example.test/first");
+        URI second = URI.create("https://example.test/second");
+        URI child = URI.create("https://example.test/child");
+        String schema = "{\"$defs\":{\"child\":{\"$id\":\"https://example.test/child\",\"type\":\"integer\"}}}";
+        registry.register(first, JsonSchema.fromJson(schema));
+        SchemaPlan existing = registry.resolve(child);
+        assertThrows(SchemaException.class, () -> registry.register(second, JsonSchema.fromJson(schema)));
+        assertSame(existing, registry.resolve(child));
+        assertNull(registry.resolveBuilt(second));
+    }
+
+    @Test
+    void cachedReferencesDoNotConsumePlanningDepthOrSchemaBudget() {
+        SchemaRegistry registry = registry(2, 2);
+        URI dependency = URI.create("https://example.test/dependency");
+        SchemaPlan cached = registry.register(dependency, JsonSchema.fromJson("{\"not\":false}"));
+        SchemaPlan root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/dependency\"}")
+                .createPlan(registry);
+        assertSame(cached, ((Evaluator.RefEvaluator) root.evaluators[0]).plan);
+        assertTrue(root.isValid(1));
     }
 
     @Test

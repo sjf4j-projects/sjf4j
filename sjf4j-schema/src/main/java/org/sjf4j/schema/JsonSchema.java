@@ -27,9 +27,8 @@ public interface JsonSchema {
      * <p>
      * Compilation resolves references, anchors, and keyword evaluators against
      * the provided registry's immutable planning policy and resource context.
-     * Root schemas may use the registry both for delayed compilation of other
-     * indexed schemas and for lookup of referenced
-     * absolute schema resources. References may target only recognized subschemas.
+     * References reuse completed plans from the registry and compile other
+     * indexed resources only when needed. References may target only recognized subschemas.
      * No compiled plans are registered. Passing {@code null} means "compile with an
      * empty external registry context".
      */

@@ -305,6 +305,9 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byPathPlans;
 
     final JsonSchema schema;
+    // Set only on nested resource roots during planning, for duplicate-ID checks.
+    // Not a resolution index; never changed after publication.
+    String nestedLocation;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
     SchemaPlan(URI resourceUri, PathSegment keywordPs, Evaluator[] evaluators,

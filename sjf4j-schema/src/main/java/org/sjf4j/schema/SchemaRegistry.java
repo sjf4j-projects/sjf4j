@@ -21,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
  * cached by absolute resource URI after compilation. Fragment lookup is limited
- * to subschemas recognized during planning; published plan graphs are unchanged.
+ * to subschemas recognized during planning; published plan graphs are unchanged
+ * and are reused by subsequent planning operations in this registry.
  * Concurrent compilation against a fixed catalog is supported; callers must
  * not mutate indexed schema models or concurrently change resource definitions.
  * Multi-resource registration is not a transaction.
@@ -34,8 +35,6 @@ public class SchemaRegistry {
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
     private final PlanningOptions planningOptions;
-    // Imported nested resources retain their owning document and pointer, not foreign plans.
-    private final Map<String, URI> byIdNestedResources = new ConcurrentHashMap<>();
 
 
     /**
@@ -270,7 +269,7 @@ public class SchemaRegistry {
         _checkUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
         if (ifAbsent && _containsLocalResource(retrievalUri)) return;
-        if (byIdSchemas.containsKey(id) || byIdNestedResources.containsKey(id)) {
+        if (byIdSchemas.containsKey(id)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
@@ -296,33 +295,31 @@ public class SchemaRegistry {
      * Publishes complete graphs without overwriting an existing resource.
      * Independent compilations may race; publication is atomic per key, not a batch transaction.
      */
-    void registerPlans(Map<String, SchemaPlan> plans, Map<String, URI> nestedResources) {
+    void registerPlans(Map<String, SchemaPlan> plans) {
         for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
-            _checkPlanConflict(entry.getKey(), entry.getValue(), nestedResources.get(entry.getKey()));
-        }
-        for (Map.Entry<String, URI> entry : nestedResources.entrySet()) {
-            URI old = byIdNestedResources.putIfAbsent(entry.getKey(), entry.getValue());
-            if (old != null && !old.equals(entry.getValue())) throw _planConflict(entry.getKey());
+            _checkPlanConflict(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
             String id = entry.getKey();
             SchemaPlan plan = entry.getValue();
             SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
             if (old != null && old != plan) {
-                _checkPlanConflict(id, plan, nestedResources.get(id));
+                _checkPlanConflict(id, plan);
             }
         }
     }
 
-    private void _checkPlanConflict(String id, SchemaPlan plan, URI location) {
+    private void _checkPlanConflict(String id, SchemaPlan plan) {
         ObjectSchema model = byIdSchemas.get(id);
-        URI indexedLocation = byIdNestedResources.get(id);
         SchemaPlan old = byIdPlans.get(id);
-        if (model != null && (location != null || model != plan.schema)
-                || indexedLocation != null && !indexedLocation.equals(location)
-                || old != null && (old.booleanSchema != plan.booleanSchema
+        if (model != null && (plan.nestedLocation != null || model != plan.schema)) {
+            throw _planConflict(id);
+        }
+        if (old == null || old == plan) return;
+        if (old.booleanSchema != plan.booleanSchema
                 || (old.booleanSchema ? old.booleanValue != plan.booleanValue
-                : location == null && old.schema != plan.schema))) {
+                : plan.nestedLocation != null ? !plan.nestedLocation.equals(old.nestedLocation)
+                : old.nestedLocation != null || old.schema != plan.schema)) {
             throw _planConflict(id);
         }
     }
@@ -336,7 +333,7 @@ public class SchemaRegistry {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
-        if (byIdNestedResources.containsKey(id) || (indexed != null && indexed.schema != schema)) {
+        if (indexed != null && (indexed.nestedLocation != null || indexed.schema != schema)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
@@ -349,7 +346,7 @@ public class SchemaRegistry {
 
     private boolean _containsLocalResource(URI uri) {
         String id = SchemaUtil.normalizeUriKey(uri);
-        return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id) || byIdNestedResources.containsKey(id);
+        return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id);
     }
 
     private void _checkUri(URI uri) {
@@ -369,6 +366,8 @@ public class SchemaRegistry {
      * of an object resource as a group. Referenced object plans must be
      * recompiled in this registry so existing bindings cannot leak across
      * different resource contexts. Boolean plans are reference-independent.
+     * Nested resource IDs become visible once their owning document is planned
+     * and registered in this registry.
      *
      * <p>This is the registry-to-registry counterpart of
      * {@link #indexIfAbsent(URI, JsonSchema)}. Neither method overwrites a
@@ -389,7 +388,7 @@ public class SchemaRegistry {
         for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
             boolean conflicting = false;
             for (String key : group.getValue()) {
-                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key) || byIdNestedResources.containsKey(key)) {
+                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key)) {
                     conflicting = true;
                     break;
                 }
@@ -401,21 +400,8 @@ public class SchemaRegistry {
         }
         for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
             if (entry.getValue().booleanSchema
-                    && !byIdSchemas.containsKey(entry.getKey()) && !byIdNestedResources.containsKey(entry.getKey())) {
+                    && !byIdSchemas.containsKey(entry.getKey())) {
                 byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
-            }
-        }
-        // Import discovered nested resource locations without scanning compiled plans.
-        for (Map.Entry<String, URI> entry : source.byIdNestedResources.entrySet()) {
-            String rootId = SchemaUtil.normalizeUriKey(entry.getValue());
-            URI parent;
-            while ((parent = source.byIdNestedResources.get(rootId)) != null) {
-                rootId = SchemaUtil.normalizeUriKey(parent);
-            }
-            if (byIdSchemas.get(rootId) != null
-                    && byIdSchemas.get(rootId) == source.byIdSchemas.get(rootId)
-                    && !byIdSchemas.containsKey(entry.getKey()) && !byIdPlans.containsKey(entry.getKey())) {
-                byIdNestedResources.putIfAbsent(entry.getKey(), entry.getValue());
             }
         }
     }
@@ -487,11 +473,6 @@ public class SchemaRegistry {
         return byIdSchemas.get(id);
     }
 
-    /** Looks up the owning resource pointer of an imported nested schema. */
-    URI findNestedResource(String id) {
-        return byIdNestedResources.get(id);
-    }
-
     /** Resolves an already planned fragment; never starts planning. */
     static SchemaPlan resolveFragmentOrThrow(SchemaPlan root, String fragment) {
         if (root == null) return null;
@@ -545,7 +526,7 @@ public class SchemaRegistry {
     }
 
     private boolean _contains(String id) {
-        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) || byIdNestedResources.containsKey(id) ||
+        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
                 (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
     }
 
@@ -556,7 +537,6 @@ public class SchemaRegistry {
     public Set<String> idSet() {
         Set<String> idSet = new HashSet<>(byIdPlans.keySet());
         idSet.addAll(byIdSchemas.keySet());
-        idSet.addAll(byIdNestedResources.keySet());
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             idSet.addAll(GLOBAL_SCHEMA_REGISTRY.idSet());
         }
