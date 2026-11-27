@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 
@@ -42,7 +41,7 @@ public final class SchemaPlanner {
 
     /** Compiles a root using an isolated registry, with or without planning limits. */
     static SchemaPlan createPlan(ObjectSchema schema, SchemaRegistry registry, PlanningOptions options) {
-        Objects.requireNonNull(options, "options");
+        Asserts.notNull(options, "options");
         SchemaRegistry scoped = options.hasLimits()
                 ? SchemaRegistry.forPlanning(registry, options)
                 : SchemaRegistry.copyOf(registry);
