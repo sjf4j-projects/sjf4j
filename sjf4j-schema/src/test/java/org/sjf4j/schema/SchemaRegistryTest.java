@@ -7,6 +7,7 @@ import java.net.URI;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,6 +91,31 @@ class SchemaRegistryTest {
         assertTrue(registry.contains("file:///schemas/root.json"));
         assertTrue(registry.contains(URI.create("file:///schemas/defs/user.json")));
         assertTrue(registry.contains(URI.create("file:///schemas/root.json")));
+    }
+
+    @Test
+    void registerUsesResolveAndCachesRetrievalAliases() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI canonical = URI.create("https://example.test/canonical");
+        URI retrieval = URI.create("https://example.test/alias");
+        JsonSchema schema = JsonSchema.fromJson("{\"$id\":\"https://example.test/canonical\",\"type\":\"integer\"}");
+        registry.index(schema);
+        SchemaPlan plan = registry.resolve(canonical);
+        assertSame(plan, registry.register(retrieval, schema));
+        assertSame(plan, registry.resolveBuilt(retrieval));
+        assertSame(plan, registry.resolve(canonical));
+        assertSame(plan, registry.register(schema));
+    }
+
+    @Test
+    void registerBooleanWithAndWithoutUri() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI resource = URI.create("https://example.test/boolean");
+        SchemaPlan plan = registry.register(resource, BooleanSchema.FALSE);
+        assertSame(plan, registry.resolve(resource));
+        assertSame(plan, registry.register(resource, BooleanSchema.FALSE));
+        assertFalse(registry.register(BooleanSchema.FALSE).isValid(1));
+        assertTrue(registry.register(BooleanSchema.TRUE).isValid(null));
     }
 
     @Test

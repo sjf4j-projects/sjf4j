@@ -63,7 +63,7 @@ class SchemaLoaderTest {
         assertNotNull(plan);
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid("x"));
-        assertSame(plan, SchemaRegistry.copyOf(registry).resolve(reference));
+        assertSame(plan, registry.resolve(reference));
     }
 
     @Test

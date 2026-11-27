@@ -8,11 +8,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Validation outcome with separate assertion errors and schema annotations.
+ * Validation outcome with separate errors and schema annotations.
+ * A failed result may indicate an aborted validation due to an execution limit.
  *
- * <p>The two lists are independent. Results built from a reusable
- * {@link ValidationContext} refer to its live lists until the next explicit
- * clear; other results may own their lists.
+ * <p>The two lists are independent. Results use the diagnostics collected
+ * during a single validation without copying.
  */
 public class ValidationResult {
     private final boolean valid;
@@ -22,7 +22,7 @@ public class ValidationResult {
     /** Shared success result without errors or annotations. */
     public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
 
-    /** Creates a result containing assertion errors and optional annotations. */
+    /** Creates a result containing errors and optional annotations. */
     public ValidationResult(boolean valid, List<Detail> errors, List<Detail> annotations) {
         this.valid = valid;
         this.errors = errors;
@@ -38,7 +38,7 @@ public class ValidationResult {
         return valid;
     }
 
-    /** Number of assertion errors, excluding annotations. */
+    /** Number of retained errors, excluding annotations. */
     public int count() {
         return errors == null ? 0 : errors.size();
     }

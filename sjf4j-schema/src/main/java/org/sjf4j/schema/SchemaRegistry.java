@@ -20,10 +20,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
- * cached by absolute resource URI after compilation. Fragment resolution stays
- * inside each compiled plan. The implementation is safe for concurrent access
- * at the map level, but root schema objects stored in the registry still carry
- * mutable retrieval-URI metadata.
+ * cached by absolute resource URI after compilation. Fragment lookup is limited
+ * to subschemas recognized during planning; published plan graphs are unchanged
+ * and are reused by subsequent planning operations in this registry.
+ * Concurrent compilation against a fixed catalog is supported; callers must
+ * not mutate indexed schema models or concurrently change resource definitions.
+ * Multi-resource registration is not a transaction.
  * Lookup first checks local mappings and then the built-in global meta-schemas;
  * it does not fetch arbitrary remote resources.
  */
@@ -32,7 +34,7 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
-
+    private final PlanningOptions planningOptions;
 
 
     /**
@@ -40,9 +42,24 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
+        this(defaultDialect, PlanningOptions.DEFAULT);
+    }
+
+    /** Creates a registry with immutable planning options and default dialect. */
+    public SchemaRegistry(PlanningOptions planningOptions) {
+        this(SchemaDialect.DRAFT_2020_12, planningOptions);
+    }
+
+    /** Creates a registry with a fixed compilation environment. */
+    public SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions planningOptions) {
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
-        this.defaultDialect = defaultDialect;
+        this.defaultDialect = Asserts.notNull(defaultDialect, "defaultDialect");
+        this.planningOptions = Asserts.notNull(planningOptions, "planningOptions");
+    }
+
+    public PlanningOptions getPlanningOptions() {
+        return planningOptions;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -80,29 +97,7 @@ public class SchemaRegistry {
      *                         or it conflicts with another resource
      */
     public void index(URI retrievalUri, JsonSchema schema) {
-        Asserts.notNull(schema, "schema");
-        if (schema instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
-            return;
-        }
-
-        ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.retrievalUri(retrievalUri);
-        retrievalUri = os.retrievalUri();
-        URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
-                : os.canonicalUri();
-        if (canonicalUri == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: specify $id or a retrieval URI",
-                    PathSegment.Root.INSTANCE, null));
-        }
-        _putSchema(canonicalUri, os);
-
-        if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
-                .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
-            _putSchema(retrievalUri, os);
-        }
+        _index(retrievalUri, schema, false);
     }
 
     /**
@@ -115,26 +110,29 @@ public class SchemaRegistry {
      * Boolean resources with a retrieval URI are indexed as plans.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
+        _index(retrievalUri, schema, true);
+    }
+
+    /** Indexes a resource and returns its canonical URI, if any. */
+    private URI _index(URI retrievalUri, JsonSchema schema, boolean ifAbsent) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, true);
-            return;
+            _indexBoolean(retrievalUri, (BooleanSchema) schema, ifAbsent);
+            return retrievalUri;
         }
 
         ObjectSchema os = (ObjectSchema) schema;
         if (retrievalUri != null) os.retrievalUri(retrievalUri);
         retrievalUri = os.retrievalUri();
-        URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
-                : os.canonicalUri();
+        URI canonicalUri = SchemaUtil.resolveUri(retrievalUri, os.canonicalUri());
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
                     PathSegment.Root.INSTANCE, null));
         }
-
-        if (_containsLocalResource(canonicalUri) || (retrievalUri != null && _containsLocalResource(retrievalUri))) {
-            return;
+        if (ifAbsent && (_containsLocalResource(canonicalUri)
+                || (retrievalUri != null && _containsLocalResource(retrievalUri)))) {
+            return canonicalUri;
         }
 
         _putSchema(canonicalUri, os);
@@ -142,7 +140,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
-
+        return canonicalUri;
     }
 
     /**
@@ -212,29 +210,17 @@ public class SchemaRegistry {
      * A missing or relative root URI without a retrieval base is rejected.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
-        Asserts.notNull(schema, "schema");
-        if (schema instanceof BooleanSchema) {
-            if (retrievalUri == null) {
-                return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
-            }
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
-            return byIdPlans.get(SchemaUtil.normalizeUriKey(retrievalUri));
-        }
-
-        ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.retrievalUri(retrievalUri);
-        URI canonicalUri = os.retrievalUri() != null
-                ? SchemaUtil.resolveUri(os.retrievalUri(), os.canonicalUri())
-                : os.canonicalUri();
+        URI canonicalUri = _index(retrievalUri, schema, false);
         if (canonicalUri == null) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "missing root schema uri: specify $id or a retrieval URI",
-                    PathSegment.Root.INSTANCE, null));
+            // A boolean document without a URI is not registered.
+            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
-        index(os);
-        return SchemaPlanner.buildAndPutPlan(os, this);
+        // Resolve the retrieval alias when present so it is also cached, even
+        // if the canonical resource was previously planned. Register a root,
+        // not the fragment of a legacy $id.
+        URI alias = schema instanceof ObjectSchema ? ((ObjectSchema) schema).retrievalUri() : retrievalUri;
+        return resolve((alias == null ? canonicalUri : alias).toString(), null);
     }
-
 
     /** Indexes an explicitly located boolean resource for direct and $ref resolution. */
     private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
@@ -242,7 +228,7 @@ public class SchemaRegistry {
         if (retrievalUri == null) return;
         _checkUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
-        if (ifAbsent && (byIdPlans.containsKey(id) || byIdSchemas.containsKey(id))) return;
+        if (ifAbsent && _containsLocalResource(retrievalUri)) return;
         if (byIdSchemas.containsKey(id)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
@@ -256,25 +242,58 @@ public class SchemaRegistry {
     }
 
     /**
-     * Registers one URI mapping after validation checks.
+     * Validates and normalizes a resource URI for planning.
      *
-     * @throws SchemaException on invalid URI shape or duplicate/conflicting map
+     * @throws SchemaException on invalid URI shape
      */
-    void putPlan(URI uri, SchemaPlan plan) {
+    String checkPlanUri(URI uri) {
         _checkUri(uri);
-        String id = SchemaUtil.normalizeUriKey(uri);
-        SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
-        if (old != null && old != plan) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
+        return SchemaUtil.normalizeUriKey(uri);
+    }
+
+    /**
+     * Publishes complete graphs without overwriting an existing resource.
+     * Independent compilations may race; publication is atomic per key, not a batch transaction.
+     */
+    void registerPlans(Map<String, SchemaPlan> plans) {
+        for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
+            _checkPlanConflict(entry.getKey(), entry.getValue());
         }
+        for (Map.Entry<String, SchemaPlan> entry : plans.entrySet()) {
+            String id = entry.getKey();
+            SchemaPlan plan = entry.getValue();
+            SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
+            if (old != null && old != plan) {
+                _checkPlanConflict(id, plan);
+            }
+        }
+    }
+
+    private void _checkPlanConflict(String id, SchemaPlan plan) {
+        ObjectSchema model = byIdSchemas.get(id);
+        SchemaPlan old = byIdPlans.get(id);
+        if (model != null && (plan.nestedLocation != null || model != plan.schema)) {
+            throw _planConflict(id);
+        }
+        if (old == null || old == plan) return;
+        if (old.booleanSchema != plan.booleanSchema
+                || (old.booleanSchema ? old.booleanValue != plan.booleanValue
+                : plan.nestedLocation != null ? !plan.nestedLocation.equals(old.nestedLocation)
+                : old.nestedLocation != null || old.schema != plan.schema)) {
+            throw _planConflict(id);
+        }
+    }
+
+    private SchemaException _planConflict(String id) {
+        return new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, URI.create(id)));
     }
 
     private void _putSchema(URI uri, ObjectSchema schema) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
-        if (indexed != null && indexed.booleanSchema) {
+        if (indexed != null && (indexed.nestedLocation != null || indexed.schema != schema)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
         }
@@ -307,6 +326,8 @@ public class SchemaRegistry {
      * of an object resource as a group. Referenced object plans must be
      * recompiled in this registry so existing bindings cannot leak across
      * different resource contexts. Boolean plans are reference-independent.
+     * Nested resource IDs become visible once their owning document is planned
+     * and registered in this registry.
      *
      * <p>This is the registry-to-registry counterpart of
      * {@link #indexIfAbsent(URI, JsonSchema)}. Neither method overwrites a
@@ -346,36 +367,6 @@ public class SchemaRegistry {
     }
 
     /**
-     * Imports all schema mappings from another registry.
-     * The returned registry has independent maps but shares indexed schema
-     * models and compiled plans. Null creates a default registry.
-     */
-    public static SchemaRegistry copyOf(SchemaRegistry other) {
-        if (other == null) return new SchemaRegistry();
-
-        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
-        for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
-            SchemaPlan plan = entry.getValue();
-            SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
-            if (old != null && old != plan) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                        URI.create(entry.getKey())));
-            }
-        }
-        for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
-            ObjectSchema schema = entry.getValue();
-            ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
-            if (old != null && old != schema) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                        URI.create(entry.getKey())));
-            }
-        }
-        return registry;
-    }
-
-    /**
      * Resolves schema by absolute URI (canonical or alias).
      * <p>
      * The URI fragment, when present, is resolved within the compiled target
@@ -385,11 +376,7 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.toString();
-        String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
-        SchemaPlan plan = _resolveResource(id, true);
-        return _resolveFragmentOrThrow(plan, fragment);
+        return resolve(SchemaUtil.documentUri(uri).toString(), uri.getFragment());
     }
 
     /**
@@ -402,8 +389,10 @@ public class SchemaRegistry {
      */
     public SchemaPlan resolve(String id, String fragment) {
         Asserts.notNull(id, "id");
-        SchemaPlan plan = _resolveResource(id, true);
-        return _resolveFragmentOrThrow(plan, fragment);
+        id = SchemaUtil.normalizeUriKey(id);
+        SchemaPlan root = byIdPlans.get(id);
+        if (root != null) return resolveFragmentOrThrow(root, fragment);
+        return SchemaPlanner.resolve(this, id, fragment);
     }
 
     /**
@@ -427,88 +416,32 @@ public class SchemaRegistry {
         return SchemaPlan.findDynamicTarget(initial, dynamicAnchor, scope.iterator());
     }
 
+    /** Resolves a cached resource without compiling an indexed root. */
     SchemaPlan resolveBuilt(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.toString();
-        String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
-        SchemaPlan plan = _resolveResource(id, false);
-        return _resolveFragmentOrThrow(plan, fragment);
+        SchemaPlan root = byIdPlans.get(SchemaUtil.normalizeUriKey(uri));
+        return root == null ? null : root.findFragment(uri.getFragment());
     }
 
-    /**
-     * Resolves only the schema resource part of a URI.
-     * <p>
-     * Fragments are intentionally ignored here so callers that need better
-     * diagnostics can distinguish a missing resource from a missing fragment.
-     * Missing resources return {@code null}; indexed resources may still be
-     * compiled lazily.
-     */
-    SchemaPlan resolveResource(URI uri) {
-        Asserts.notNull(uri, "uri");
-        String id = SchemaUtil.documentUri(uri).toString();
-        return _resolveResource(id, true);
+    /** Looks up a normalized resource key locally, without compiling anything. */
+    SchemaPlan findLocalPlan(String id) {
+        return byIdPlans.get(id);
     }
 
-    /**
-     * Resolves a fragment within an already resolved schema resource.
-     * <p>
-     * This method does not throw for missing fragments. The public resolve API
-     * keeps the historical exception behavior, while internal callers can use
-     * {@code null} to produce context-specific messages for {@code $ref} and
-     * {@code $dynamicRef}.
-     */
-    SchemaPlan resolveFragment(SchemaPlan rootPlan, String fragment) {
-        if (rootPlan == null || fragment == null || fragment.isEmpty()) return rootPlan;
-        if (rootPlan.byAnchorPlans == null || rootPlan.byPathPlans == null) return null;
-        SchemaPlan plan = rootPlan.byAnchorPlans.get(fragment);
-        if (plan == null) {
-            plan = rootPlan.byPathPlans.get(fragment);
-        }
-        if (plan == null) {
-            plan = SchemaPlanner.lazyBuildPlanByPath(rootPlan, fragment, this);
-        }
-        return plan;
+    /** Looks up a normalized resource key locally, without a global fallback. */
+    ObjectSchema findLocalSchema(String id) {
+        return byIdSchemas.get(id);
     }
 
-    /**
-     * Resolves a resource key without fragment handling.
-     * <p>
-     * Local registry entries win; the global built-in registry is consulted only
-     * as fallback. This preserves custom registry overrides and avoids remote or
-     * filesystem loading beyond schemas explicitly indexed in the registry.
-     */
-    private SchemaPlan _resolveResource(String id, boolean allowBuild) {
-        id = SchemaUtil.normalizeUriKey(id);
-        SchemaPlan plan = byIdPlans.get(id);
-        if (plan != null) return plan;
-
-        if (allowBuild) {
-            ObjectSchema schema = byIdSchemas.get(id);
-            if (schema != null) {
-                return SchemaPlanner.buildAndPutPlan(schema, this);
-            }
-        }
-
-        if (this != GLOBAL_SCHEMA_REGISTRY) {
-            return GLOBAL_SCHEMA_REGISTRY._resolveResource(id, allowBuild);
-        }
-        return null;
-    }
-
-    /**
-     * Adapter used by public resolve methods to preserve their existing
-     * fragment-missing exception behavior.
-     */
-    private SchemaPlan _resolveFragmentOrThrow(SchemaPlan rootPlan, String fragment) {
-        if (rootPlan == null) return null;
-        SchemaPlan plan = resolveFragment(rootPlan, fragment);
+    /** Resolves an already planned fragment; never starts planning. */
+    static SchemaPlan resolveFragmentOrThrow(SchemaPlan root, String fragment) {
+        if (root == null) return null;
+        SchemaPlan plan = root.findFragment(fragment);
         if (plan == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                     "cannot resolve schema fragment '#" + fragment + "'",
-                    PathSegment.Root.INSTANCE, rootPlan.resourceUri));
+                    PathSegment.Root.INSTANCE, root.resourceUri));
         }
-
         return plan;
     }
 
