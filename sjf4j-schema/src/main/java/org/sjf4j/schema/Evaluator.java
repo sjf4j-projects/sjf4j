@@ -27,7 +27,8 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Pattern;
+import org.sjf4j.regex.Regex;
+import org.sjf4j.regex.RegexEngine;
 
 /**
  * Per-keyword evaluator used by compiled schemas.
@@ -431,15 +432,15 @@ public interface Evaluator {
         final PathSegment keywordPs;
         final URI schemaUri;
         final String pattern;
-        final Pattern pn;
+        final Regex pn;
         /**
          * Creates evaluator for pattern keyword.
          */
-        public PatternEvaluator(PathSegment keywordPs, URI schemaUri, String pattern) {
+        public PatternEvaluator(PathSegment keywordPs, URI schemaUri, String pattern, RegexEngine regexEngine) {
             this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
             this.pattern = Asserts.notNull(pattern,  "pattern");
-            this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern", keywordPs, schemaUri);
+            this.pn = SchemaUtil.compileRegexPattern(pattern, "pattern", keywordPs, schemaUri, regexEngine);
         }
 
         /**
@@ -450,7 +451,7 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.STRING) return true;
 
             String node = Nodes.toString(instance.raw());
-            if (!pn.matcher(node).find()) {
+            if (!pn.find(node)) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "pattern",
                         ctx.needsErrorDetail() ? ("expected string matching pattern '" + pattern + "'") : null);
                 return false;
@@ -630,21 +631,21 @@ public interface Evaluator {
     // properties / patternProperties / additionalProperties
     final class PropertiesEvaluator implements Evaluator {
         final Map<String, SchemaPlan> properties;
-        final Pattern[] patterns;
+        final Regex[] patterns;
         final SchemaPlan[] patternPlans;
         final SchemaPlan additionalPropertiesPlan;
         public PropertiesEvaluator(PathSegment patternPropertiesKeywordPs, URI schemaUri,
                                    Map<String, SchemaPlan> properties,
                                    Map<String, SchemaPlan> patternProperties,
-                                   SchemaPlan additionalPropertiesPlan) {
+                                   SchemaPlan additionalPropertiesPlan, RegexEngine regexEngine) {
             this.properties = properties;
             if (patternProperties != null) {
-                this.patterns = new Pattern[patternProperties.size()];
+                this.patterns = new Regex[patternProperties.size()];
                 this.patternPlans = new SchemaPlan[patternProperties.size()];
                 int i = 0;
                 for (Map.Entry<String, SchemaPlan> entry : patternProperties.entrySet()) {
                     this.patterns[i] = SchemaUtil.compileRegexPattern(entry.getKey(), "patternProperties",
-                            new PathSegment.Name(patternPropertiesKeywordPs, entry.getKey()), schemaUri);
+                            new PathSegment.Name(patternPropertiesKeywordPs, entry.getKey()), schemaUri, regexEngine);
                     this.patternPlans[i] = entry.getValue();
                     i++;
                 }
@@ -743,7 +744,7 @@ public interface Evaluator {
 
             if (patterns != null) {
                 for (int i = 0; i < patterns.length; i++) {
-                    if (patterns[i].matcher(key).find()) {
+                    if (patterns[i].find(key)) {
                         SchemaPlan plan = patternPlans[i];
                         if (plan != null) {
                             Instance subInstance = instance.inferSubByKey(key, value, property, ctx.reusedLeaf());
