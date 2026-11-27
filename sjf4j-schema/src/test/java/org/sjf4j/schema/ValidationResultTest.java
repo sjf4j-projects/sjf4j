@@ -156,15 +156,13 @@ class ValidationResultTest {
     }
 
     @Test
-    void contextOwnsLiveErrorListWithoutCopyingIt() {
+    void contextReturnsCollectedErrorsWithoutCopying() {
         SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"x\"]}").createPlan();
         ValidationContext ctx = new ValidationContext(false, false, false);
         assertFalse(plan.evaluate(Map.of(), null, ctx));
 
         ValidationResult result = ctx.toResult(false);
         assertEquals(1, result.getErrors().size());
-        ctx.clearErrors();
-        assertTrue(result.getErrors().isEmpty());
-        assertEquals(0, result.count());
+        assertSame(result.getErrors(), ctx.toResult(false).getErrors());
     }
 }

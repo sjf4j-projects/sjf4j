@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -11,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 
@@ -27,23 +25,13 @@ public final class SchemaPlanner {
 
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
-    static final class PlanningContext {
-        final SchemaRegistry registry;
-        final List<Evaluator.RefEvaluator> refEvaluators;
-        final List<Evaluator.DynamicRefEvaluator> dynamicRefEvaluators;
-
-        PlanningContext(SchemaRegistry registry) {
-            this.registry = registry;
-            this.refEvaluators = new ArrayList<>();
-            this.dynamicRefEvaluators = new ArrayList<>();
-        }
+    static SchemaPlan buildPlan(ObjectSchema schema, SchemaRegistry registry) {
+        return _buildPlan(schema, new PlanningContext(registry == null ? new SchemaRegistry() : registry));
     }
 
-
-    static SchemaPlan buildAndPutPlan(ObjectSchema schema, SchemaRegistry registry) {
+    private static SchemaPlan _buildPlan(ObjectSchema schema, PlanningContext context) {
         Asserts.notNull(schema, "schema");
-        Asserts.notNull(registry, "registry");
-
+        SchemaRegistry registry = context.registry;
         URI retrievalUri = schema.retrievalUri();
         URI canonicalUri = schema.canonicalUri();
         URI baseUri = retrievalUri;
@@ -51,21 +39,73 @@ public final class SchemaPlanner {
             baseUri = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
         }
         URI resourceUri = SchemaUtil.resolveUri(baseUri, canonicalUri);
-        SchemaPlan plan = registry.resolveBuilt(resourceUri);
+        SchemaPlan plan = context.findPlan(SchemaUtil.normalizeUriKey(resourceUri));
         if (plan != null) return plan;
 
-        PlanningContext context = new PlanningContext(registry);
-        SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
-        Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
-                resourceUri, PathSegment.Root.INSTANCE);
-        plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
-                new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-        context.registry.putPlan(resourceUri, plan);
+        context.enter();
+        int refStart = context.refEvaluators.size();
+        int dynamicRefStart = context.dynamicRefEvaluators.size();
+        try {
+            SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
+            Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
+                    resourceUri, PathSegment.Root.INSTANCE);
+            plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
+                    new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
+            context.putPlan(resourceUri, plan);
 
-        if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
-            context.registry.putPlan(retrievalUri, plan);
+            if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
+                context.putPlan(retrievalUri, plan);
+            }
+            _bindDeferredRefs(context, refStart, dynamicRefStart);
+            return plan;
+        } finally {
+            context.clearRefs(refStart, dynamicRefStart);
+            context.leave();
         }
-        _bindDeferredRefs(context);
+    }
+
+    /** Plans an uncached resource and publishes it only after fragment resolution succeeds. */
+    static SchemaPlan resolve(SchemaRegistry registry, String id, String fragment) {
+        PlanningContext context = new PlanningContext(registry);
+        SchemaPlan root = _resolveResource(id, context);
+        SchemaPlan plan = SchemaRegistry.resolveFragmentOrThrow(root, fragment);
+        if (plan == null) return null;
+        context.register();
+        SchemaPlan published = registry.findLocalPlan(id);
+        return published != null ? SchemaRegistry.resolveFragmentOrThrow(published, fragment) : plan;
+    }
+
+    private static SchemaPlan _resolveResource(String id, PlanningContext context) {
+        SchemaPlan plan = context.findPlan(id);
+        if (plan != null) return plan;
+        SchemaRegistry registry = context.registry;
+        plan = registry.findLocalPlan(id);
+        if (plan != null) return plan;
+
+        ObjectSchema schema = registry.findLocalSchema(id);
+        if (schema == null && registry != SchemaRegistry.GLOBAL_SCHEMA_REGISTRY) {
+            // Built-ins are compiled in the local registry's policy and context.
+            schema = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalSchema(id);
+            if (schema == null) {
+                SchemaPlan builtin = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalPlan(id);
+                return builtin != null && builtin.booleanSchema ? builtin : null;
+            }
+        }
+        if (schema == null) return null;
+
+        // An indexed alias may point to an already planned canonical resource.
+        String canonical = SchemaUtil.normalizeUriKey(
+                SchemaUtil.resolveUri(schema.retrievalUri(), schema.canonicalUri()));
+        plan = context.findPlan(canonical);
+        if (plan == null) {
+            plan = registry.findLocalPlan(canonical);
+            if (plan != null && plan.schema != schema) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                        "duplicate schema uri '" + canonical + "'", PathSegment.Root.INSTANCE, URI.create(canonical)));
+            }
+        }
+        if (plan == null) plan = _buildPlan(schema, context);
+        context.putPlan(URI.create(id), plan);
         return plan;
     }
 
@@ -466,23 +506,6 @@ public final class SchemaPlanner {
         return plan;
     }
 
-    static SchemaPlan lazyBuildPlanByPath(SchemaPlan resourcePlan, String path, SchemaRegistry registry) {
-        Asserts.notNull(resourcePlan, "resourcePlan");
-        Asserts.notNull(path, "path");
-        Asserts.notNull(registry, "registry");
-        if (!path.startsWith("/") || !(resourcePlan.schema instanceof ObjectSchema)) return null;
-
-        JsonPath jsonPath = JsonPath.parse(path);
-        Object node = jsonPath.getNode(resourcePlan.schema);
-        if (node == null) return null;
-        PlanningContext context = new PlanningContext(registry);
-        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.resourceUri, jsonPath.tail(),
-                resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
-                context, resourcePlan.dialect, resourcePlan.vocabulary);
-        _bindDeferredRefs(context);
-        return plan;
-    }
-
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
                                           SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps) {
         SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
@@ -548,6 +571,7 @@ public final class SchemaPlanner {
                     cps, resourceUri));
         }
         int size = Nodes.sizeInArray(arrayNode);
+        context.checkRemainingSchemas(size);
         SchemaPlan[] planArr = new SchemaPlan[size];
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(arrayNode, i);
@@ -585,6 +609,21 @@ public final class SchemaPlanner {
                                                     Map<String, SchemaPlan> byPathPlans,
                                                     PlanningContext context, SchemaDialect inheritedDialect,
                                                     Map<String, Boolean> inheritedVocabulary) {
+        context.enter();
+        try {
+            return _buildNodePlan(node, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                    context, inheritedDialect, inheritedVocabulary);
+        } finally {
+            context.leave();
+        }
+    }
+
+    private static SchemaPlan _buildNodePlan(Object node, URI resourceUri, PathSegment ps,
+                                              Map<String, SchemaPlan> byAnchorPlans,
+                                              Map<String, SchemaPlan> byDynamicAnchorPlans,
+                                              Map<String, SchemaPlan> byPathPlans,
+                                              PlanningContext context, SchemaDialect inheritedDialect,
+                                              Map<String, Boolean> inheritedVocabulary) {
         if (node == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                     "invalid schema node: schema is null", ps, resourceUri));
@@ -622,7 +661,8 @@ public final class SchemaPlanner {
                 } else {
                     plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    context.registry.putPlan(childResourceUri, plan);
+                    plan.nestedLocation = SchemaUtil.normalizeUriKey(resourceUri) + "#" + path;
+                    context.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
                         byPathPlans.put(path + entry.getKey(), entry.getValue());
@@ -634,76 +674,58 @@ public final class SchemaPlanner {
         return plan;
     }
 
-    private static void _bindDeferredRefs(PlanningContext context) {
-        for (Evaluator.RefEvaluator refEvaluator : context.refEvaluators) {
-            URI refUri;
-            try {
-                refUri = SchemaUtil.resolveUri(refEvaluator.schemaUri, URI.create(refEvaluator.ref));
-            } catch (SchemaException e) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $ref URI '" + refEvaluator.ref + "': base='"
-                                + refEvaluator.schemaUri + "', ref='" + refEvaluator.ref + "'",
-                        refEvaluator.keywordPs, refEvaluator.schemaUri), e);
-            }
-            String resource = SchemaUtil.documentUri(refUri).toString();
-
-            // Resolve resource and fragment separately so diagnostics can tell
-            // callers whether they forgot to preload a remote schema or simply
-            // referenced a bad anchor / JSON Pointer inside an existing one.
-            SchemaPlan resourcePlan = context.registry.resolveResource(refUri);
-            if (resourcePlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve schema resource '" + resource + "' while resolving $ref '"
-                                + refEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
-                        refEvaluator.keywordPs, refEvaluator.schemaUri));
-            }
-            String fragment = refUri.getFragment();
-            SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
-            if (refPlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
-                                + "' while resolving $ref '" + refEvaluator.ref + "' -> '" + refUri + "'",
-                        refEvaluator.keywordPs, refEvaluator.schemaUri));
-            }
-            refEvaluator.plan = refPlan;
+    private static void _bindDeferredRefs(PlanningContext context, int refStart, int dynamicRefStart) {
+        int refEnd = context.refEvaluators.size();
+        int dynamicRefEnd = context.dynamicRefEvaluators.size();
+        for (int i = refStart; i < refEnd; i++) {
+            Evaluator.RefEvaluator evaluator = context.refEvaluators.get(i);
+            URI refUri = _resolveRefUri(evaluator.schemaUri, evaluator.ref, evaluator.keywordPs, "$ref");
+            evaluator.plan = _resolveRef(refUri, evaluator.schemaUri, evaluator.ref, evaluator.keywordPs, "$ref", context);
         }
-        for (Evaluator.DynamicRefEvaluator dynamicRefEvaluator : context.dynamicRefEvaluators) {
-            URI refUri;
-            try {
-                refUri = SchemaUtil.resolveUri(dynamicRefEvaluator.schemaUri, URI.create(dynamicRefEvaluator.ref));
-            } catch (SchemaException e) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve $dynamicRef URI '" + dynamicRefEvaluator.ref + "': base='"
-                                + dynamicRefEvaluator.schemaUri + "', ref='" + dynamicRefEvaluator.ref + "'",
-                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri), e);
-            }
-            String resource = SchemaUtil.documentUri(refUri).toString();
-
-            // Dynamic references use the same static target resolution first;
-            // runtime rebinding only happens after this initial plan is known.
-            SchemaPlan resourcePlan = context.registry.resolveResource(refUri);
-            if (resourcePlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve schema resource '" + resource + "' while resolving $dynamicRef '"
-                                + dynamicRefEvaluator.ref + "' -> '" + refUri + "'; preload or register the referenced schema",
-                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
-            }
+        for (int i = dynamicRefStart; i < dynamicRefEnd; i++) {
+            Evaluator.DynamicRefEvaluator evaluator = context.dynamicRefEvaluators.get(i);
+            URI refUri = _resolveRefUri(evaluator.schemaUri, evaluator.ref, evaluator.keywordPs, "$dynamicRef");
+            SchemaPlan refPlan = _resolveRef(refUri, evaluator.schemaUri, evaluator.ref, evaluator.keywordPs, "$dynamicRef", context);
+            evaluator.initialPlan = refPlan;
+            // Only the initial target's dynamic anchor can trigger runtime rebinding.
             String fragment = refUri.getFragment();
-            SchemaPlan refPlan = context.registry.resolveFragment(resourcePlan, fragment);
-            if (refPlan == null) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
-                                + "' while resolving $dynamicRef '" + dynamicRefEvaluator.ref + "' -> '" + refUri + "'",
-                        dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
-            }
-            dynamicRefEvaluator.initialPlan = refPlan;
-            // Dynamic rebinding only applies when the reference fragment itself
-            // identifies this $dynamicAnchor. A different ordinary $anchor on
-            // the same schema must behave like a static $ref.
-            dynamicRefEvaluator.dynamicAnchorName = fragment != null
+            evaluator.dynamicAnchorName = fragment != null
                     && !fragment.startsWith("/") && fragment.equals(refPlan.dynamicAnchor)
                     ? fragment : null;
         }
+    }
+
+    private static URI _resolveRefUri(URI schemaUri, String ref, PathSegment keywordPs, String keyword) {
+        try {
+            return SchemaUtil.resolveUri(schemaUri, URI.create(ref));
+        } catch (SchemaException e) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cannot resolve " + keyword + " URI '" + ref + "': base='"
+                            + schemaUri + "', ref='" + ref + "'",
+                    keywordPs, schemaUri), e);
+        }
+    }
+
+    /** Resolves the initial target of either a static or dynamic reference. */
+    private static SchemaPlan _resolveRef(URI refUri, URI schemaUri, String ref, PathSegment keywordPs,
+                                          String keyword, PlanningContext context) {
+        String resource = SchemaUtil.documentUri(refUri).toString();
+        SchemaPlan resourcePlan = _resolveResource(SchemaUtil.normalizeUriKey(refUri), context);
+        if (resourcePlan == null) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cannot resolve schema resource '" + resource + "' while resolving " + keyword + " '"
+                            + ref + "' -> '" + refUri + "'; preload or register the referenced schema",
+                    keywordPs, schemaUri));
+        }
+        String fragment = refUri.getFragment();
+        SchemaPlan refPlan = resourcePlan.findFragment(fragment);
+        if (refPlan == null) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cannot resolve schema fragment '#" + fragment + "' in resource '" + resource
+                            + "' while resolving " + keyword + " '" + ref + "' -> '" + refUri + "'",
+                    keywordPs, schemaUri));
+        }
+        return refPlan;
     }
 
     private static SchemaDialect _resolveDialect(ObjectSchema schema, SchemaDialect inheritedDialect) {

@@ -46,8 +46,8 @@ class SchemaPlanTest {
         assertEquals(first.hashCode(), second.hashCode());
 
         SchemaRegistry registry = new SchemaRegistry();
-        SchemaPlan firstPlan = SchemaPlanner.buildAndPutPlan(first, registry);
-        SchemaPlan secondPlan = SchemaPlanner.buildAndPutPlan(second, registry);
+        SchemaPlan firstPlan = first.createPlan(registry);
+        SchemaPlan secondPlan = second.createPlan(registry);
 
         assertEquals("sjf4j", firstPlan.schemaUri().getScheme());
         assertTrue(firstPlan.schemaUri().toString().matches("sjf4j:/schema-\\d+/"));

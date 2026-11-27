@@ -73,14 +73,11 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
 
     /**
-     * Compiles this root schema with an isolated copy of the provided registry.
-     * <p>
-     * The copy preserves caller-visible registry state while still allowing the
-     * planner to lazily cache referenced plans during compilation.
+     * Compiles this root schema without modifying the provided registry.
      */
     @Override
     public SchemaPlan createPlan(SchemaRegistry registry) {
-        return SchemaPlanner.buildAndPutPlan(this, SchemaRegistry.copyOf(registry));
+        return SchemaPlanner.buildPlan(this, registry);
     }
 
 

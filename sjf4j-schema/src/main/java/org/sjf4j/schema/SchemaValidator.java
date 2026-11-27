@@ -40,12 +40,12 @@ public final class SchemaValidator {
 
     /**
      * Creates a validator with its schema source, registry, and format mode.
-     * The loader owns URI resolution and its base directory. The provided registry
-     * is copied so lazy plan registration does not mutate caller-owned state.
+     * The loader owns URI resolution and its base directory. An explicit registry
+     * is used directly for loading and registering referenced schemas.
      */
     public SchemaValidator(SchemaLoader loader, SchemaRegistry registry, boolean strictFormat) {
         this.loader = Asserts.notNull(loader, "loader");
-        this.registry = SchemaRegistry.copyOf(registry);
+        this.registry = registry == null ? new SchemaRegistry() : registry;
         this.strictFormat = strictFormat;
     }
 
@@ -160,7 +160,7 @@ public final class SchemaValidator {
         if (!external.isEmpty()) {
             // A binding with external resources owns its registry; neither the
             // caller's registry nor sibling POJO plans are modified.
-            scoped = new SchemaRegistry(registry.getDefaultDialect());
+            scoped = new SchemaRegistry(registry.getDefaultDialect(), registry.getPlanningOptions());
             for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
                 scoped.index(entry.getKey(), entry.getValue());
             }
@@ -176,7 +176,7 @@ public final class SchemaValidator {
             if (schema instanceof ObjectSchema) {
                 ((ObjectSchema) schema).retrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
             }
-            return scoped.register(schema);
+            return schema.createPlan(scoped);
         }
 
         // From ref

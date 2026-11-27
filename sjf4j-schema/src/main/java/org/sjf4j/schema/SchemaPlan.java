@@ -17,9 +17,8 @@ import java.util.Map;
  * Plans from the same schema resource share fragment lookup maps:
  * anchors, dynamic anchors, and JSON Pointer fragments. A nested schema with
  * its own {@code $id} compiles into a different resource and therefore gets a
- * different set of fragment maps. Additional JSON Pointer fragment targets may
- * be compiled lazily on first resolution and cached back into the same resource
- * lookup maps for reuse.
+ * different set of fragment maps. Fragment maps are populated during planning;
+ * only recognized subschemas can be resolved, and published maps are not modified.
  * Call {@link #validate(Object)} to collect validation errors, {@link #isValid(Object)}
  * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */
@@ -55,29 +54,30 @@ public final class SchemaPlan {
      * as {@code required}.
      */
     public ValidationResult validate(Object node, boolean failFast, boolean strictFormat) {
-        if (booleanSchema) {
-            if (booleanValue) {
-                return ValidationResult.SUCCESS;
-            } else {
-                ValidationResult.Detail error = new ValidationResult.Detail(
-                        "false", "schema 'false' always fails", null,
-                        PathSegment.Root.INSTANCE, keywordPs, resourceUri);
-                return new ValidationResult(false, Collections.singletonList(error));
-            }
-        }
+        if (booleanSchema) return _validateBoolean();
 
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
         return ctx.toResult(evaluate(node, null, ctx));
     }
 
-    /** Validates with optional annotation collection. */
+    /**
+     * Validates with optional annotations and resource limits.
+     * An exhausted execution limit aborts validation and returns a failed
+     * result. Reaching the error limit retains the collected errors and stops validation.
+     */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
-        if (!options.isCollectAnnotations()) {
-            return validate(node, options.isFailFast(), options.isStrictFormat());
-        }
+        if (booleanSchema) return _validateBoolean();
         ValidationContext ctx = new ValidationContext(options, false);
         return ctx.toResult(evaluate(node, null, ctx));
+    }
+
+    private ValidationResult _validateBoolean() {
+        if (booleanValue) return ValidationResult.SUCCESS;
+        ValidationResult.Detail error = new ValidationResult.Detail(
+                "false", "schema 'false' always fails", null,
+                PathSegment.Root.INSTANCE, keywordPs, resourceUri);
+        return new ValidationResult(false, Collections.singletonList(error));
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
@@ -88,8 +88,18 @@ public final class SchemaPlan {
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        return evaluate(node, null, ctx);
+        return evaluate(node, null, new ValidationContext(true, strictFormat, true));
+    }
+
+    /**
+     * Returns whether the instance is valid, with optional execution limits and
+     * no error collection. Fail-fast behavior follows the supplied options.
+     * Returns false if an execution limit is exhausted.
+     */
+    public boolean isValid(Object node, ValidationOptions options) {
+        Asserts.notNull(options, "options");
+        if (booleanSchema) return booleanValue;
+        return evaluate(node, null, new ValidationContext(options, true));
     }
 
     /**
@@ -108,6 +118,12 @@ public final class SchemaPlan {
         if (!result.isValid()) throw new ValidationException(result);
     }
 
+    /** Validates with the supplied options and throws if validation fails or is aborted. */
+    public void requireValid(Object node, ValidationOptions options) {
+        ValidationResult result = validate(node, options);
+        if (!result.isValid()) throw new ValidationException(result);
+    }
+
 
     /*
      * --------------------------------------------------------------
@@ -117,14 +133,15 @@ public final class SchemaPlan {
 
     /**
      * Evaluates a nested instance using an explicit enclosing instance path.
-     * Used by compiled fallback support; resets per-evaluation context state.
+     * Used by compiled fallback support; the context belongs to this validation only.
      */
     boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
         try {
             return evaluate(Instance.infer(node), instancePs, ctx);
-        } finally {
-            ctx.reset();
+        } catch (ValidationException failure) {
+            if (!ctx.isAbortFailure(failure)) throw failure;
+            return false;
         }
     }
 
@@ -132,29 +149,35 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
-        if (ctx.isCollectAnnotations()) {
-            int mark = ctx.annotationMark();
-            boolean valid = false;
-            try {
-                valid = _evaluateKeywords(instance, instancePs, ctx);
-                if (valid && annotations != null) {
-                    for (Annotation annotation : annotations) {
-                        if (annotation.stringOnly && instance.jsonType() != JsonType.STRING) {
-                            continue;
+        ctx.enterEvaluation(this, instance, instancePs);
+        try {
+            ctx.countEvaluation(this, instance, instancePs);
+            if (ctx.isCollectAnnotations()) {
+                int mark = ctx.annotationMark();
+                boolean valid = false;
+                try {
+                    valid = _evaluateKeywords(instance, instancePs, ctx);
+                    if (valid && annotations != null) {
+                        for (Annotation annotation : annotations) {
+                            if (annotation.stringOnly && instance.jsonType() != JsonType.STRING) {
+                                continue;
+                            }
+                            ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
+                                    annotation.resourceUri, annotation.keyword, null, annotation.annotation);
                         }
-                        ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
-                                annotation.resourceUri, annotation.keyword, null, annotation.annotation);
                     }
+                    return valid;
+                } finally {
+                    if (!valid) ctx.rollbackAnnotations(mark);
                 }
-                return valid;
-            } finally {
-                if (!valid) ctx.rollbackAnnotations(mark);
             }
+            return _evaluateKeywords(instance, instancePs, ctx);
+        } finally {
+            ctx.leaveEvaluation();
         }
-        return _evaluateKeywords(instance, instancePs, ctx);
     }
 
-    /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
+    /** Executes keyword evaluators; annotation bookkeeping is outside this loop. */
     private boolean _evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
@@ -165,8 +188,6 @@ public final class SchemaPlan {
             }
         }
 
-        int len = evaluators.length;
-        boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
         if (tracksEvaluated) {
             instance.createEvaluated();
         }
@@ -179,6 +200,7 @@ public final class SchemaPlan {
         if (hasDynamicAnchors) ctx.pushPlan(this);
         try {
             for (Evaluator evaluator : evaluators) {
+                ctx.countEvaluation(this, instance, ps);
                 boolean matched = evaluator.evaluate(instance, ps, ctx);
                 if (!matched) {
                     result = false;
@@ -199,6 +221,13 @@ public final class SchemaPlan {
      * Planning
      * --------------------------------------------------------------
      */
+
+    /** Finds a fragment in the completed resource without planning new schemas. */
+    SchemaPlan findFragment(String fragment) {
+        if (fragment == null || fragment.isEmpty()) return this;
+        if (booleanSchema) return null;
+        return fragment.startsWith("/") ? byPathPlans.get(fragment) : byAnchorPlans.get(fragment);
+    }
 
     /** Original parsed BooleanSchema or ObjectSchema, without conversion. */
     public JsonSchema schema() {
@@ -265,6 +294,7 @@ public final class SchemaPlan {
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
+    final boolean tracksEvaluated;
     final Annotation[] annotations;
     final boolean booleanSchema;
     final boolean booleanValue;
@@ -275,6 +305,9 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byPathPlans;
 
     final JsonSchema schema;
+    // Set only on nested resource roots during planning, for duplicate-ID checks.
+    // Not a resolution index; never changed after publication.
+    String nestedLocation;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
     SchemaPlan(URI resourceUri, PathSegment keywordPs, Evaluator[] evaluators,
@@ -288,6 +321,8 @@ public final class SchemaPlan {
         this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
+        this.tracksEvaluated = evaluators.length > 0
+                && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator;
         this.schema = Asserts.notNull(schema, "schema");
         this.booleanSchema = schema instanceof BooleanSchema;
         this.booleanValue = booleanSchema && ((BooleanSchema) schema).booleanValue();
