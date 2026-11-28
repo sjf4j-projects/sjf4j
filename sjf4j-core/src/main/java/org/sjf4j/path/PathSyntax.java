@@ -435,7 +435,7 @@ public final class PathSyntax {
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    lastSegment = PathSegment.Function.create(lastSegment, funcName, _parseFunctionArgs(args), engine);
+                    lastSegment = new PathSegment.Function(lastSegment, funcName, _parseFunctionArgs(args), engine);
                     i = end + 1;
                     continue;
                 }
