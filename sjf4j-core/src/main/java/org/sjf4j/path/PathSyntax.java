@@ -211,6 +211,13 @@ public final class PathSyntax {
      * Supports root/current selectors, dot and bracket notation, wildcard,
      * descendant, union, slice, filter, and terminal function calls.
      */
+    public static PathSegment[] parsePath(String expr) {
+        return parsePath(expr, RegexEngine.JDK_ENGINE);
+    }
+
+    /**
+     * Parses a JSONPath using the given engine for regex literals.
+     */
     public static PathSegment[] parsePath(String expr, RegexEngine engine) {
         Asserts.notNull(engine, "engine");
         if (expr == null || expr.isEmpty()) throw new NodeException("expression must not be empty");
