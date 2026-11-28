@@ -16,6 +16,7 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
 
 - Do not over-abstract. Prefer simple and obvious code.
 - Keep hot paths explicit. This is an open-source base framework; runtime cost matters more than elegance.
+- Explicitly disclose any potential performance regression.
 - Prefer metadata precomputation and cache reuse over repeated reflection, scanning, or branching.
 - Be careful with code size and jar size. Avoid new helper layers or classes unless they clearly pay for themselves.
 - Reuse existing serializers/readers/writers when possible instead of adding near-duplicate wrappers.
@@ -38,9 +39,8 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
   - `./gradlew :sjf4j-testbench:test`
 - Keep branch coverage at or above 75%.
 - Run targeted JMH benchmarks for touched hot paths when needed.
-- For benchmark requests, follow `sjf4j-testbench/PERFORMANCE.md`.
+- Follow [docs/performance/PERFORMANCE.md](docs/performance/PERFORMANCE.md) for performance reviews and benchmarks.
 - Compare jar size, usually `sjf4j-core`.
-- If performance regresses by more than 3%, stop and investigate.
 - If jar size grows by more than 3%, stop and investigate.
 
 ## Review Checklist

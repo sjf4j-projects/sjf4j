@@ -218,7 +218,7 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
 - **JSON projection:** CAST is near parity with MapStruct's explicit Java casts. STRICT performs additional OBNT conversion and is not an equivalent-cost comparison (approximately 0.96× on Map and 0.77× on JsonObject). All sizes project only three fixed keys; extra unmapped fields do not imply full-document traversal.
 - **Allocation:** Most paired workloads allocate the same amount. Map containing one large List saves 56 B/op with Compiled. The 1KB eight-short-Lists MapStruct result has a fork spread above 15%; inspect raw fork data before drawing a fine-grained conclusion.
 
-**[Complete historical snapshot, fork-stability details and provenance](mapping/mapstruct-v151snapshot-2026-11-12.md)** · **[Original GitHub Actions run and artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761)**
+**[Complete historical snapshot, fork-stability details and provenance](mapping/2026-11-12-v1.5.1-snapshot.md)** · **[Original GitHub Actions run and artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761)**
 
 ## Baseline policy
 
@@ -321,7 +321,7 @@ Pull requests run Smoke only.
 
 | Release | Suite | Commit | Environment | Full report |
 | --- | --- | --- | --- | --- |
-| 1.5.1-SNAPSHOT (2026-11-12) | 3 (68 retained of 70) | [`160bb56`](https://github.com/sjf4j-projects/sjf4j/commit/160bb56ba40344315a7a639b4a606a3012ddf660) | Temurin 25.0.5 / EPYC 9V74 / shared runner | [Historical snapshot](mapping/mapstruct-v151snapshot-2026-11-12.md) |
+| 1.5.1-SNAPSHOT (2026-11-12) | 3 (68 retained of 70) | [`160bb56`](https://github.com/sjf4j-projects/sjf4j/commit/160bb56ba40344315a7a639b4a606a3012ddf660) | Temurin 25.0.5 / EPYC 9V74 / shared runner | [Historical snapshot](mapping/2026-11-12-v1.5.1-snapshot.md) |
 
 ## Reporting and ranking results
 
