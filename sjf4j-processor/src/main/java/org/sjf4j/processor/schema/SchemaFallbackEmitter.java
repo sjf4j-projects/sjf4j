@@ -70,9 +70,9 @@ final class SchemaFallbackEmitter {
                 }
                 // Restore this binding's scoped external retrieval URI mappings.
                 if (externalMappings) {
-                    out.line(registry + ".index(loader.loadExternalSchemas("
+                    out.line("loader.loadExternalSchemas("
                             + plan.annotationExpression + ".externalSchemas(), "
-                            + plan.annotationExpression + ".externalSchemasRef()));");
+                            + plan.annotationExpression + ".externalSchemasRef()).forEach(" + registry + "::index);");
                 }
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
                     // External mappings are already indexed; never fetch their logical HTTP URIs.
@@ -83,7 +83,7 @@ final class SchemaFallbackEmitter {
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + plan.annotationExpression + ".value()));");
                     } else {
-                        out.line(registry + ".index(" + uri + ", loader.load(" + uri + "));");
+                        out.line(registry + ".index(loader.load(" + uri + "));");
                     }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
