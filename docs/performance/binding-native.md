@@ -7,6 +7,19 @@ and [`FabienWriteBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbe
 Read/Write workloads as [Binding JVM](binding.md), but without Blackbird.
 JVM and AOT timings are reported separately and are not controlled cross-environment comparisons.
 
+## CPU baseline index
+
+Latest accepted Full report per backend and exact CPU (Native Image). Follow [Performance](PERFORMANCE.md); JVM baselines are separate.
+
+| Backend | AMD EPYC 7763 |
+| --- | --- |
+| Jackson2 | [2026-11-11 serial](binding/fabien-native-v151snapshot-2026-11-11-serial.md) |
+| Jackson3 | [2026-11-11 serial](binding/fabien-native-v151snapshot-2026-11-11-serial.md) |
+| Fastjson2 | [2026-11-11 serial](binding/fabien-native-v151snapshot-2026-11-11-serial.md) |
+| Gson | [2026-11-11 serial](binding/fabien-native-v151snapshot-2026-11-11-serial.md) |
+
+The [parallel confirmation](binding/fabien-native-v151snapshot-2026-11-11-parallel.md) used EPYC 7763 and EPYC 9V45, but the retained report does not identify each backend's CPU. Do not use it as a CPU-specific baseline without verifying the original metadata. Add independent entries for new CPU models after reviewing valid Full results.
+
 ## Comparison dependency versions
 
 **SJF4J version:** `v1.5.1-SNAPSHOT`. Native Image benchmark dependencies:

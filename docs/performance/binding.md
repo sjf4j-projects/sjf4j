@@ -8,6 +8,22 @@ fixture creation and backend setup are excluded. The primary workloads are
 and [`FabienWriteBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienWriteBenchmark.java).
 GraalVM AOT results are documented separately in [Binding Native Image](binding-native.md).
 
+## CPU baseline index
+
+Latest accepted Full report per backend and exact CPU (JVM). Follow [Performance](PERFORMANCE.md) when comparing or updating these rolling diagnostic baselines. A dash means no accepted Full result for that combination.
+
+| Backend | Intel Xeon 6975P-C | AMD EPYC 7763 | AMD EPYC 9V45 | AMD EPYC 9V74 |
+| --- | --- | --- | --- | --- |
+| Jackson2 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
+| Jackson3 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
+| Fastjson2 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
+| Gson | — | — | — | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
+| JSON-P | — | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
+| Simple | — | — | — | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
+| SnakeYAML | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — | — |
+
+The historical report records the CPU, source revision and profile; use only the matching backend rows. Targeted Jackson2 A/B results are recorded in [known performance characteristics](PERFORMANCE.md#known-performance-characteristics), not as Full replacements.
+
 ## Comparison dependency versions
 
 **Current result version:** `v1.5.2-SNAPSHOT` (2026-11-17); the previous `v1.5.1-SNAPSHOT` result remains in the [release index](#release-index). Other declared benchmark dependencies:
@@ -367,13 +383,13 @@ BINDING_BACKEND=jackson2 ./scripts/benchmark-binding.sh full
    Ensure all expected groups completed and setup verification succeeded.
 2. Copy the raw JMH JSON files and the corresponding `.meta.md` to
    `docs/performance/baselines/binding/<release>/` and commit them.
-3. Update the release index below with Git SHA, suite version, full JDK
-   build, and links to the files or release directory. Do not transcribe
-   thousands of scores into Markdown.
-4. For a suspected regression, run base and candidate on the same host
-   with identical profile and versions (except the intended change).
-   Compare matching method + params (including `implementation`),
-   independent forks, uncertainty, and allocation differences.
+3. Update the release index and the matching CPU/backend entries above with
+   the accepted report. Preserve other CPU entries and record the Git SHA,
+   suite version, full JDK build and links to results.
+4. Compare against the latest accepted same-CPU/backend result first.
+   Inspect matching method + params (including `implementation`), independent
+   forks, controls and allocation. Use focused same-host A/B for unresolved
+   material signals, as described in [Performance](PERFORMANCE.md).
 5. Ask AI to read **all** JMH JSON files and the metadata for both commits,
    then summarize speed and memory regressions. No external service is needed.
 
