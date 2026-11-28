@@ -104,7 +104,7 @@ class SchemaRegistryDirectoryTest {
     void loadDirRejectsInvalidLogicalBase() {
         SchemaLoader.Local loader = new SchemaLoader.Local(registryDirectory.toUri());
         for (String base : new String[]{"relative/", "https://example.test/file",
-                "https://example.test/?query", "https://example.test/#fragment/"}) {
+                "https://example.test/?query/", "https://example.test/#fragment/"}) {
             assertThrows(IllegalArgumentException.class, () -> loader.loadDir(URI.create(base)));
         }
     }
