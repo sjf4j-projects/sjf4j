@@ -3,7 +3,6 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.regex.RegexEngine;
 
 import java.util.List;
 
@@ -244,7 +243,7 @@ public class PathSyntaxTest {
         // Multiple names
         testParsePath("$['name', 'age']", 2, PathSegment.Root.class, PathSegment.Union.class);
         testParsePath("$[\"first name\",\"last name\"]", 2, PathSegment.Root.class, PathSegment.Union.class);
-        PathSegment pt = PathSyntax.parsePath("$[\"first name\",\"last name\"]", RegexEngine.JDK_ENGINE)[1];
+        PathSegment pt = PathSyntax.parsePath("$[\"first name\",\"last name\"]")[1];
         pt = ((PathSegment.Union) pt).union[1];
         assertEquals("last name", ((PathSegment.Name) pt).name);
         testParsePathFailure("$[name,age]", "name");
@@ -279,8 +278,8 @@ public class PathSyntaxTest {
     public void testEscapedCharacters() {
         // Escaped quotes in names
         testParsePath("$['name\\'with\\'quotes']", 2, PathSegment.Root.class, PathSegment.Name.class);
-        assertEquals("name'with'quotes", ((PathSegment.Name) PathSyntax.parsePath("$['name\\'with\\'quotes']", RegexEngine.JDK_ENGINE)[1]).name);
-        assertEquals("line\\n", ((PathSegment.Name) PathSyntax.parsePath("$['line\\n']", RegexEngine.JDK_ENGINE)[1]).name);
+        assertEquals("name'with'quotes", ((PathSegment.Name) PathSyntax.parsePath("$['name\\'with\\'quotes']")[1]).name);
+        assertEquals("line\\n", ((PathSegment.Name) PathSyntax.parsePath("$['line\\n']")[1]).name);
 
         // Names with special characters
         testParsePath("$['a[b]c']", 2, PathSegment.Root.class, PathSegment.Name.class);
@@ -289,7 +288,7 @@ public class PathSyntaxTest {
 
         // Union with special characters
         testParsePath("$['a,b','c:d','e[f]g']", 2, PathSegment.Root.class, PathSegment.Union.class);
-        PathSegment pt = PathSyntax.parsePath("$['a,b','c:d','e[f]g']", RegexEngine.JDK_ENGINE)[1];
+        PathSegment pt = PathSyntax.parsePath("$['a,b','c:d','e[f]g']")[1];
         pt = ((PathSegment.Union) pt).union[2];
         assertEquals("['e[f]g']", pt.toString());
     }
@@ -443,13 +442,13 @@ public class PathSyntaxTest {
 
     @Test
     void testBracketIntegerRangeAndAsciiDigits() {
-        PathSegment[] segments = PathSyntax.parsePath("$[-2147483648]", RegexEngine.JDK_ENGINE);
+        PathSegment[] segments = PathSyntax.parsePath("$[-2147483648]");
         assertEquals(Integer.MIN_VALUE, ((PathSegment.Index) segments[1]).index);
 
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[2147483648]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[-2147483649]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١:]", RegexEngine.JDK_ENGINE));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[2147483648]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[-2147483649]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[١:]"));
     }
 
     @Test
@@ -465,24 +464,24 @@ public class PathSyntaxTest {
 
     @Test
     void testCompactBracketSliceFallbackAndValidation() {
-        PathSegment.Slice compact = (PathSegment.Slice) PathSyntax.parsePath("$[1:4]", RegexEngine.JDK_ENGINE)[1];
-        PathSegment.Slice whitespace = (PathSegment.Slice) PathSyntax.parsePath("$[ 1 : 4 ]", RegexEngine.JDK_ENGINE)[1];
+        PathSegment.Slice compact = (PathSegment.Slice) PathSyntax.parsePath("$[1:4]")[1];
+        PathSegment.Slice whitespace = (PathSegment.Slice) PathSyntax.parsePath("$[ 1 : 4 ]")[1];
         assertEquals(compact.start, whitespace.start);
         assertEquals(compact.end, whitespace.end);
         assertEquals(compact.step, whitespace.step);
 
-        assertInstanceOf(PathSegment.Union.class, PathSyntax.parsePath("$[1:4,2]", RegexEngine.JDK_ENGINE)[1]);
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:0]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:2:1]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1::foo]", RegexEngine.JDK_ENGINE));
-        assertInstanceOf(PathSegment.Name.class, PathSyntax.parsePath("$['1:4']", RegexEngine.JDK_ENGINE)[1]);
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[?@.x:1]", RegexEngine.JDK_ENGINE));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[9007199254740992:]", RegexEngine.JDK_ENGINE));
+        assertInstanceOf(PathSegment.Union.class, PathSyntax.parsePath("$[1:4,2]")[1]);
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:0]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1:4:2:1]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[1::foo]"));
+        assertInstanceOf(PathSegment.Name.class, PathSyntax.parsePath("$['1:4']")[1]);
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[?@.x:1]"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$[9007199254740992:]"));
         assertSlice("$[-9007199254740991:]", -9007199254740991L, null, null);
     }
 
     private void assertSlice(String path, Long start, Long end, Long step) {
-        PathSegment.Slice slice = (PathSegment.Slice) PathSyntax.parsePath(path, RegexEngine.JDK_ENGINE)[1];
+        PathSegment.Slice slice = (PathSegment.Slice) PathSyntax.parsePath(path)[1];
         assertEquals(start, slice.start, path);
         assertEquals(end, slice.end, path);
         assertEquals(step, slice.step, path);
@@ -495,7 +494,7 @@ public class PathSyntaxTest {
 
     // Helper methods
     private void testParsePath(String path, int expectedTokenCount, Class<?>... expectedTokenTypes) {
-        PathSegment[] segments = PathSyntax.parsePath(path, RegexEngine.JDK_ENGINE);
+        PathSegment[] segments = PathSyntax.parsePath(path);
         assertNotNull(segments, "Tokens should not be null for path: " + path);
         assertEquals(expectedTokenCount, segments.length, "Token count mismatch for path: " + path);
 
@@ -507,7 +506,7 @@ public class PathSyntaxTest {
 
     private void testParsePathFailure(String path, String expectedError) {
         try {
-            PathSyntax.parsePath(path, RegexEngine.JDK_ENGINE);
+            PathSyntax.parsePath(path);
             fail("Expected NodeException for path: " + path);
         } catch (NodeException e) {
             assertTrue(e.getMessage().toLowerCase().contains(expectedError.toLowerCase()),
@@ -516,7 +515,7 @@ public class PathSyntaxTest {
     }
 
     private void testExpr(String path, int tokenIndex, String expectedExpr) {
-        PathSegment[] segments = PathSyntax.parsePath(path, RegexEngine.JDK_ENGINE);
+        PathSegment[] segments = PathSyntax.parsePath(path);
         if (tokenIndex >= segments.length) {
             fail("tokenIndex '" + tokenIndex + "' >= segments.size '" + segments.length + "'");
         }
@@ -526,11 +525,11 @@ public class PathSyntaxTest {
     }
 
     private void testRoundTrip(String originalPath) {
-        PathSegment[] segments = PathSyntax.parsePath(originalPath, RegexEngine.JDK_ENGINE);
+        PathSegment[] segments = PathSyntax.parsePath(originalPath);
         String rebuilt = PathSyntax.toPathExpr(segments);
 
         // Recompile the rebuilt path to ensure it's valid
-        PathSegment[] roundTripTokens = PathSyntax.parsePath(rebuilt, RegexEngine.JDK_ENGINE);
+        PathSegment[] roundTripTokens = PathSyntax.parsePath(rebuilt);
         assertEquals(segments.length, roundTripTokens.length,
                 "Round-trip token count mismatch for: " + originalPath);
 
