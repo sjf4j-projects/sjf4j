@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Registry for schema resources and compiled plans indexed by absolute URI.
  * <p>
- * Raw {@link SchemaResource} entries are kept so referenced root schemas can be
+ * Raw schema resource entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
  * cached by absolute resource URI after compilation. Fragment lookup is limited
  * to subschemas recognized during planning; published plan graphs are unchanged
@@ -90,7 +90,7 @@ public class SchemaRegistry {
      *                         or it conflicts with another resource
      */
     public void index(URI retrievalUri, JsonSchema schema) {
-        index(new SchemaResource(retrievalUri, schema));
+        _index(new SchemaResource(retrievalUri, schema), false);
     }
 
     /**
@@ -104,11 +104,6 @@ public class SchemaRegistry {
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
         _index(new SchemaResource(retrievalUri, schema), true);
-    }
-
-    /** Indexes a loaded resource without modifying its schema model. */
-    public void index(SchemaResource resource) {
-        _index(resource, false);
     }
 
     /** Indexes a resource and returns its canonical URI, if any. */
@@ -150,11 +145,7 @@ public class SchemaRegistry {
      * A missing or relative root URI without a retrieval base is rejected.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
-        return register(new SchemaResource(retrievalUri, schema));
-    }
-
-    /** Indexes and compiles a loaded resource. */
-    public SchemaPlan register(SchemaResource resource) {
+        SchemaResource resource = new SchemaResource(retrievalUri, schema);
         URI canonicalUri = _index(resource, false);
         if (canonicalUri == null) {
             // A boolean document without a URI is not registered.
@@ -497,15 +488,16 @@ public class SchemaRegistry {
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
         URI uri = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        SchemaResource loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
+        JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(uri);
         if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
-        if (!(loaded.schema() instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
+        if (!(loaded instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
                 SchemaUtil.Code.SCHEMA_LOAD, "global schema must be object-shaped",
                 PathSegment.Root.INSTANCE, uri));
-        GLOBAL_SCHEMA_REGISTRY.index(loaded);
+        SchemaResource resource = new SchemaResource(uri, loaded);
+        GLOBAL_SCHEMA_REGISTRY._index(resource, false);
         if (alias != null && !alias.isEmpty()) {
-            GLOBAL_SCHEMA_REGISTRY._putResource(URI.create(alias), loaded);
+            GLOBAL_SCHEMA_REGISTRY._putResource(URI.create(alias), resource);
         }
     }
 
