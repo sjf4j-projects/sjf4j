@@ -1,14 +1,24 @@
-name: Binding Full Benchmark (JDK 25)
+name: Binding Benchmark (JDK 25)
 
 # Expensive and noisy shared-runner measurements: manual invocation only.
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Benchmark profile
+        required: true
+        type: choice
+        default: smoke
+        options: [smoke, quick, full]
 
 permissions:
   contents: read
 
+env:
+  PROFILE: ${{ inputs.profile || 'smoke' }}
+
 concurrency:
-  group: binding-full-jdk25-${{ github.repository }}
+  group: binding-${{ github.ref }}-${{ inputs.profile || 'smoke' }}
   cancel-in-progress: false
 
 jobs:
@@ -36,10 +46,11 @@ jobs:
           name: binding-full-jmh-jar
           path: sjf4j-testbench/build/libs/*-jmh.jar
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
   benchmark:
-    name: Full / ${{ matrix.backend }}
+    name: ${{ inputs.profile || 'smoke' }} / ${{ matrix.backend }}
     needs: build-jmh
     runs-on: ubuntu-24.04
     timeout-minutes: 330
@@ -73,6 +84,7 @@ jobs:
           mkdir -p build/performance/binding
           {
             echo "Backend: $BINDING_BACKEND"
+            echo "Profile: $PROFILE"
             echo "Runner: $RUNNER_NAME"
             echo "Runner OS: $RUNNER_OS"
             echo "Runner arch: $RUNNER_ARCH"
@@ -89,15 +101,15 @@ jobs:
             java -version 2>&1
           } > "build/performance/binding/runner-$BINDING_BACKEND.txt"
 
-      - name: Run Full JMH for ${{ matrix.backend }}
+      - name: Run benchmark for ${{ matrix.backend }}
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/benchmark-binding.sh full build/performance/binding \
+          bash scripts/benchmark-binding.sh "$PROFILE" build/performance/binding \
             2>&1 | tee build/performance/binding/benchmark.log
 
-      - name: Summarize representative results
-        if: success()
+      - name: Summarize representative Full results
+        if: ${{ success() && env.PROFILE == 'full' }}
         shell: bash
         run: |
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
@@ -153,9 +165,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-full-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-${{ env.PROFILE }}-${{ matrix.backend }}-${{ github.run_id }}
           path: build/performance/binding/
           if-no-files-found: warn
+          overwrite: true
           retention-days: 30
 
   collect-results:
@@ -168,7 +181,7 @@ jobs:
       - name: Download per-backend artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern: binding-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          pattern: binding-${{ env.PROFILE }}-*-${{ github.run_id }}
           path: results
           merge-multiple: false
 
@@ -176,7 +189,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-combined-${{ env.PROFILE }}-${{ github.run_id }}
           path: results/
           if-no-files-found: warn
+          overwrite: true
           retention-days: 30

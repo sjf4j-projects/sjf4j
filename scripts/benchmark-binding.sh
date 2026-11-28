@@ -11,7 +11,7 @@ Usage: $0 <smoke|quick|full> [output-directory]
   full    All supported backend/implementation cases on JDK 25.
 
 Quick/Full results default to build/performance/binding/.
-Optional env: BINDING_BACKEND=<backend> selects one backend for quick/full;
+Optional env: BINDING_BACKEND=<backend> selects one backend for any profile;
               BINDING_SEEDS=12345 overrides the default two-seed matrix (12345,324);
               BINDING_SKIP_BUILD=1 reuses a prebuilt JMH jar.
 Smoke leaves no result or metadata files.
@@ -40,10 +40,6 @@ if ! [[ "$BINDING_SEEDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
   exit 2
 fi
 IFS=, read -r -a BINDING_SEED_ITEMS <<< "$BINDING_SEEDS"
-if [[ "$PROFILE" == "smoke" && "$BINDING_BACKEND" != "all" ]]; then
-  echo "BINDING_BACKEND selection is supported only for quick/full." >&2
-  exit 2
-fi
 
 JAVA_BIN=java
 if [[ -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$JAVA_HOME/bin/java"; fi
@@ -167,22 +163,29 @@ SMOKE_RESULTS=()
 SMOKE_PASSED=0
 SMOKE_EXPECTED=0
 if [[ "$PROFILE" == "smoke" ]]; then
-  for modes in "${MODE_SETS[@]}"; do
-    IFS=, read -r -a mode_items <<< "$modes"
+  for (( i=0; i<${#BACKENDS[@]}; i++ )); do
+    if [[ "$BINDING_BACKEND" != "all" && "$BINDING_BACKEND" != "${BACKENDS[$i]}" ]]; then
+      continue
+    fi
+    IFS=, read -r -a mode_items <<< "${MODE_SETS[$i]}"
     SMOKE_EXPECTED=$(( SMOKE_EXPECTED + ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
   done
 fi
 
 print_smoke_summary() {
-  local i status actual expected
+  local i j=0 status actual expected
   printf '\nBinding Smoke Summary\n'
   for (( i=0; i<${#BACKENDS[@]}; i++ )); do
-    if (( i < ${#SMOKE_RESULTS[@]} )); then
-      IFS=: read -r status actual expected <<< "${SMOKE_RESULTS[$i]}"
+    if [[ "$BINDING_BACKEND" != "all" && "$BINDING_BACKEND" != "${BACKENDS[$i]}" ]]; then
+      continue
+    fi
+    if (( j < ${#SMOKE_RESULTS[@]} )); then
+      IFS=: read -r status actual expected <<< "${SMOKE_RESULTS[$j]}"
       printf '%-11s %-8s %s/%s\n' "${BACKEND_LABELS[$i]}" "$status" "$actual" "$expected"
     else
       printf '%-11s NOT RUN\n' "${BACKEND_LABELS[$i]}"
     fi
+    j=$((j + 1))
   done
   printf '\nTOTAL: %s/%s PASSED\n' "$SMOKE_PASSED" "$SMOKE_EXPECTED"
   if [[ "$SMOKE_PASSED" -eq "$SMOKE_EXPECTED" ]]; then

@@ -1,7 +1,6 @@
 name: Binding Native Image Benchmark (GraalVM 25)
 
-# Build the shared image once, then benchmark on either one serial runner
-# or four parallel runners; all implementations of a backend share a runner.
+# Build one shared image; each backend runs on its own runner.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -14,28 +13,25 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: Native Image benchmark profile
+        description: Benchmark profile
         required: true
         type: choice
         default: smoke
         options: [smoke, quick, full]
-      mode:
-        description: Backend execution mode (single runner or four parallel runners)
-        required: true
-        type: choice
-        default: parallel
-        options: [parallel, serial]
 
 permissions:
   contents: read
+
+env:
+  PROFILE: ${{ inputs.profile || 'smoke' }}
 
 # Artifacts use run_id (not run_attempt): partial job reruns reuse artifacts
 # from successful producers. Re-executed jobs overwrite their own artifacts.
 # The combined artifact has a separate prefix to avoid matching result downloads.
 
 concurrency:
-  group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.event_name == 'pull_request' && 'pr' || inputs.mode }}
-  cancel-in-progress: true
+  group: binding-native-${{ github.ref }}-${{ inputs.profile || 'smoke' }}
+  cancel-in-progress: false
 
 jobs:
   script-check:
@@ -65,8 +61,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository &&
-       (contains(github.event.pull_request.body, '[run-native-smoke]') ||
-        contains(github.event.pull_request.body, '[run-native-serial-smoke]')))
+       contains(github.event.pull_request.body, '[run-native-smoke]'))
     needs: script-check
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -123,18 +118,17 @@ jobs:
           retention-days: 30
 
   benchmark:
+    name: ${{ inputs.profile || 'smoke' }} / ${{ matrix.backend }}
     needs: build-image
     runs-on: ubuntu-24.04
-    # Serial Full requires around 150 minutes for all four backends.
     timeout-minutes: 300
     strategy:
       fail-fast: false
       max-parallel: 8
       matrix:
-        backend: ${{ fromJSON(((github.event_name == 'workflow_dispatch' && inputs.mode == 'serial') || (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]'))) && '["all"]' || '["jackson2","jackson3","fastjson2","gson"]') }}
+        backend: [jackson2, jackson3, fastjson2, gson]
     env:
-      PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
-      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
+      MODE: parallel
       BACKEND: ${{ matrix.backend }}
     steps:
       - uses: actions/checkout@v4
@@ -204,11 +198,10 @@ jobs:
     if: ${{ always() && needs.build-image.result == 'success' }}
     runs-on: ubuntu-24.04
     env:
-      PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
       BENCHMARK_RESULT: ${{ needs.benchmark.result }}
-      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
+      MODE: parallel
     steps:
-      - name: Download results from serial or parallel backend jobs
+      - name: Download results from backend jobs
         uses: actions/download-artifact@v8
         with:
           pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}
@@ -225,9 +218,7 @@ jobs:
           from pathlib import Path
 
           profile = os.environ["PROFILE"]
-          mode = os.environ["MODE"]
-          if mode not in ("serial", "parallel"):
-              raise SystemExit(f"unsupported mode {mode!r}")
+          mode = "parallel"
           root = Path("build/performance/binding/native/matrix")
           output = Path("build/performance/binding/native/combined")
           output.mkdir(parents=True, exist_ok=True)
@@ -236,23 +227,16 @@ jobs:
           errors, manifest = [], []
           total = 0
           rows = ["## GraalVM Native Image Binding — " + profile,
-                  "", ("One shared image, one serial runner for all backends."
-                       if mode == "serial" else
-                       "One shared image, four parallel backend runners."),
+                  "", "One shared image, four parallel backend runners.",
                   "", "| Backend | JSON files | Verified cases | Status |",
                   "| --- | ---: | ---: | --- |"]
 
           for backend in backends:
-              artifact_backend = "all" if mode == "serial" else backend
-              name = (f"binding-native-{profile}-{artifact_backend}-"
+              name = (f"binding-native-{profile}-{backend}-"
                       f"{os.environ['GITHUB_RUN_ID']}")
               source = root / name
               if source.exists():
-                  # Preserve the serial job as a single, unchanged provenance set.
-                  if mode == "serial" and backend == backends[0]:
-                      shutil.copytree(source, output / "serial", dirs_exist_ok=True)
-                  elif mode == "parallel":
-                      shutil.copytree(source, output / backend, dirs_exist_ok=True)
+                  shutil.copytree(source, output / backend, dirs_exist_ok=True)
               problems = []
               marker = source / "completed.txt"
               if not marker.is_file():
@@ -260,7 +244,7 @@ jobs:
               else:
                   values = dict(line.strip().split("=", 1)
                                 for line in marker.read_text().splitlines() if "=" in line)
-                  if values != {"backend": artifact_backend, "mode": mode,
+                  if values != {"backend": backend, "mode": mode,
                                 "profile": profile, "sha": os.environ["GITHUB_SHA"]}:
                       problems.append("invalid build SHA or profile")
               files = sorted(source.glob(
@@ -284,7 +268,7 @@ jobs:
                           unique.add(key)
                       count += len(results)
                       manifest.append({"backend": backend,
-                                       "file": f"{'serial' if mode == 'serial' else backend}/{path.name}",
+                                       "file": f"{backend}/{path.name}",
                                        "cases": len(results)})
                   except (OSError, ValueError, KeyError, TypeError) as exc:
                       problems.append(f"{path.name}: {exc}")

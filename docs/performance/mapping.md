@@ -241,8 +241,8 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
 ## Execute
 
 The script builds the existing JMH testbench jar once, then runs all four
-groups by default. Supply a group for focused diagnostics. A manual Full
-workflow runs all groups **sequentially on one benchmark runner**.
+groups by default locally. Supply a group for focused diagnostics. The
+Actions workflow runs all four groups in parallel.
 
 ~~~bash
 ./scripts/benchmark-mapping.sh smoke
@@ -285,21 +285,15 @@ python3 scripts/analyze-mapping-benchmark.py \
 
 The published run completed 70 original suite-3 measurements; the 11 measurements removed by suites 4 and 5 are excluded from the displayed tables. The current suite is version 5 (59 measurements); the historical run has not been re-executed as suite 5.
 
-The manual [Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
-workflow builds one JMH jar, then runs all groups on **one runner** and uploads
-one raw artifact. A separate non-benchmark job aggregates the four JSON files.
-The Full workflow accepts `runner_label` (default: `ubuntu-24.04`), an
-optional **exact** `cpu_model` guard and an optional `cpu_set` for Linux
-`taskset` affinity. If the CPU model differs from the guard, execution fails
-rather than silently treating the run as a baseline.
+The manual [Mapping Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
+workflow builds one JMH jar, then runs Order, POJO, Collection and JSON in
+four parallel Ubuntu 24.04 jobs. Select only `profile` (`smoke`, `quick`,
+`full`; default `smoke`). Pull requests run Smoke. Each group records its
+own CPU and JDK; all implementations for that group share its runner.
+A combined artifact includes all available group results; the Full analyzer
+runs only after every group succeeds. Local CPU guard and affinity controls
+remain available in the script, not the Actions UI.
 
-`ubuntu-24.04` does **not** guarantee AMD EPYC 7763 or any other exact CPU
-model. The guard can reject mismatches but cannot reserve a model. Use a
-dedicated `self-hosted` runner on controlled hardware for repeatable
-release-grade baselines. CPU affinity limits scheduling of the JMH process
-and its forks; it cannot isolate JIT/GC/compiler threads or virtualized
-neighbor load. Do not set it by default without validating the effect.
-Pull requests run Smoke only.
 
 ## Maintaining history in the repository
 
@@ -340,4 +334,4 @@ excluded fork. In each report row:
 - Do not silently average 1/10/100KB into one headline number; these are separate workloads. A JSON fixed-key projection is not equivalent to a full-object conversion.
 - Treat a slowest-to-fastest fork divergence above **15%** as a reason to inspect all three raw forks and report instability, not as evidence of regression.
 - **Best 2 Mean** is biased toward lower observed latency; preserve the original three-fork JMH mean and allocation for context. JMH scoreError does not describe Best 2.
-- GitHub-hosted runs are exploratory, even when a single job runs the groups sequentially. A CPU guard detects mismatches but cannot guarantee isolation or a consistent load.
+- GitHub-hosted runs are exploratory. Compare matching CPU baselines per group; different group runners can have different CPU models.

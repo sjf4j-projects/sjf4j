@@ -351,19 +351,19 @@ An optional single-seed Full (`BINDING_SEEDS=12345`) produces **504** entries.
 
 ## GitHub Actions Full (exploratory)
 
-The manual **Binding Full Benchmark (JDK 25)** workflow reuses this script.
-In the repository **Actions** tab, select the workflow, click **Run workflow**
-and choose the commit/branch to benchmark.
+The manual **Binding Benchmark (JDK 25)** workflow reuses this script.
+Select a branch and the sole `profile` input (`smoke`, `quick`, `full`;
+default `smoke`). All seven backend jobs run in parallel.
 
 - The JMH jar is compiled once, then each of the seven backends runs in a
   separate Ubuntu 24.04 job under JDK 25. Each backend job has a 330-minute
   timeout, below GitHub's 6-hour per-job limit.
-- Each job uploads a backend-specific artifact with **raw JMH JSON** (including
+- Quick/Full jobs upload backend-specific artifacts with **raw JMH JSON** (including
   independent forks and GC allocation metrics), environment metadata, hardware
   information, and a console log. Representative 100KB Users/POJO scores are
-  displayed in the Actions job summary. A final job also creates a **combined
+  displayed in the Actions job summary for Full. A final job also creates a **combined
   artifact** containing all backend folders, so the entire Full run can be
-  downloaded in one archive.
+  downloaded in one archive. Smoke retains hardware and console diagnostics only.
 - **Shared GitHub-hosted runner timings are diagnostic, not release baselines.**
   Hardware and scheduling vary between jobs and runs. The metadata explicitly
   records `Baseline eligible: no`, even though the workload and JMH parameters

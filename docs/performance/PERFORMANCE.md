@@ -8,6 +8,18 @@ Performance comes first. Explicitly disclose changes that may regress performanc
 - Changes to hot paths, generated code, allocation, dispatch, or backend calls require a focused benchmark when the impact is uncertain. Do not run Full for every PR.
 - Run Full at release milestones or when refreshing a suite's published results. Smoke timings are not performance measurements.
 
+## Benchmark workflows
+
+All six benchmark workflows use one manual input, `profile`
+(`smoke`, `quick`, `full`; default `smoke`). Build the shared JMH jar or
+Native Image once, then run backend/shape/group jobs in parallel on
+Ubuntu 24.04. All comparable implementations within each group share its
+runner; retain exact CPU/JDK metadata per group. No serial mode, runner
+selection, CPU model guard or affinity input is exposed in Actions.
+Local script controls remain available for controlled diagnostics.
+Only Full results are eligible for accepted baselines; Quick and Smoke
+must not be fed to Full-only report analyzers.
+
 ## Baselines and history
 
 Maintain independent rolling baselines per **exact CPU model, execution mode (JVM or Native Image), suite and backend/group**. EPYC 7763, EPYC 9V45, EPYC 9V74 and Xeon 6975P-C are separate environments.

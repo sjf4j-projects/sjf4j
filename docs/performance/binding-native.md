@@ -260,21 +260,13 @@ GRAALVM_HOME=/path/to/graalvm BINDING_NATIVE_SKIP_BUILD=1 \
 ```
 
 The **Binding Native Image Benchmark (GraalVM 25)** Actions workflow has
-two manual dropdown inputs: **Profile** (`smoke`, `quick`, `full`) and
-**Mode** (`parallel` by default, or `serial`). Both modes build **one
-shared Native Image** with Git SHA, compiler stamp and SHA-256 verification:
+one manual input, `profile` (`smoke`, `quick`, `full`; default `smoke`).
+It builds one shared Native Image with Git SHA, compiler stamp and SHA-256
+verification, then runs four backend jobs in parallel. All implementations
+of each backend share the same runner. The aggregate job checks completeness
+and publishes combined JSON, metadata, runner information and a manifest.
 
-- `serial` runs **all four backends sequentially on one runner**, suitable
-  for comparing absolute latency across backends in the same host environment.
-- `parallel` runs **one backend per runner**, up to four concurrently; all
-  three implementations of a backend still share the same runner.
-- Both modes use the same JMH implementation, parameters and full case matrix.
-  The aggregate job checks result completeness and publishes the combined
-  JSON, metadata, runner information and a manifest. Failed backend artifacts
-  are preserved when available.
-
-To test a same-repository PR, add `[run-native-smoke]` for parallel Smoke,
-or `[run-native-serial-smoke]` for serial Smoke, then remove the marker.
+To test a same-repository PR, add `[run-native-smoke]`, then remove the marker.
 Fork PRs cannot start the expensive jobs. **Smoke** checks 48 cases per backend
 (**192 total**). **Quick/Full** each cover 72 unique cases per backend
 (**288 total**). Full writes **12 JSON files**, three per backend,
@@ -298,10 +290,9 @@ result. All required artifacts are retained for 30 days to match the Actions
 partial re-run window.
 
 **Runner comparison:** Native / Runtime / Compiled measurements within a
-backend share a runner in both modes. Serial also keeps all four backends
-on one runner; parallel may use different host CPU models or contention
-across backends. Do not present parallel cross-backend absolute times as
-a same-machine ranking.
+backend share a runner. Parallel backend jobs may use different CPU models
+or experience different contention. Compare ratios against the matching CPU
+baseline for each backend; do not rank cross-backend absolute times.
 
 
 JMH uses **`-f 0`** inside the Native Image. Full launches **three independent
