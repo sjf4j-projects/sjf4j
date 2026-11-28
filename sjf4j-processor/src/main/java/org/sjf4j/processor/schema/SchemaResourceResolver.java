@@ -110,7 +110,7 @@ final class SchemaResourceResolver {
         Path resourceDirectory = findResourceDirectory(sourceElement);
         String externalJson = annotation.externalSchemas();
         if (externalJson.isEmpty() && !annotation.externalSchemasRef().trim().isEmpty()) {
-            URI externalRef = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR.resolve(
+            URI externalRef = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(
                     annotation.externalSchemasRef().trim());
             externalJson = read(externalRef, resourceDirectory);
             if (externalJson == null) {
@@ -131,7 +131,7 @@ final class SchemaResourceResolver {
             selectedUri = documentUri;
             rootDocument = inline;
         } else {
-            URI baseDir = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR;
+            URI baseDir = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR;
             if (!ref.isEmpty()) {
                 selectedUri = baseDir.resolve(ref);
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
