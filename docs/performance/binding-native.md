@@ -13,12 +13,12 @@ Latest accepted Full report per backend and exact CPU (Native Image). Follow [Pe
 
 | Backend | AMD EPYC 7763 |
 | --- | --- |
-| Jackson2 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-serial.md) |
-| Jackson3 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-serial.md) |
-| Fastjson2 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-serial.md) |
-| Gson | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-serial.md) |
+| Jackson2 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md) |
+| Jackson3 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md) |
+| Fastjson2 | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md) |
+| Gson | [2026-11-11 serial](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md) |
 
-The [parallel confirmation](binding/2026-11-11-v1.5.1-snapshot-native-parallel.md) used EPYC 7763 and EPYC 9V45, but the retained report does not identify each backend's CPU. Do not use it as a CPU-specific baseline without verifying the original metadata. Add independent entries for new CPU models after reviewing valid Full results.
+The [parallel confirmation](binding/2026-11-11-v1.5.1-snapshot-native-43045839302.md) used EPYC 7763 and EPYC 9V45, but the retained report does not identify each backend's CPU. Do not use it as a CPU-specific baseline without verifying the original metadata. Add independent entries for new CPU models after reviewing valid Full results.
 
 ## Comparison dependency versions
 
@@ -149,7 +149,7 @@ Compiled is slower. `Native` here denotes direct third-party library Binding.
 
 **Latency (µs/op, lower is better).** Same serial Full **Best 2 Run Mean**
 and column format as POJO. All 1/10/100KB POJO and Map measurements are
-in the [complete serial report](binding/2026-11-11-v1.5.1-snapshot-native-serial.md).
+in the [complete serial report](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md).
 
 | Operation / Model / Shape | Backend | Native | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -184,8 +184,8 @@ The GitHub-hosted results remain **exploratory**, not controlled release
 baselines. The Native Image JMH VM-support warning is also a methodological
 limitation; this benchmark does not claim native allocation measurements.
 
-**Complete historical results:** [serial Full details](binding/2026-11-11-v1.5.1-snapshot-native-serial.md)
-(**primary**) and [parallel Full details](binding/2026-11-11-v1.5.1-snapshot-native-parallel.md)
+**Complete historical results:** [serial Full details](binding/2026-11-11-v1.5.1-snapshot-native-43035710364.md)
+(**primary**) and [parallel Full details](binding/2026-11-11-v1.5.1-snapshot-native-43045839302.md)
 (**confirmation**). Each contains all **96 aggregated workload combinations**
 (Read/Write × Users/Clients × POJO/Map × 1/10/100KB × four backends), including
 Native, Runtime, Compiled and Native / Compiled, using the same table layout
