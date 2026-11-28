@@ -180,6 +180,36 @@ class PathRegexEngineTest {
     }
 
     @Test
+    void nonStringFunctionsReturnFalseWithoutCompiling() {
+        AtomicInteger compilations = new AtomicInteger();
+        RegexEngine engine = (expression, flags) -> {
+            compilations.incrementAndGet();
+            return RegexEngine.JDK_ENGINE.create(expression, flags);
+        };
+        JsonArray input = JsonArray.of(
+                JsonObject.of("name", "Alice", "pattern", 123),
+                JsonObject.of("name", "Alice", "pattern", true),
+                JsonObject.of("name", "Alice", "pattern", JsonArray.of("A")),
+                JsonObject.of("name", "Alice", "pattern", JsonObject.of("value", "A")),
+                JsonObject.of("name", "Alice", "pattern", null),
+                JsonObject.of("name", "Alice"),
+                JsonObject.of("name", 123, "pattern", ".*"),
+                JsonObject.of("pattern", ".*"),
+                JsonObject.of("name", "Alice", "pattern", "A.*"));
+        for (String name : Arrays.asList("match", "search")) {
+            JsonPath dynamic = JsonPath.parse("$[?" + name + "(@.name, @.pattern)].name", engine);
+            assertEquals(Collections.singletonList("Alice"), dynamic.find(input, String.class));
+            for (String literal : Arrays.asList("null", "123", "true")) {
+                JsonPath filter = JsonPath.parse("$[?" + name + "(@.name, " + literal + ")]", engine);
+                assertTrue(filter.find(input, Object.class).isEmpty());
+                JsonPath terminal = JsonPath.parse("$.name." + name + "(" + literal + ")", engine);
+                assertEquals(Boolean.FALSE, terminal.eval(JsonObject.of("name", "Alice"), Boolean.class));
+            }
+        }
+        assertEquals(2, compilations.get());
+    }
+
+    @Test
     void invalidConstantFunctionsDoNotRecompile() {
         AtomicInteger compilations = new AtomicInteger();
         RegexEngine engine = (expression, flags) -> {
