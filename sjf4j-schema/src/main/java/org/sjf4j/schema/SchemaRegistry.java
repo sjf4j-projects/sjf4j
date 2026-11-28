@@ -226,7 +226,7 @@ public class SchemaRegistry {
     private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
         // An inline boolean schema with no retrieval URI remains an independent plan.
         if (retrievalUri == null) return;
-        _checkUri(retrievalUri);
+        SchemaUtil.checkResourceUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
         if (ifAbsent && _containsLocalResource(retrievalUri)) return;
         if (byIdSchemas.containsKey(id)) {
@@ -239,16 +239,6 @@ public class SchemaRegistry {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
-    }
-
-    /**
-     * Validates and normalizes a resource URI for planning.
-     *
-     * @throws SchemaException on invalid URI shape
-     */
-    String checkPlanUri(URI uri) {
-        _checkUri(uri);
-        return SchemaUtil.normalizeUriKey(uri);
     }
 
     /**
@@ -290,7 +280,7 @@ public class SchemaRegistry {
     }
 
     private void _putSchema(URI uri, ObjectSchema schema) {
-        _checkUri(uri);
+        SchemaUtil.checkResourceUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
         if (indexed != null && (indexed.nestedLocation != null || indexed.schema != schema)) {
@@ -307,18 +297,6 @@ public class SchemaRegistry {
     private boolean _containsLocalResource(URI uri) {
         String id = SchemaUtil.normalizeUriKey(uri);
         return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id);
-    }
-
-    private void _checkUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        if (uri.toString().isEmpty()) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must not be empty", PathSegment.Root.INSTANCE, uri));
-        }
-        if (!uri.isAbsolute()) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must be absolute", PathSegment.Root.INSTANCE, uri));
-        }
     }
 
     /**
