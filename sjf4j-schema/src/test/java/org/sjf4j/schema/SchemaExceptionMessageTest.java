@@ -88,6 +88,18 @@ class SchemaExceptionMessageTest {
     }
 
     @Test
+    void registryRejectsEmptyAndRelativeResourceUris() {
+        SchemaRegistry registry = new SchemaRegistry();
+        JsonSchema schema = JsonSchema.fromJson("true");
+        SchemaException empty = assertThrows(SchemaException.class,
+                () -> registry.index(URI.create(""), schema));
+        assertTrue(empty.getMessage().contains("schema uri must not be empty"));
+        SchemaException relative = assertThrows(SchemaException.class,
+                () -> registry.index(URI.create("relative.json"), schema));
+        assertSchemaMessage(relative, "schema.uri", "schema uri must be absolute", "/", "relative.json");
+    }
+
+    @Test
     void unsupportedLocalLoad_reportsRootLocation() {
         URI uri = URI.create("https://example.com/schema.json");
         SchemaException error = assertThrows(SchemaException.class,
