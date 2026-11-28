@@ -351,7 +351,7 @@ public interface FilterExpr {
         private final String source;
         private final String expression;
         private final int flags;
-        private final Regex compiled;
+        private final Regex regex;
 
         /**
          * Creates and compiles a regex literal expression.
@@ -360,7 +360,7 @@ public interface FilterExpr {
             this.source = source;
             this.expression = expression;
             this.flags = flags;
-            this.compiled = regexEngine.create(expression, flags);
+            this.regex = regexEngine.create(expression, flags);
         }
 
         public String expression() {
@@ -374,8 +374,8 @@ public interface FilterExpr {
         /**
          * Returns the compiled regex.
          */
-        public Regex compiled() {
-            return compiled;
+        public Regex regex() {
+            return regex;
         }
 
         /**
@@ -383,7 +383,7 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return compiled;
+            return regex;
         }
 
         /**
