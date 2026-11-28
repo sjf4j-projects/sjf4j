@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Registry for schema resources and compiled plans indexed by absolute URI.
  * <p>
- * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
+ * Raw {@link SchemaResource} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
  * cached by absolute resource URI after compilation. Fragment lookup is limited
  * to subschemas recognized during planning; published plan graphs are unchanged
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaRegistry {
 
     private final Map<String, SchemaPlan> byIdPlans;
-    private final Map<String, ObjectSchema> byIdSchemas;
+    private final Map<String, SchemaResource> byIdResources;
     private final SchemaDialect defaultDialect;
     private final PlanningOptions planningOptions;
 
@@ -48,7 +48,7 @@ public class SchemaRegistry {
     /** Creates a registry with a fixed compilation environment. */
     public SchemaRegistry(SchemaDialect defaultDialect, PlanningOptions planningOptions) {
         this.byIdPlans = new ConcurrentHashMap<>();
-        this.byIdSchemas = new ConcurrentHashMap<>();
+        this.byIdResources = new ConcurrentHashMap<>();
         this.defaultDialect = Asserts.notNull(defaultDialect, "defaultDialect");
         this.planningOptions = Asserts.notNull(planningOptions, "planningOptions");
     }
@@ -71,8 +71,7 @@ public class SchemaRegistry {
     /**
      * Indexes a root schema by its declared canonical URI or retrieval URI.
      * <p>
-     * For object schemas this may reuse or populate the schema's root
-     * retrieval-URI metadata before the schema is compiled. Boolean schemas
+     * Resource metadata is independent of the schema model. Boolean schemas
      * with an explicit retrieval URI are indexed as ready-to-use plans.
      */
     public void index(JsonSchema schema) {
@@ -84,15 +83,14 @@ public class SchemaRegistry {
      * <p>
      * The registry stores schema models only for root resources. This supports
      * delayed compilation and order-independent loading of referenced schemas.
-     * The provided retrieval URI is written back to the root {@link ObjectSchema}
-     * so later compilation can resolve a relative root {@code $id}.
+     * The retrieval URI determines the base for a relative root {@code $id}.
      * Boolean resources are stored directly as plans when a retrieval URI is supplied.
      *
      * @throws SchemaException if no URI is available, the URI is not absolute,
      *                         or it conflicts with another resource
      */
     public void index(URI retrievalUri, JsonSchema schema) {
-        _index(retrievalUri, schema, false);
+        index(new SchemaResource(retrievalUri, schema));
     }
 
     /**
@@ -105,21 +103,23 @@ public class SchemaRegistry {
      * Boolean resources with a retrieval URI are indexed as plans.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
-        _index(retrievalUri, schema, true);
+        _index(new SchemaResource(retrievalUri, schema), true);
+    }
+
+    /** Indexes a loaded resource without modifying its schema model. */
+    public void index(SchemaResource resource) {
+        _index(resource, false);
     }
 
     /** Indexes a resource and returns its canonical URI, if any. */
-    private URI _index(URI retrievalUri, JsonSchema schema, boolean ifAbsent) {
-        Asserts.notNull(schema, "schema");
-        if (schema instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) schema, ifAbsent);
+    private URI _index(SchemaResource resource, boolean ifAbsent) {
+        Asserts.notNull(resource, "resource");
+        URI retrievalUri = resource.retrievalUri();
+        if (resource.schema() instanceof BooleanSchema) {
+            _indexBoolean(retrievalUri, (BooleanSchema) resource.schema(), ifAbsent);
             return retrievalUri;
         }
-
-        ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.retrievalUri(retrievalUri);
-        retrievalUri = os.retrievalUri();
-        URI canonicalUri = SchemaUtil.resolveUri(retrievalUri, os.canonicalUri());
+        URI canonicalUri = resource.canonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
@@ -129,23 +129,12 @@ public class SchemaRegistry {
                 || (retrievalUri != null && _containsLocalResource(retrievalUri)))) {
             return canonicalUri;
         }
-
-        _putSchema(canonicalUri, os);
+        resource = _putResource(canonicalUri, resource);
         if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
-            _putSchema(retrievalUri, os);
+            _putResource(retrievalUri, resource);
         }
         return canonicalUri;
-    }
-
-    /**
-     * Indexes schemas by their retrieval URIs without compiling them.
-     * The same conflict rules as {@link #index(URI, JsonSchema)} apply.
-     * Batch indexing is not transactional.
-     */
-    public void index(Map<URI, JsonSchema> schemas) {
-        Asserts.notNull(schemas, "schemas");
-        schemas.forEach(this::index);
     }
 
     /**
@@ -161,15 +150,20 @@ public class SchemaRegistry {
      * A missing or relative root URI without a retrieval base is rejected.
      */
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
-        URI canonicalUri = _index(retrievalUri, schema, false);
+        return register(new SchemaResource(retrievalUri, schema));
+    }
+
+    /** Indexes and compiles a loaded resource. */
+    public SchemaPlan register(SchemaResource resource) {
+        URI canonicalUri = _index(resource, false);
         if (canonicalUri == null) {
             // A boolean document without a URI is not registered.
-            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
+            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) resource.schema());
         }
         // Resolve the retrieval alias when present so it is also cached, even
         // if the canonical resource was previously planned. Register a root,
         // not the fragment of a legacy $id.
-        URI alias = schema instanceof ObjectSchema ? ((ObjectSchema) schema).retrievalUri() : retrievalUri;
+        URI alias = resource.retrievalUri();
         return resolve((alias == null ? canonicalUri : alias).toString(), null);
     }
 
@@ -180,7 +174,7 @@ public class SchemaRegistry {
         _checkUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
         if (ifAbsent && _containsLocalResource(retrievalUri)) return;
-        if (byIdSchemas.containsKey(id)) {
+        if (byIdResources.containsKey(id)) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
@@ -221,16 +215,15 @@ public class SchemaRegistry {
     }
 
     private void _checkPlanConflict(String id, SchemaPlan plan) {
-        ObjectSchema model = byIdSchemas.get(id);
+        SchemaResource model = byIdResources.get(id);
         SchemaPlan old = byIdPlans.get(id);
-        if (model != null && (plan.nestedLocation != null || model != plan.schema)) {
+        if (model != null && !model.sameResource(plan.resource)) {
             throw _planConflict(id);
         }
         if (old == null || old == plan) return;
         if (old.booleanSchema != plan.booleanSchema
                 || (old.booleanSchema ? old.booleanValue != plan.booleanValue
-                : plan.nestedLocation != null ? !plan.nestedLocation.equals(old.nestedLocation)
-                : old.nestedLocation != null || old.schema != plan.schema)) {
+                : !old.resource.sameResource(plan.resource))) {
             throw _planConflict(id);
         }
     }
@@ -240,24 +233,23 @@ public class SchemaRegistry {
                 "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, URI.create(id)));
     }
 
-    private void _putSchema(URI uri, ObjectSchema schema) {
+    private SchemaResource _putResource(URI uri, SchemaResource resource) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
-        if (indexed != null && (indexed.nestedLocation != null || indexed.schema != schema)) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
+        if (indexed != null && (indexed.booleanSchema || !resource.sameResource(indexed.resource))) {
+            throw _planConflict(id);
         }
-        ObjectSchema old = byIdSchemas.putIfAbsent(id, schema);
-        if (old != null && old != schema) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
+        SchemaResource old = byIdResources.putIfAbsent(id, resource);
+        if (old != null && !old.sameResource(resource)) {
+            throw _planConflict(id);
         }
+        return old == null ? resource : old;
     }
 
     private boolean _containsLocalResource(URI uri) {
         String id = SchemaUtil.normalizeUriKey(uri);
-        return byIdSchemas.containsKey(id) || byIdPlans.containsKey(id);
+        return byIdResources.containsKey(id) || byIdPlans.containsKey(id);
     }
 
     private void _checkUri(URI uri) {
@@ -286,9 +278,9 @@ public class SchemaRegistry {
      */
     void indexRegistry(SchemaRegistry source) {
         if (source == null || source == this) return;
-        java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
-                new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
-        for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
+        java.util.IdentityHashMap<SchemaResource, Set<String>> groups =
+                new java.util.IdentityHashMap<SchemaResource, Set<String>>();
+        for (Map.Entry<String, SchemaResource> entry : source.byIdResources.entrySet()) {
             Set<String> aliases = groups.get(entry.getValue());
             if (aliases == null) {
                 aliases = new HashSet<String>();
@@ -296,22 +288,22 @@ public class SchemaRegistry {
             }
             aliases.add(entry.getKey());
         }
-        for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
+        for (Map.Entry<SchemaResource, Set<String>> group : groups.entrySet()) {
             boolean conflicting = false;
             for (String key : group.getValue()) {
-                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key)) {
+                if (byIdResources.containsKey(key) || byIdPlans.containsKey(key)) {
                     conflicting = true;
                     break;
                 }
             }
             if (conflicting) continue;
             for (String key : group.getValue()) {
-                byIdSchemas.putIfAbsent(key, group.getKey());
+                byIdResources.putIfAbsent(key, group.getKey());
             }
         }
         for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
             if (entry.getValue().booleanSchema
-                    && !byIdSchemas.containsKey(entry.getKey())) {
+                    && !byIdResources.containsKey(entry.getKey())) {
                 byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
             }
         }
@@ -380,8 +372,8 @@ public class SchemaRegistry {
     }
 
     /** Looks up a normalized resource key locally, without a global fallback. */
-    ObjectSchema findLocalSchema(String id) {
-        return byIdSchemas.get(id);
+    SchemaResource findLocalResource(String id) {
+        return byIdResources.get(id);
     }
 
     /** Resolves an already planned fragment; never starts planning. */
@@ -405,8 +397,8 @@ public class SchemaRegistry {
     ObjectSchema resolveSchema(URI uri) {
         Asserts.notNull(uri, "uri");
         String id = SchemaUtil.normalizeUriKey(uri);
-        ObjectSchema schema = byIdSchemas.get(id);
-        if (schema != null) return schema;
+        SchemaResource resource = byIdResources.get(id);
+        if (resource != null) return (ObjectSchema) resource.schema();
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             return GLOBAL_SCHEMA_REGISTRY.resolveSchema(uri);
@@ -437,7 +429,7 @@ public class SchemaRegistry {
     }
 
     private boolean _contains(String id) {
-        return byIdPlans.containsKey(id) || byIdSchemas.containsKey(id) ||
+        return byIdPlans.containsKey(id) || byIdResources.containsKey(id) ||
                 (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
     }
 
@@ -447,7 +439,7 @@ public class SchemaRegistry {
      */
     public Set<String> idSet() {
         Set<String> idSet = new HashSet<>(byIdPlans.keySet());
-        idSet.addAll(byIdSchemas.keySet());
+        idSet.addAll(byIdResources.keySet());
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             idSet.addAll(GLOBAL_SCHEMA_REGISTRY.idSet());
         }
@@ -505,16 +497,15 @@ public class SchemaRegistry {
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
         URI uri = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
+        SchemaResource loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
         if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
-        if (!(loaded instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
+        if (!(loaded.schema() instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
                 SchemaUtil.Code.SCHEMA_LOAD, "global schema must be object-shaped",
                 PathSegment.Root.INSTANCE, uri));
-        ObjectSchema schema = (ObjectSchema) loaded;
-        GLOBAL_SCHEMA_REGISTRY.index(schema);
+        GLOBAL_SCHEMA_REGISTRY.index(loaded);
         if (alias != null && !alias.isEmpty()) {
-            GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);
+            GLOBAL_SCHEMA_REGISTRY._putResource(URI.create(alias), loaded);
         }
     }
 
