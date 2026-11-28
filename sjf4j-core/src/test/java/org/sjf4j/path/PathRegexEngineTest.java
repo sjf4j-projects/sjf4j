@@ -3,6 +3,7 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.exception.RegexRejectedException;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.regex.Regex;
@@ -266,23 +267,16 @@ class PathRegexEngineTest {
     }
 
     @Test
-    void parsedFunctionsStillHonorRegistryReplacement() {
-        JsonPath filter = JsonPath.parse("$[?match(@, 'a')]");
-        JsonPath terminal = JsonPath.parse("$.name.match('a')");
-        FunctionRegistry.FunctionDescriptor original = FunctionRegistry.get("match");
-        try {
-            FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("match", (target, args) -> {
-                assertEquals("a", args[0]);
-                return "custom".equals(target);
-            }));
-            assertEquals(Collections.singletonList("custom"),
+    void parsedRegexFunctionsCannotBeReplaced() {
+        for (String name : Arrays.asList("match", "search")) {
+            JsonPath filter = JsonPath.parse("$[?" + name + "(@, 'a')]");
+            JsonPath terminal = JsonPath.parse("$.name." + name + "('a')");
+            assertThrows(NodeException.class, () -> FunctionRegistry.register(
+                    new FunctionRegistry.FunctionDescriptor(name, (target, args) -> true)));
+            assertEquals(Collections.singletonList("a"),
                     filter.find(JsonArray.of("a", "custom"), String.class));
-            assertEquals(Boolean.TRUE, terminal.eval(JsonObject.of("name", "custom"), Boolean.class));
-        } finally {
-            FunctionRegistry.register(original);
+            assertEquals(Boolean.FALSE, terminal.eval(JsonObject.of("name", "custom"), Boolean.class));
         }
-        assertEquals(Collections.singletonList("a"),
-                filter.find(JsonArray.of("a", "custom"), String.class));
-        assertEquals(Boolean.FALSE, terminal.eval(JsonObject.of("name", "custom"), Boolean.class));
     }
+
 }
