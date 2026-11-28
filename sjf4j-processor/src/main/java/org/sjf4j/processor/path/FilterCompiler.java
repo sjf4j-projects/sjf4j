@@ -10,7 +10,6 @@ import javax.lang.model.type.TypeMirror;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /** Lowers the supported subset of FilterExpr into an immutable generation plan. */
 final class FilterCompiler {
@@ -30,11 +29,7 @@ final class FilterCompiler {
             throw unsupported("literal type " + value.getClass().getName());
         }
         if (expression instanceof FilterExpr.RegexExpr) {
-            // Reuse the parsed Pattern and its flags; the emitter caches the
-            // same pattern once rather than recompiling it for every item.
-            Object compiled = ((FilterExpr.RegexExpr) expression).compiled();
-            if (!(compiled instanceof Pattern)) throw unsupported("custom regex engine");
-            return FilterPlan.literal(compiled);
+            return FilterPlan.literal(expression);
         }
         if (expression instanceof FilterExpr.ArrayExpr) {
             List<Object> values = ((FilterExpr.ArrayExpr) expression).literalValues();
