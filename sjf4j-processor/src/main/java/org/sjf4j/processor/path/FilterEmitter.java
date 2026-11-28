@@ -13,7 +13,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+import org.sjf4j.path.FilterExpr;
 
 /** Emits a direct predicate without runtime FilterExpr AST evaluation. */
 final class FilterEmitter {
@@ -60,13 +60,13 @@ final class FilterEmitter {
             String value = JavaWriter.stringLiteral(plan.literal.toString());
             generated.addField(out -> out.line("private static final Double " + field +
                     " = Double.valueOf(" + value + ");"));
-        } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Pattern) {
-            Pattern pattern = (Pattern) plan.literal;
+        } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof FilterExpr.RegexExpr) {
+            FilterExpr.RegexExpr regex = (FilterExpr.RegexExpr) plan.literal;
             String field = generated.names().field("FILTER_PATTERN");
             constants.put(plan, field);
             generated.addField(out -> out.line("private static final java.util.regex.Pattern " +
                     field + " = java.util.regex.Pattern.compile(" +
-                    JavaWriter.stringLiteral(pattern.pattern()) + ", " + pattern.flags() + ");"));
+                    JavaWriter.stringLiteral(regex.expression()) + ", " + regex.flags() + ");"));
         } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof List) {
             String field = generated.names().field("FILTER_ARRAY");
             constants.put(plan, field);
@@ -230,7 +230,7 @@ final class FilterEmitter {
     private String value(FilterPlan plan) {
         switch (plan.kind) {
             case LITERAL:
-                if (plan.literal instanceof Double || plan.literal instanceof Pattern
+                if (plan.literal instanceof Double || plan.literal instanceof FilterExpr.RegexExpr
                         || plan.literal instanceof List) {
                     return constants.get(plan);
                 }
