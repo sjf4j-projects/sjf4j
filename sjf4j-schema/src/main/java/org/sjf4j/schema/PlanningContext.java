@@ -36,7 +36,8 @@ final class PlanningContext {
     }
 
     void putPlan(URI uri, SchemaPlan plan) {
-        String id = registry.checkPlanUri(uri);
+        SchemaUtil.checkResourceUri(uri);
+        String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan old = pendingPlans.putIfAbsent(id, plan);
         if (old != null && old != plan) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
