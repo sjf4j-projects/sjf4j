@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Concurrent compilation against a fixed catalog is supported; callers must
  * not mutate indexed schema models or concurrently change resource definitions.
  * Multi-resource registration is not a transaction.
- * Lookup first checks local mappings and then the built-in global meta-schemas;
+ * Lookup first checks local mappings and then {@link GlobalSchemas};
  * it does not fetch arbitrary remote resources.
  */
 public class SchemaRegistry {
@@ -33,8 +33,7 @@ public class SchemaRegistry {
 
 
     /**
-     * Creates a registry with the supplied default dialect. Built-in global
-     * meta-schemas remain visible as fallback resources.
+     * Creates a registry with the supplied default dialect. Global schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
         this(defaultDialect, PlanningOptions.DEFAULT);
@@ -99,7 +98,7 @@ public class SchemaRegistry {
      * <p>
      * Unlike {@link #index(URI, JsonSchema)}, duplicate target mappings are a
      * no-op instead of a conflict. The check is local to this registry; global
-     * built-in schemas remain fallback-only and do not block local indexing.
+     * schemas remain fallback-only and do not block local indexing.
      * Boolean resources with a retrieval URI are indexed as plans.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
@@ -162,7 +161,7 @@ public class SchemaRegistry {
     private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
         // An inline boolean schema with no retrieval URI remains an independent plan.
         if (retrievalUri == null) return;
-        _checkUri(retrievalUri);
+        SchemaUtil.checkResourceUri(retrievalUri);
         String id = SchemaUtil.normalizeUriKey(retrievalUri);
         if (ifAbsent && _containsLocalResource(retrievalUri)) return;
         if (byIdResources.containsKey(id)) {
@@ -175,16 +174,6 @@ public class SchemaRegistry {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
-    }
-
-    /**
-     * Validates and normalizes a resource URI for planning.
-     *
-     * @throws SchemaException on invalid URI shape
-     */
-    String checkPlanUri(URI uri) {
-        _checkUri(uri);
-        return SchemaUtil.normalizeUriKey(uri);
     }
 
     /**
@@ -225,7 +214,7 @@ public class SchemaRegistry {
     }
 
     private SchemaResource _putResource(URI uri, SchemaResource resource) {
-        _checkUri(uri);
+        SchemaUtil.checkResourceUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaPlan indexed = byIdPlans.get(id);
         if (indexed != null && (indexed.booleanSchema || !resource.sameResource(indexed.resource))) {
@@ -241,18 +230,6 @@ public class SchemaRegistry {
     private boolean _containsLocalResource(URI uri) {
         String id = SchemaUtil.normalizeUriKey(uri);
         return byIdResources.containsKey(id) || byIdPlans.containsKey(id);
-    }
-
-    private void _checkUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        if (uri.toString().isEmpty()) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must not be empty", PathSegment.Root.INSTANCE, uri));
-        }
-        if (!uri.isAbsolute()) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
-                    "schema uri must be absolute", PathSegment.Root.INSTANCE, uri));
-        }
     }
 
     /**
@@ -362,9 +339,10 @@ public class SchemaRegistry {
         return byIdPlans.get(id);
     }
 
-    /** Looks up a normalized resource key locally, without a global fallback. */
-    SchemaResource findLocalResource(String id) {
-        return byIdResources.get(id);
+    /** Finds an indexed root resource, falling back to shared global schemas. */
+    SchemaResource findResource(String id) {
+        SchemaResource resource = byIdResources.get(id);
+        return resource != null ? resource : GlobalSchemas.find(id);
     }
 
     /** Resolves an already planned fragment; never starts planning. */
@@ -389,18 +367,9 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaResource resource = byIdResources.get(id);
-        if (resource != null) return (ObjectSchema) resource.schema;
-
-        if (this != GLOBAL_SCHEMA_REGISTRY) {
-            return GLOBAL_SCHEMA_REGISTRY.resolveSchema(uri);
-        }
-        return null;
-    }
-
-
-    /** Returns the count of distinct visible resource URI keys, including built-ins. */
-    public int size() {
-        return idSet().size();
+        if (resource == null && !byIdPlans.containsKey(id)) resource = GlobalSchemas.find(id);
+        return resource != null && resource.schema instanceof ObjectSchema
+                ? (ObjectSchema) resource.schema : null;
     }
 
 
@@ -413,92 +382,14 @@ public class SchemaRegistry {
      * Returns true if the absolute resource URI exists in this registry.
      * <p>
      * Fragments are ignored because fragment lookup happens inside the compiled
-     * resource plan. The global built-in registry is consulted as a fallback.
+     * resource plan. Global schemas are consulted as a fallback.
      */
     public boolean contains(URI uri) {
         return _contains(SchemaUtil.normalizeUriKey(uri));
     }
 
     private boolean _contains(String id) {
-        return byIdPlans.containsKey(id) || byIdResources.containsKey(id) ||
-                (this != GLOBAL_SCHEMA_REGISTRY && GLOBAL_SCHEMA_REGISTRY.contains(id));
-    }
-
-    /**
-     * Returns a new set of local and built-in resource URI keys. Canonical and
-     * retrieval aliases may each contribute a key for the same schema model.
-     */
-    public Set<String> idSet() {
-        Set<String> idSet = new HashSet<>(byIdPlans.keySet());
-        idSet.addAll(byIdResources.keySet());
-        if (this != GLOBAL_SCHEMA_REGISTRY) {
-            idSet.addAll(GLOBAL_SCHEMA_REGISTRY.idSet());
-        }
-        return idSet;
-    }
-
-    /*
-     * --------------------------------------------------------------
-     * Global
-     * --------------------------------------------------------------
-     */
-    /** Global registry of built-in meta-schema resources. */
-    public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
-
-    /** Fixed local resource loader for the built-in meta-schema catalog. */
-    private static final SchemaLoader.Local BUILTIN_SCHEMA_LOADER =
-            new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
-
-    /**
-     * Resolves a schema from the global built-in registry.
-     * <p>
-     * Built-in schema models are indexed at class initialization time, while
-     * compiled plans are still created lazily on first resolution.
-     */
-    public static SchemaPlan globalResolve(URI uri) {
-        return GLOBAL_SCHEMA_REGISTRY.resolve(uri);
-    }
-
-    /** Resolves a built-in resource URI and optional fragment, or returns null if absent. */
-    public static SchemaPlan globalResolve(String id, String fragment) {
-        return GLOBAL_SCHEMA_REGISTRY.resolve(id, fragment);
-    }
-
-    static {
-        _indexGlobalSchemaByPath("draft07/schema.json", "https://json-schema.org/draft-07/schema");
-
-        _indexGlobalSchemaByPath("draft2019-09/meta/core.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/meta/applicator.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/meta/validation.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/meta/meta-data.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/meta/format.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/meta/content.json", null);
-        _indexGlobalSchemaByPath("draft2019-09/schema.json", null);
-
-        _indexGlobalSchemaByPath("draft2020-12/meta/core.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/applicator.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/validation.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/meta-data.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/format-annotation.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/format-assertion.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/unevaluated.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/meta/content.json", null);
-        _indexGlobalSchemaByPath("draft2020-12/schema.json", null);
-    }
-
-    private static void _indexGlobalSchemaByPath(String filePath, String alias) {
-        URI uri = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(uri);
-        if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                "global schema not found", PathSegment.Root.INSTANCE, uri));
-        if (!(loaded instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
-                SchemaUtil.Code.SCHEMA_LOAD, "global schema must be object-shaped",
-                PathSegment.Root.INSTANCE, uri));
-        SchemaResource resource = new SchemaResource(uri, loaded);
-        GLOBAL_SCHEMA_REGISTRY._index(resource, false);
-        if (alias != null && !alias.isEmpty()) {
-            GLOBAL_SCHEMA_REGISTRY._putResource(URI.create(alias), resource);
-        }
+        return byIdPlans.containsKey(id) || findResource(id) != null;
     }
 
 }
