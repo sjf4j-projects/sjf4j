@@ -60,7 +60,7 @@ for the Order, collection, JSON and other POJO cases.
 
 ### Results — v1.5.1-SNAPSHOT (2026-11-12)
 
-**Full JMH · 3 independent forks · Best 2 Mean.** [GitHub Actions run #43163182761](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761) completed 70 suite-3 measurements; the **68 retained measurements** are reported below (not a new suite-4 run).
+**Full JMH · 3 independent forks · Best 2 Mean.** [GitHub Actions run #43163182761](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761) completed 70 suite-3 measurements; the **59 currently retained measurements** are reported below (filtered historical results, not a new suite-5 run).
 
 **Comparison:** MapStruct 1.6.3 versus SJF4J CompiledMapper. Both map equivalent, preconstructed objects. A **MapStruct / Compiled** ratio above **1×** means SJF4J is faster.
 
@@ -187,7 +187,6 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
 | Case | Sample / Mapping | Size |
 | --- | --- | --- |
 | Map projection | `Map<String,Object>` → `JsonTarget` (MapStruct / CAST / STRICT) | 1/10/100KB |
-| JsonObject projection | `JsonObject` → `JsonTarget` (MapStruct / CAST / STRICT) | 1/10/100KB |
 
 **Latency (ns/op, lower is better).** MapStruct is compared separately with CAST and STRICT. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -196,9 +195,6 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
 | Map → POJO | 1KB | 5.83 | 5.84 | 6.07 | 1.00× | 0.96× |
 | Map → POJO | 10KB | 5.82 | 5.81 | 6.06 | 1.00× | 0.96× |
 | Map → POJO | 100KB | 5.82 | 5.84 | 6.07 | 1.00× | 0.96× |
-| JsonObject → POJO | 1KB | 6.91 | 6.91 | 8.95 | 1.00× | 0.77× |
-| JsonObject → POJO | 10KB | 6.88 | 6.89 | 8.95 | 1.00× | 0.77× |
-| JsonObject → POJO | 100KB | 6.92 | 6.90 | 8.95 | 1.00× | 0.77× |
 
 **Allocation (B/op, lower is better).** Untrimmed JMH `gc.alloc.rate.norm`; ratios in this table compare **B/op**, not time.
 
@@ -207,22 +203,19 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
 | Map → POJO | 1KB | 24 | 24 | 24 | 1.00× | 1.00× |
 | Map → POJO | 10KB | 24 | 24 | 24 | 1.00× | 1.00× |
 | Map → POJO | 100KB | 24 | 24 | 24 | 1.00× | 1.00× |
-| JsonObject → POJO | 1KB | 24 | 24 | 24 | 1.00× | 1.00× |
-| JsonObject → POJO | 10KB | 24 | 24 | 24 | 1.00× | 1.00× |
-| JsonObject → POJO | 100KB | 24 | 24 | 24 | 1.00× | 1.00× |
 
 #### Key findings
 
 - **POJO:** Direct, flat, nested and in-place update workloads are generally close to MapStruct. The single-source nested case reaches 1.12×; the update case is effectively equal. The update input uses an existing, non-null target.
 - **Collection:** Compiled is faster for ArrayList inputs (1.72× at 10KB, 1.45× at 100KB) and Map values containing Lists (up to 1.42× at 100KB). LinkedList inputs are slower (0.91–0.95×). The generated random-access indexed loop is one relevant implementation difference; these measurements do not isolate its contribution.
-- **JSON projection:** CAST is near parity with MapStruct's explicit Java casts. STRICT performs additional OBNT conversion and is not an equivalent-cost comparison (approximately 0.96× on Map and 0.77× on JsonObject). All sizes project only three fixed keys; extra unmapped fields do not imply full-document traversal.
+- **JSON projection:** CAST is near parity with MapStruct's explicit Java casts. STRICT performs additional OBNT conversion and is not an equivalent-cost comparison (approximately 0.96× on Map). All sizes project only three fixed keys; extra unmapped fields do not imply full-document traversal.
 - **Allocation:** Most paired workloads allocate the same amount. Map containing one large List saves 56 B/op with Compiled. The 1KB eight-short-Lists MapStruct result has a fork spread above 15%; inspect raw fork data before drawing a fine-grained conclusion.
 
 **[Complete historical snapshot, fork-stability details and provenance](mapping/2026-11-12-v1.5.1-snapshot.md)** · **[Original GitHub Actions run and artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761)**
 
 ## Baseline policy
 
-- **Current suite version: 4** (68 measurements; removed one two-implementation workload after suite 3). Changing the workload, fixture, semantics or case matrix requires a new suite version. The published 2026-11-12 run is a suite-3 historical run with the removed case excluded from its displayed tables; it is not a suite-4 rerun.
+- **Current suite version: 5** (59 measurements). Suite 5 removes the nine JsonObject projection measurements from suite 4: MapStruct requires handwritten access to SJF4J JsonObject rather than native mapping support. Changing the workload, fixture, semantics or case matrix requires a new suite version. The published 2026-11-12 suite-3 run is filtered to the current cases, not a suite-5 rerun.
 
 - Only **MapStruct 1.6.3** and **SJF4J CompiledMapper** are measured. Each pair
   has its own JMH method, with the same prebuilt source and equivalent output.
@@ -233,14 +226,12 @@ Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fie
   both implementations apply the same null-ignore policy.
 - Collection cases require recursively mapped DTO elements and newly allocated
   outer containers. Missing or unequal results **fail setup**.
-- The JSON MapStruct comparison uses explicit Java casts for fixed-key extraction
-  because JsonObject is not a JavaBean. SJF4J uses the same source and
-  target records with `@MappingOptions(raws = RawPolicy.CAST)` and
+- The JSON group measures fixed-key Map projection. MapStruct uses explicit
+  Java casts; SJF4J uses the same source and target with
+  `@MappingOptions(raws = RawPolicy.CAST)` and
   `@MappingOptions(raws = RawPolicy.STRICT)`. Both modes must agree with
   MapStruct during JMH setup. CAST performs shallow Java casts, whereas
-  STRICT uses OBNT conversion. LENIENT remains validated by processor tests,
-  but is not a separate performance case. These explicit adapters are not a
-  claim that MapStruct automatically handles arbitrary JsonObject traversal.
+  STRICT uses OBNT conversion. LENIENT remains covered by processor tests.
 - Timing reports are specific to each workload and runtime environment; comparing
   a JSON projection with a full POJO-to-DTO conversion is not meaningful.
 - JDK 25 is required for an official run. Record the precise JDK patch, CPU,
@@ -272,7 +263,7 @@ MAPPING_CPU_SET='1-2' ./scripts/benchmark-mapping.sh quick collection
 | Measurement | 1 x 50ms | 2 x 200ms | 5 x 1s |
 | Threads | 1 | 1 | 1 |
 | Allocation profiler | No | Yes | Yes |
-| Measurements | All 68 | All 68 | All 68 |
+| Measurements | All 59 | All 59 | All 59 |
 
 The script validates **method and parameter completeness**, positive finite
 latency values, and for Quick/Full the full raw fork/iteration grid.
@@ -292,7 +283,7 @@ python3 scripts/analyze-mapping-benchmark.py \
 
 **Published run environment (2026-11-12):** Ubuntu 24.04 GitHub-hosted shared runner, AMD EPYC 9V74, 4 logical CPUs, no requested CPU affinity, Temurin 25.0.5, JMH 1.37, one measurement thread, 5 × 1s warmup and 5 × 1s measurement per fork. The measurements are **exploratory**, not a controlled-hardware release baseline. Raw JSON, execution metadata and fork-level results remain in the Actions artifacts.
 
-The published run completed 70 original suite-3 measurements; the two measurements for the removed workload are excluded from the displayed tables. The current suite is version 4 (68 measurements); the historical run has not been re-executed as suite 4.
+The published run completed 70 original suite-3 measurements; the 11 measurements removed by suites 4 and 5 are excluded from the displayed tables. The current suite is version 5 (59 measurements); the historical run has not been re-executed as suite 5.
 
 The manual [Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
 workflow builds one JMH jar, then runs all groups on **one runner** and uploads
@@ -314,7 +305,7 @@ Pull requests run Smoke only.
 
 1. Publish a new complete Full run as a dated, versioned report under `docs/performance/mapping/`; do not overwrite an older report.
 2. Keep source SHA, suite version, precise JDK patch, exact CPU model, runner/affinity metadata and all original JMH JSON with the report or archived artifacts.
-3. Update the release index only after confirming all four groups and **68 exact entries** completed and setup equivalence checks passed. If any group failed, clearly identify the report as partial, not a complete baseline.
+3. Update the release index only after confirming all four groups and **59 exact entries** completed and setup equivalence checks passed. If any group failed, clearly identify the report as partial, not a complete baseline.
 4. Compare release candidates on the same controlled hardware and profile. Reject comparisons spanning different CPU models and do not infer regressions from unrepeatable virtualized noise.
 
 ## Release index

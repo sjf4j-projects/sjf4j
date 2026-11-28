@@ -55,7 +55,7 @@ if [[ "$GROUP" == "all" ]]; then
     echo "=== Mapping $PROFILE / $group ==="
     MAPPING_SKIP_BUILD=1 bash "$0" "$PROFILE" "$group" "$ROOT/$group"
   done
-  echo "Mapping $PROFILE / all: all 68 JMH entries passed."
+  echo "Mapping $PROFILE / all: all 59 JMH entries passed."
   exit 0
 fi
 
@@ -82,8 +82,8 @@ case "$GROUP" in
     EXPECTED=32
     ;;
   json)
-    METHODS='json_(map|object)'
-    EXPECTED=18
+    METHODS='json_map'
+    EXPECTED=9
     ;;
 esac
 case "$PROFILE" in
@@ -103,7 +103,7 @@ cat > "$META" <<EOF
 # Mapping Full Benchmark
 
 - Source: org.sjf4j.testbench.mapping.MappingFullBenchmark
-- Suite version: 4
+- Suite version: 5
 - Git SHA: $(git rev-parse HEAD)
 - UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Java: $VERSION
@@ -170,7 +170,7 @@ groups = {
     "collection": (("collection_item", False), ("collection_list", True),
                    ("collection_sequential", True), ("collection_mapitems", True),
                    ("collection_mapone", True), ("collection_map", True)),
-    "json": (("json_map", True), ("json_object", True)),
+    "json": (("json_map", True),),
 }
 expected_keys = {
     (prefix + case + "_" + impl, size)
