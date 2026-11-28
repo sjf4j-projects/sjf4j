@@ -77,10 +77,9 @@ class RegexEngineTest {
             throw rejection;
         });
 
-        assertSame(rejection, assertThrows(RegexRejectedException.class,
+        assertSame(rejection, assertThrows(NodeException.class,
                 () -> guarded.compile("abc")));
         assertEquals("Rejected", rejection.getMessage());
-        assertTrue(rejection instanceof NodeException);
         assertEquals(0, compilations.get());
 
         assertTrue(engine.compile("abc").matches("abc"));
