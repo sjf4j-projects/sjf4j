@@ -1,0 +1,107 @@
+name: Jackson2 POJO Write A-B (JDK 25)
+
+on:
+  push:
+    branches: [bench/jackson2-pojo-write-ab]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 555137cf7a98a5ecf0e46ac7efcdd4362e3c0e3e
+          path: baseline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 9509bc7bf3a0bbd118e142ef4ceed860473f8929
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build both revisions before measuring
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rev in baseline candidate; do
+            (cd "$rev" && git rev-parse HEAD && ./gradlew :sjf4j-testbench:jmhJar)
+          done
+      - name: Record environment
+        run: |
+          mkdir -p results
+          { lscpu; free -h; java -version 2>&1; for rev in baseline candidate; do git -C "$rev" rev-parse HEAD; done; } | tee results/environment.txt
+      - name: Run matched POJO Write cases on one runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rev in baseline candidate; do
+            jar=$(find "$rev/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -type f)
+            test -f "$jar"
+            java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+              -p backend=jackson2 -p implementation=native,blackbird,runtime,compiled \
+              -p model=users,clients -p shape=pojo -p sizeKb=1,10,100 -p seed=12345,324 \
+              -t 1 -f 3 -wi 5 -i 5 -w 1s -r 1s -prof gc -rf json \
+              -rff "results/$rev.json" | tee "results/$rev.log"
+          done
+      - name: Compare Best 2 Mean and allocation
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          from statistics import mean
+
+          def read(rev):
+              rows = json.load(open(f'results/{rev}.json'))
+              assert len(rows) == 48, (rev, len(rows))
+              cases = {}
+              for row in rows:
+                  p = row['params']
+                  assert p['backend'] == 'jackson2' and p['shape'] == 'pojo'
+                  key = (p['model'], int(p['sizeKb']), p['implementation'], p['seed'])
+                  assert key not in cases
+                  forks = row['primaryMetric']['rawData']
+                  assert len(forks) == 3 and all(len(f) == 5 for f in forks)
+                  times = sorted(map(mean, forks))
+                  cases[key] = (mean(times[:2]), row['secondaryMetrics']['gc.alloc.rate.norm']['score'])
+              return cases
+
+          a, b = read('baseline'), read('candidate')
+          assert a.keys() == b.keys()
+          def avg(cases, model, size, mode, metric=0):
+              return mean(cases[model, size, mode, seed][metric] for seed in ('12345', '324'))
+
+          print('## Jackson2 POJO Write — same-runner A/B')
+          print('Best 2 Mean (µs/op), both seeds; B/op uses untrimmed scores.')
+          print('| Model | Size | Implementation | Baseline | Candidate | Delta | B/op old | B/op new |')
+          print('|---|---:|---|---:|---:|---:|---:|---:|')
+          for model in ('users', 'clients'):
+              for size in (1, 10, 100):
+                  for mode in ('native', 'blackbird', 'runtime', 'compiled'):
+                      x, y = (avg(c, model, size, mode) for c in (a, b))
+                      ax, ay = (avg(c, model, size, mode, 1) for c in (a, b))
+                      print(f'| {model} | {size}KB | {mode} | {x:.3f} | {y:.3f} | {(y/x-1)*100:+.2f}% | {ax:.0f} | {ay:.0f} |')
+          print()
+          print('| Model | Size | Blackbird / Compiled old | New | Ratio change |')
+          print('|---|---:|---:|---:|---:|')
+          for model in ('users', 'clients'):
+              for size in (1, 10, 100):
+                  x, y = (avg(c, model, size, 'blackbird') / avg(c, model, size, 'compiled') for c in (a, b))
+                  print(f'| {model} | {size}KB | {x:.3f} | {y:.3f} | {(y/x-1)*100:+.2f}% |')
+          PY
+      - name: Upload raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson2-write-ab-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
