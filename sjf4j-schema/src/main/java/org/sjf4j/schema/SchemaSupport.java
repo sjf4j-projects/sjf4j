@@ -13,6 +13,7 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.value.ValueInfo;
 
+import java.io.Reader;
 import java.util.Map;
 
 /**
@@ -30,6 +31,10 @@ public final class SchemaSupport {
 
     static JsonSchema readSchema(String json) {
         return (JsonSchema) BinderHolder.BINDER.readNode(json, JsonSchema.class);
+    }
+
+    static JsonSchema readSchema(Reader reader) {
+        return (JsonSchema) BinderHolder.BINDER.readNode(reader, JsonSchema.class);
     }
 
     /** Reads schema JSON literals and documents with exact generic numbers. */

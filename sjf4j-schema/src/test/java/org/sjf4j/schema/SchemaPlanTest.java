@@ -15,24 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SchemaPlanTest {
 
     @Test
-    void schemaUriMetadataAccessorsArePackagePrivate() throws Exception {
-        assertFalse(java.lang.reflect.Modifier.isPublic(
-                ObjectSchema.class.getDeclaredMethod("retrievalUri").getModifiers()));
-        assertFalse(java.lang.reflect.Modifier.isPublic(
-                ObjectSchema.class.getDeclaredMethod("retrievalUri", URI.class).getModifiers()));
-        assertFalse(java.lang.reflect.Modifier.isPublic(
-                ObjectSchema.class.getDeclaredMethod("canonicalUri").getModifiers()));
-    }
-
-    @Test
     void objectSchemaPlanSnapshotsMinimalRootRuntimeState() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
-        schema.retrievalUri(URI.create("file:///schemas/root.json"));
+        SchemaResource resource = new SchemaResource(URI.create("file:///schemas/root.json"), schema);
 
-        SchemaPlan plan = schema.formulate();
+        SchemaPlan plan = SchemaPlanner.buildPlan(resource, null);
 
-        assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
-        assertEquals("defs/user.json", schema.canonicalUri().toString());
+        assertEquals("file:///schemas/root.json", resource.retrievalUri.toString());
+        assertEquals(URI.create("file:///schemas/defs/user.json"), resource.canonicalUri);
         assertTrue(plan.validate("hello").isValid());
         assertFalse(plan.validate(123).isValid());
     }
@@ -211,7 +201,7 @@ class SchemaPlanTest {
                 "\"$id\":\"defs/root.json\"," +
                 "\"$ref\":\"leaf.json\"" +
                 "}");
-        rootSchema.retrievalUri(URI.create("file:///schemas/base.json"));
+        SchemaResource resource = new SchemaResource(URI.create("file:///schemas/base.json"), rootSchema);
 
         ObjectSchema leafSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"file:///schemas/defs/leaf.json\"," +
@@ -222,7 +212,7 @@ class SchemaPlanTest {
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(leafSchema);
 
-        SchemaPlan plan = rootSchema.formulate(registry);
+        SchemaPlan plan = SchemaPlanner.buildPlan(resource, registry);
 
         assertTrue(plan.isValid("x"));
         assertFalse(plan.isValid(""));

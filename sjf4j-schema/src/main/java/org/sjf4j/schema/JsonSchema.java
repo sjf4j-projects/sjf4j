@@ -6,6 +6,8 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.node.NodeMapper;
 
+import java.io.Reader;
+
 
 /**
  * Parsed JSON Schema document represented as an OBNT object node or value node.
@@ -43,9 +45,8 @@ public interface JsonSchema {
     /**
      * Compiles this schema with no caller-provided external registry.
      * <p>
-     * Built-in global meta-schemas are still available through the planner and
-     * registry internals. Their schema models are indexed eagerly, while their
-     * compiled plans are still created lazily on first resolution.
+     * Shared resources in {@link GlobalSchemas} are still available through the
+     * registry. Plans are compiled lazily in the current registry.
      */
     default SchemaPlan formulate() {
         return formulate(null);
@@ -80,6 +81,14 @@ public interface JsonSchema {
      */
     static JsonSchema fromJson(String json) {
         return SchemaSupport.readSchema(json);
+    }
+
+    /**
+     * Reads a schema model directly from a reader using exact generic numeric reads.
+     * The returned value is not compiled yet.
+     */
+    static JsonSchema fromJson(Reader reader) {
+        return SchemaSupport.readSchema(reader);
     }
 
     /**

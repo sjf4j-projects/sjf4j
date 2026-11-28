@@ -2,16 +2,14 @@ package org.sjf4j.schema;
 
 import org.sjf4j.JsonObject;
 
-import java.net.URI;
 import java.util.Map;
 
 
 /**
  * Object-shaped schema model.
  * <p>
- * This type keeps parsed schema content plus a root retrieval URI when the
- * schema document was loaded from an external location. Compilation state is
- * kept in {@link SchemaPlan}, not in this model.
+ * Resource metadata is maintained separately; compilation state lives in
+ * {@link SchemaPlan}.
  */
 public final class ObjectSchema extends JsonObject implements JsonSchema {
 
@@ -29,43 +27,6 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
         return getMap("$vocabulary", Boolean.class);
     }
 
-    /**
-     * Original retrieval URI used to load the root schema document.
-     * <p>
-     * This is only populated for externally loaded root schemas. It provides
-     * the initial base used to resolve a root relative `$id`.
-     */
-    private transient URI retrievalUri;
-
-    /**
-     * Returns the retrieval URI used to load the root schema document.
-     */
-    URI retrievalUri() {
-        return retrievalUri;
-    }
-
-    /**
-     * Sets the retrieval URI used to load the root schema document.
-     * <p>
-     * This is root-resource metadata. Nested subschemas do not carry their own
-     * retrieval URIs.
-     */
-    void retrievalUri(URI retrievalUri) {
-        this.retrievalUri = retrievalUri;
-    }
-
-    /**
-     * Returns the schema resource URI declared by this object.
-     * <p>
-     * When {@code $id} is relative, callers still need a retrieval/base URI to
-     * obtain the absolute resource URI used by registries and compiled plans.
-     */
-    URI canonicalUri() {
-        String id = getId();
-        if (id == null) return retrievalUri();
-        return URI.create(id);
-    }
-
     /*
      * --------------------------------------------------------------
      * Plan
@@ -77,7 +38,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      */
     @Override
     public SchemaPlan formulate(SchemaRegistry registry) {
-        return SchemaPlanner.buildPlan(this, registry);
+        return SchemaPlanner.buildPlan(new SchemaResource(null, this), registry);
     }
 
 

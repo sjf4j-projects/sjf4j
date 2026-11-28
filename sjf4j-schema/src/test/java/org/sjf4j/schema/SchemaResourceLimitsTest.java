@@ -236,7 +236,9 @@ class SchemaResourceLimitsTest {
     @Test
     void boundedRegistryDoesNotBorrowGlobalPlans() {
         URI meta = URI.create("https://json-schema.org/draft/2020-12/schema");
-        assertNotNull(SchemaRegistry.globalResolve(meta));
+        SchemaPlan global = new SchemaRegistry().resolve(meta);
+        assertNotNull(global);
+        assertNotSame(global, new SchemaRegistry().resolve(meta));
         SchemaRegistry bounded = registry(1, 0);
         assertThrows(SchemaException.class, () -> bounded.resolve(meta));
         assertNull(bounded.resolveBuilt(meta));
