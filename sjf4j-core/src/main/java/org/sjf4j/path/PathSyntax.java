@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 
@@ -213,6 +214,14 @@ public final class PathSyntax {
      * descendant, union, slice, filter, and terminal function calls.
      */
     public static PathSegment[] parsePath(String expr) {
+        return parsePath(expr, RegexEngine.JDK_ENGINE);
+    }
+
+    /**
+     * Parses a JSONPath using the given engine for regex literals.
+     */
+    public static PathSegment[] parsePath(String expr, RegexEngine regexEngine) {
+        Asserts.notNull(regexEngine, "regexEngine");
         if (expr == null || expr.isEmpty()) throw new NodeException("expression must not be empty");
         PathSegment lastSegment;
         int i = 0;
@@ -360,7 +369,7 @@ public final class PathSyntax {
                 } else if (expr.charAt(contentStart) == '?') {
                     // Filter
                     int filterStart = _skipWhitespace(expr, contentStart + 1);
-                    FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd);
+                    FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd, regexEngine);
                     lastSegment = new PathSegment.Filter(lastSegment, filterExpr);
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
@@ -837,14 +846,22 @@ public final class PathSyntax {
      * path references, regex literals, and function calls.
      */
     public static FilterExpr parseFilter(String s) {
-        return _parseFilterRange(s, 0, s.length());
+        return parseFilter(s, RegexEngine.JDK_ENGINE);
     }
 
-    private static FilterExpr _parseFilterRange(String s, int start, int endExclusive) {
+    /**
+     * Parses a filter using the given engine for regex literals.
+     */
+    public static FilterExpr parseFilter(String s, RegexEngine regexEngine) {
+        Asserts.notNull(regexEngine, "regexEngine");
+        return _parseFilterRange(s, 0, s.length(), regexEngine);
+    }
+
+    private static FilterExpr _parseFilterRange(String s, int start, int endExclusive, RegexEngine regexEngine) {
         int[] pos = {0};
         pos[0] = start;
         _skipWs(s, pos);
-        FilterExpr expr = _parseOr(s, pos);
+        FilterExpr expr = _parseOr(s, pos, regexEngine);
         _skipWs(s, pos);
         if (pos[0] != endExclusive) {
             throw new NodeException("trailing characters at position " + pos[0]);
@@ -855,12 +872,12 @@ public final class PathSyntax {
     /**
      * Parses an OR expression.
      */
-    private static FilterExpr _parseOr(String s, int[] pos) {
-        FilterExpr left = _parseAnd(s, pos);
+    private static FilterExpr _parseOr(String s, int[] pos, RegexEngine regexEngine) {
+        FilterExpr left = _parseAnd(s, pos, regexEngine);
         while (true) {
             _skipWs(s, pos);
             if (_match(s, pos, "||")) {
-                FilterExpr right = _parseAnd(s, pos);
+                FilterExpr right = _parseAnd(s, pos, regexEngine);
                 left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.OR);
             } else break;
         }
@@ -870,12 +887,12 @@ public final class PathSyntax {
     /**
      * Parses an AND expression.
      */
-    private static FilterExpr _parseAnd(String s, int[] pos) {
-        FilterExpr left = _parseCompare(s, pos);
+    private static FilterExpr _parseAnd(String s, int[] pos, RegexEngine regexEngine) {
+        FilterExpr left = _parseCompare(s, pos, regexEngine);
         while (true) {
             _skipWs(s, pos);
             if (_match(s, pos, "&&")) {
-                FilterExpr right = _parseCompare(s, pos);
+                FilterExpr right = _parseCompare(s, pos, regexEngine);
                 left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.AND);
             } else break;
         }
@@ -885,8 +902,8 @@ public final class PathSyntax {
     /**
      * Parses a comparison expression.
      */
-    private static FilterExpr _parseCompare(String s, int[] pos) {
-        FilterExpr left = _parseUnary(s, pos);
+    private static FilterExpr _parseCompare(String s, int[] pos, RegexEngine regexEngine) {
+        FilterExpr left = _parseUnary(s, pos, regexEngine);
         _skipWs(s, pos);
 
         FilterExpr.Op op = null;
@@ -909,7 +926,7 @@ public final class PathSyntax {
         }
 
         if (op != null) {
-            FilterExpr right = _parseUnary(s, pos);
+            FilterExpr right = _parseUnary(s, pos, regexEngine);
             return new FilterExpr.BinaryExpr(left, right, op);
         }
 
@@ -919,26 +936,26 @@ public final class PathSyntax {
     /**
      * Parses a unary expression.
      */
-    private static FilterExpr _parseUnary(String s, int[] pos) {
+    private static FilterExpr _parseUnary(String s, int[] pos, RegexEngine regexEngine) {
         _skipWs(s, pos);
         if (_match(s, pos, "!")) {
-            FilterExpr child = _parseUnary(s, pos);
+            FilterExpr child = _parseUnary(s, pos, regexEngine);
             return new FilterExpr.UnaryExpr(false, child);
         }
-        return _parsePrimary(s, pos);
+        return _parsePrimary(s, pos, regexEngine);
     }
 
     /**
      * Parses a primary expression.
      */
-    private static FilterExpr _parsePrimary(String s, int[] pos) {
+    private static FilterExpr _parsePrimary(String s, int[] pos, RegexEngine regexEngine) {
         _skipWs(s, pos);
         char c = _peekLast(s, pos);
 
         // (expr)
         if (c == '(') {
             pos[0]++;
-            FilterExpr expr = _parseOr(s, pos);
+            FilterExpr expr = _parseOr(s, pos, regexEngine);
             _skipWs(s, pos);
             if (_peekLast(s, pos) != ')') {
                 throw new NodeException("missing closing ')' at position " + pos[0]);
@@ -954,7 +971,7 @@ public final class PathSyntax {
 
         // Array literal
         if (c == '[') {
-            return _parseArrayLiteral(s, pos);
+            return _parseArrayLiteral(s, pos, regexEngine);
         }
 
         // Number literal
@@ -967,12 +984,12 @@ public final class PathSyntax {
             FilterExpr.PathExpr fast = _tryParseSimpleFilterPathExpr(s, pos);
             if (fast != null) return fast;
             String path = _parsePath(s, pos);
-            return new FilterExpr.PathExpr(path);
+            return new FilterExpr.PathExpr(JsonPath.parse(path, regexEngine));
         }
 
         // Regex: /^a/i
         if (c == '/') {
-            return _parseRegex(s, pos);
+            return _parseRegex(s, pos, regexEngine);
         }
 
         if (_matchKeyword(s, pos, "null")) {
@@ -987,13 +1004,13 @@ public final class PathSyntax {
 
         // Function: search(@.b, 'a')
         if (_isNamePart(c)) {
-            return _parseFunction(s, pos);
+            return _parseFunction(s, pos, regexEngine);
         }
 
         throw new NodeException("unexpected character '" + c + "' at position " + pos[0]);
     }
 
-    private static FilterExpr.ArrayExpr _parseArrayLiteral(String s, int[] pos) {
+    private static FilterExpr.ArrayExpr _parseArrayLiteral(String s, int[] pos, RegexEngine regexEngine) {
         pos[0]++;
         _skipWs(s, pos);
 
@@ -1004,7 +1021,7 @@ public final class PathSyntax {
         }
 
         while (true) {
-            elements.add(_parseOr(s, pos));
+            elements.add(_parseOr(s, pos, regexEngine));
             _skipWs(s, pos);
 
             if (pos[0] >= s.length()) {
@@ -1028,7 +1045,7 @@ public final class PathSyntax {
     /**
      * Parses a function call expression.
      */
-    private static FilterExpr _parseFunction(String s, int[] pos) {
+    private static FilterExpr _parseFunction(String s, int[] pos, RegexEngine regexEngine) {
         // function name
         int start = pos[0];
         while (pos[0] < s.length() && _isNamePart(s.charAt(pos[0]))) { pos[0]++; }
@@ -1051,7 +1068,7 @@ public final class PathSyntax {
 
         // arguments
         while (true) {
-            FilterExpr arg = _parseOr(s, pos);
+            FilterExpr arg = _parseOr(s, pos, regexEngine);
             args.add(arg);
             _skipWs(s, pos);
 
@@ -1294,7 +1311,7 @@ public final class PathSyntax {
      * Parses a regex literal with optional flags.
      */
     @SuppressWarnings("MagicConstant")
-    private static FilterExpr.RegexExpr _parseRegex(String s, int[] pos) {
+    private static FilterExpr.RegexExpr _parseRegex(String s, int[] pos, RegexEngine regexEngine) {
         int start = pos[0];
         if (s.charAt(pos[0]) != '/') throw new NodeException("regex must start with '/' at position " + pos[0]);
         pos[0]++;
@@ -1329,8 +1346,7 @@ public final class PathSyntax {
                 }
                 String flags = s.substring(flagsStart, pos[0]);
                 String source = s.substring(start, pos[0]);
-                Pattern pattern = Pattern.compile(regex, _toFlags(flags));
-                return new FilterExpr.RegexExpr(source, pattern);
+                return new FilterExpr.RegexExpr(source, regex, _toFlags(flags), regexEngine);
             }
             pos[0]++;
         }
