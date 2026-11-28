@@ -35,7 +35,7 @@ public final class SchemaValidator {
 
     /** Creates a validator using the default local schema directory and strict format checking. */
     public SchemaValidator() {
-        this(new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR), null, true);
+        this(new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR), null, true);
     }
 
     /**
@@ -151,7 +151,7 @@ public final class SchemaValidator {
         } else if (!anno.externalSchemasRef().trim().isEmpty()) {
             URI base = loader.resolve(URI.create(""));
             if (!base.isAbsolute() || !base.toString().endsWith("/")) {
-                base = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR;
+                base = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR;
             }
             external = new SchemaLoader.Local(base, clazz.getClassLoader())
                     .loadExternalSchemas("", anno.externalSchemasRef());
