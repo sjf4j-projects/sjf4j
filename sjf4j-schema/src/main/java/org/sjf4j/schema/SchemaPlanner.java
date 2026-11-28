@@ -50,7 +50,7 @@ public final class SchemaPlanner {
             Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
                     resourceUri, PathSegment.Root.INSTANCE);
             plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
-                    new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
+                    new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary, null);
             context.putPlan(resourceUri, plan);
 
             if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
@@ -123,7 +123,7 @@ public final class SchemaPlanner {
                                          Map<String, SchemaPlan> byDynamicAnchorPlans,
                                          Map<String, SchemaPlan> byPathPlans,
                                          PlanningContext context, SchemaDialect dialect,
-                                         Map<String, Boolean> vocabulary) {
+                                         Map<String, Boolean> vocabulary, String nestedLocation) {
         _checkVocabulary(schema, ps, vocabulary);
 
         // $defs / definitions
@@ -162,7 +162,7 @@ public final class SchemaPlanner {
                 // end up
                 SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                        schema, dialect, vocabulary);
+                        schema, dialect, vocabulary, null, nestedLocation);
                 byPathPlans.put(ps.rootedPointerExpr(), plan);
                 return plan;
             }
@@ -496,7 +496,7 @@ public final class SchemaPlanner {
         // end up
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                schema, dialect, vocabulary, annotations);
+                schema, dialect, vocabulary, annotations, nestedLocation);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);
@@ -653,15 +653,15 @@ public final class SchemaPlanner {
             String id = SchemaUtil.stripFragment(os.getId());
             String ref = os.getString("$ref");
             if ((dialect == SchemaDialect.DRAFT_07 && ref != null) || id == null || id.isEmpty()) {
-                plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary, null);
             } else {
                 URI childResourceUri = resourceUri.resolve(id);
                 if (childResourceUri.equals(resourceUri)) {
-                    plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                    plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary, null);
                 } else {
                     plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
-                            new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    plan.nestedLocation = SchemaUtil.normalizeUriKey(resourceUri) + "#" + path;
+                            new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary,
+                            SchemaUtil.normalizeUriKey(resourceUri) + "#" + path);
                     context.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
