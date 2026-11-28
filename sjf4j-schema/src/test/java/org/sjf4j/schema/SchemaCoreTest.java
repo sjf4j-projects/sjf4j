@@ -54,22 +54,22 @@ public class SchemaCoreTest {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(json);
         log.info("schema={}", schema);
         SchemaPlan plan = schema.createPlan();
-        assertEquals("json-schema/base.json", schema.canonicalUri().toString());
+        assertEquals("json-schema/base.json", new SchemaResource(null, schema).canonicalUri().toString());
         assertTrue(plan.isValid(13));
     }
 
     @Test
     public void testRetrievalAndCanonicalUri() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
-        schema.retrievalUri(URI.create("file:///schemas/root.json"));
+        SchemaResource resource = new SchemaResource(URI.create("file:///schemas/root.json"), schema);
 
-        assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
-        assertEquals("defs/user.json", schema.canonicalUri().toString());
+        assertEquals("file:///schemas/root.json", resource.retrievalUri().toString());
+        assertEquals(URI.create("file:///schemas/defs/user.json"), resource.canonicalUri());
 
-        schema.createPlan();
+        resource.createPlan();
 
-        assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
-        assertEquals("defs/user.json", schema.canonicalUri().toString());
+        assertEquals("file:///schemas/root.json", resource.retrievalUri().toString());
+        assertEquals(URI.create("file:///schemas/defs/user.json"), resource.canonicalUri());
     }
 
     @Test
@@ -94,7 +94,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertEquals("base.json#foo", ((ObjectSchema) schema).canonicalUri().toString());
+        assertEquals("base.json#foo", new SchemaResource(null, schema).canonicalUri().toString());
     }
 
     @Test
