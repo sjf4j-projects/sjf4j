@@ -39,7 +39,7 @@ boolean valid = validator.validate(jsonNode, OutputFormat.BOOLEAN);
 
 ```java
 SchemaPlan plan = JsonSchema.fromJson(schema)
-        .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
+        .formulate(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
 boolean valid = plan.isValid(jsonNode, false);
 ```
 
