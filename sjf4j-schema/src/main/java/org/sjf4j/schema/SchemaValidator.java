@@ -161,7 +161,7 @@ public final class SchemaValidator {
             // A binding with external resources owns its registry; neither the
             // caller's registry nor sibling POJO plans are modified.
             scoped = new SchemaRegistry(registry.getDefaultDialect(), registry.getPlanningOptions());
-            scoped.index(external);
+            external.forEach(scoped::index);
             // Preserve explicit caller-provided catalog resources, but recompile
             // their object plans in this binding's own reference context.
             scoped.indexRegistry(registry);
@@ -171,10 +171,8 @@ public final class SchemaValidator {
         String inline = anno.value();
         if (!inline.isEmpty()) {
             JsonSchema schema = JsonSchema.fromJson(inline);
-            if (schema instanceof ObjectSchema) {
-                ((ObjectSchema) schema).retrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
-            }
-            return schema.createPlan(scoped);
+            return new SchemaResource(URI.create("sjf4j:/" + clazz.getName() + "/"), schema)
+                    .createPlan(scoped);
         }
 
         // From ref
@@ -214,23 +212,23 @@ public final class SchemaValidator {
         SchemaPlan plan = uri.isAbsolute() ? scoped.resolve(uri) : null;
         if (plan != null) return plan;
 
-        JsonSchema schema = loader.load(uri);
-        if (schema == null) return null;
-        URI selectedUri = uri;
-        if (!selectedUri.isAbsolute() && schema instanceof ObjectSchema) {
-            URI loaded = ((ObjectSchema) schema).retrievalUri();
-            if (loaded != null && loaded.isAbsolute()) {
-                selectedUri = URI.create(loaded.toString() +
-                        (uri.getRawFragment() == null ? "" : "#" + uri.getRawFragment()));
-            }
+        SchemaResource resource = loader.load(uri);
+        if (resource == null) return null;
+        URI selectedUri = resource.retrievalUri();
+        if (selectedUri == null) selectedUri = resource.canonicalUri();
+        if (selectedUri == null) {
+            return resource.createPlan(scoped);
+        }
+        if (uri.getRawFragment() != null) {
+            selectedUri = URI.create(SchemaUtil.documentUri(selectedUri) + "#" + uri.getRawFragment());
         }
         if (selectedUri.isAbsolute()) {
             SchemaPlan existing = scoped.resolve(selectedUri);
             if (existing != null) return existing;
         }
-        SchemaPlan compiled = scoped.register(SchemaUtil.documentUri(selectedUri), schema);
+        SchemaPlan compiled = scoped.register(resource);
         SchemaPlan selected = selectedUri.isAbsolute() ? scoped.resolve(selectedUri) : null;
-        // Boolean documents are not URI-indexed by SchemaRegistry.
+        // A resource without a registered URI yields an independent plan.
         return selected == null ? compiled : selected;
     }
 
