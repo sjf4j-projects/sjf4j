@@ -85,16 +85,13 @@ public final class SchemaPlanner {
         plan = registry.findLocalPlan(id);
         if (plan != null) return plan;
 
-        SchemaResource resource = registry.findLocalResource(id);
-        if (resource == null && registry != SchemaRegistry.GLOBAL_SCHEMA_REGISTRY) {
-            // Built-ins are compiled in the local registry's policy and context.
-            resource = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalResource(id);
-            if (resource == null) {
-                SchemaPlan builtin = SchemaRegistry.GLOBAL_SCHEMA_REGISTRY.findLocalPlan(id);
-                return builtin != null && builtin.booleanSchema ? builtin : null;
-            }
-        }
+        SchemaResource resource = registry.findResource(id);
         if (resource == null) return null;
+        if (resource.schema instanceof BooleanSchema) {
+            plan = SchemaPlan.of(resource.canonicalUri, PathSegment.Root.INSTANCE, (BooleanSchema) resource.schema);
+            context.putPlan(resource.canonicalUri, plan);
+            return plan;
+        }
 
         // An indexed alias may point to an already planned canonical resource.
         String canonical = SchemaUtil.normalizeUriKey(resource.canonicalUri);
