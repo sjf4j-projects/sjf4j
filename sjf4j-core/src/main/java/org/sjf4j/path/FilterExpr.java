@@ -4,6 +4,8 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.regex.Regex;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 
@@ -347,26 +349,43 @@ public interface FilterExpr {
 
     class RegexExpr implements FilterExpr {
         private final String source;
-        private final Pattern pattern;
+        private final String expression;
+        private final int flags;
+        private final Object compiled;
 
         /**
-         * Creates a regex literal expression.
+         * Creates and compiles a regex literal expression.
          */
-        public RegexExpr(String source, Pattern pattern) {
+        public RegexExpr(String source, String expression, int flags, RegexEngine regexEngine) {
             this.source = source;
-            this.pattern = pattern;
+            this.expression = expression;
+            this.flags = flags;
+            // Keep the default JDK matching path free of an extra wrapper.
+            this.compiled = regexEngine == RegexEngine.JDK_ENGINE
+                    ? Pattern.compile(expression, flags) : regexEngine.compile(expression, flags);
         }
 
-        public Pattern pattern() {
-            return pattern;
+        public String expression() {
+            return expression;
+        }
+
+        public int flags() {
+            return flags;
         }
 
         /**
-         * Evaluates to compiled regex pattern.
+         * Returns the compiled Pattern (default JDK engine) or Regex.
+         */
+        public Object compiled() {
+            return compiled;
+        }
+
+        /**
+         * Evaluates to the precompiled regex.
          */
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return pattern;
+            return compiled;
         }
 
         /**
@@ -527,7 +546,7 @@ public interface FilterExpr {
      */
     static boolean match(Object a, Object b) {
         if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
-        if (!(b instanceof Pattern)) return false;
+        if (!(b instanceof Pattern)) return b instanceof Regex && matchRegex(a, (Regex) b);
         if (a == null) return false;
         Pattern p = (Pattern) b;
 
@@ -546,6 +565,26 @@ public interface FilterExpr {
             });
         }
 
+        return false;
+    }
+
+    /**
+     * Matches using a custom compiled regex. Keep the JDK Pattern path direct.
+     */
+    static boolean matchRegex(Object a, Regex regex) {
+        if (a == null) return false;
+        JsonType ajt = JsonType.of(a);
+        if (ajt.isString()) {
+            String text = Nodes.toString(a);
+            return text != null && regex.find(text);
+        }
+        if (ajt.isArray()) {
+            return Nodes.anyMatchInArray(a, (i, v) -> {
+                if (!JsonType.of(v).isString()) return false;
+                String text = Nodes.toString(v);
+                return text != null && regex.find(text);
+            });
+        }
         return false;
     }
 
