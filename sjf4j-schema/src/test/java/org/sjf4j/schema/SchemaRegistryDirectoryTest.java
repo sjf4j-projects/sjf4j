@@ -28,11 +28,14 @@ class SchemaRegistryDirectoryTest {
         Files.write(child, ("{\"$id\":\"https://example.test/base.json\","
                 + "\"type\":\"string\",\"minLength\":3}").getBytes(StandardCharsets.UTF_8));
         Files.write(registryDirectory.resolve("ignored.txt"), "{}".getBytes(StandardCharsets.UTF_8));
+        Files.write(registryDirectory.resolve("boolean.json"), "false".getBytes(StandardCharsets.UTF_8));
 
         SchemaRegistry registry = new SchemaRegistry();
-        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir();
-        assertEquals(2, schemas.size());
+        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir(null);
+        assertEquals(3, schemas.size());
+        assertTrue(schemas.get(registryDirectory.resolve("boolean.json").toUri()) instanceof BooleanSchema);
         registry.index(schemas);
+        assertFalse(registry.resolve(registryDirectory.resolve("boolean.json").toUri()).isValid(null));
         assertTrue(registry.contains(root.toUri()));
         assertTrue(registry.contains(child.toUri()));
         assertTrue(registry.contains(URI.create("https://example.test/base.json")));
@@ -80,7 +83,7 @@ class SchemaRegistryDirectoryTest {
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(URI.create("https://example.test/existing.json"),
                 JsonSchema.fromJson("{\"type\":\"string\"}"));
-        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir();
+        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir(null);
         assertThrows(SchemaException.class, () -> registry.index(schemas));
         schemas.forEach(registry::indexIfAbsent);
 
@@ -92,9 +95,18 @@ class SchemaRegistryDirectoryTest {
     @Test
     void loadDirRequiresAnExistingFileDirectory() {
         assertThrows(IllegalArgumentException.class,
-                () -> new SchemaLoader.Local(URI.create("classpath:/schemas/")).loadDir());
+                () -> new SchemaLoader.Local(URI.create("classpath:/schemas/")).loadDir(null));
         assertThrows(IllegalArgumentException.class,
                 () -> new SchemaLoader.Local(
-                        URI.create(registryDirectory.resolve("missing").toUri().toString() + "/")).loadDir());
+                        URI.create(registryDirectory.resolve("missing").toUri().toString() + "/")).loadDir(null));
     }
+    @Test
+    void loadDirRejectsInvalidLogicalBase() {
+        SchemaLoader.Local loader = new SchemaLoader.Local(registryDirectory.toUri());
+        for (String base : new String[]{"relative/", "https://example.test/file",
+                "https://example.test/?query", "https://example.test/#fragment/"}) {
+            assertThrows(IllegalArgumentException.class, () -> loader.loadDir(URI.create(base)));
+        }
+    }
+
 }
