@@ -34,7 +34,7 @@ public interface SchemaLoader {
      * Returns the parsed document, or null if it is missing.
      * Any URI fragment is ignored for retrieval; fragment resolution belongs to SchemaRegistry.
      */
-    JsonSchema load(URI uri);
+    SchemaResource load(URI uri);
 
     /**
      * Resolves a reference to its retrieval URI. Loaders with a configured
@@ -45,14 +45,12 @@ public interface SchemaLoader {
     }
 
     /** Parses an already opened schema document and records its retrieval URI. */
-    static JsonSchema parse(URI uri, Reader reader) throws IOException {
+    static SchemaResource parse(URI uri, Reader reader) throws IOException {
         URI document = SchemaUtil.documentUri(uri);
         char[] chars = new char[4096];
         StringBuilder json = new StringBuilder();
         for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
-        JsonSchema schema = JsonSchema.fromJson(json.toString());
-        if (schema instanceof ObjectSchema) ((ObjectSchema) schema).retrievalUri(document);
-        return schema;
+        return new SchemaResource(document, JsonSchema.fromJson(json.toString()));
     }
 
     /**
@@ -171,7 +169,7 @@ public interface SchemaLoader {
         }
 
         @Override
-        public JsonSchema load(URI uri) {
+        public SchemaResource load(URI uri) {
             URI document = SchemaUtil.documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
