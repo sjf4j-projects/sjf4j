@@ -1,6 +1,8 @@
 package org.sjf4j.processor.path;
 
 import org.sjf4j.path.FilterExpr;
+
+import java.util.regex.Pattern;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -31,7 +33,9 @@ final class FilterCompiler {
         if (expression instanceof FilterExpr.RegexExpr) {
             // Reuse the parsed Pattern and its flags; the emitter caches the
             // same pattern once rather than recompiling it for every item.
-            return FilterPlan.literal(((FilterExpr.RegexExpr) expression).pattern());
+            Object compiled = ((FilterExpr.RegexExpr) expression).compiled();
+            if (!(compiled instanceof Pattern)) throw unsupported("custom regex engine");
+            return FilterPlan.literal(compiled);
         }
         if (expression instanceof FilterExpr.ArrayExpr) {
             List<Object> values = ((FilterExpr.ArrayExpr) expression).literalValues();
