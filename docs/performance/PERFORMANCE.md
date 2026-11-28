@@ -36,9 +36,14 @@ Keep experimental, failed, partial and redundant runs in Actions artifacts. Reco
 
 ## Regression review
 
-Compare absolute latency and B/op, plus within-run control ratios: Blackbird / Compiled for Jackson JVM, Native / Compiled for other supported libraries, Runtime / Compiled where no Native comparator exists. For Native Image use Native / Compiled. Follow each suite's documented aggregation; do not mix profiles or metrics.
+**Relative performance is the primary metric.** Always compute ratios within each run first, then compare those ratios with the latest accepted same-CPU baseline for every matching case.
 
-A degradation over 3% is a signal to investigate, not automatic proof. Inspect independent forks/processes, controls and allocation first. Only run a focused same-runner A/B when a material unexplained signal remains, or when needed to establish causality. For unstable JIT outcomes, retain all fork means and use separate diagnostics rather than treating trimmed scores as proof.
+- Compare equivalent third-party implementations against SJF4J Runtime and Compiled separately (e.g. Native / Runtime, Native / Compiled, Blackbird / Runtime, Blackbird / Compiled, MapStruct / Compiled).
+- Compare Runtime / Compiled wherever both are available, even if third-party controls exist. Use comparable semantics, representations and measured operations; distinguish CAST and STRICT, or binding-only and binding-plus-validation, explicitly.
+- For latency, ratio = reference latency / SJF4J latency; for throughput, ratio = SJF4J throughput / reference throughput. Higher is better. Relative change = (candidate ratio / baseline ratio - 1) × 100%. Report old ratio, new ratio and relative change for matching cases; do not rank changes by absolute latency or average unrelated workloads.
+- Report B/op independently (including relative allocation ratios where meaningful); retain absolute latency, raw fork/process data and allocation for diagnosis and reproducibility. Absolute cross-run latency changes are not the primary review metric.
+
+A relative performance decline greater than 3% is a signal to investigate, not automatic proof. Inspect independent forks/processes, changes in the third-party control and allocation before attributing the decline to SJF4J. Also disclose material allocation regressions or known slow paths. Run a focused same-runner A/B only for material unexplained signals or when causality needs confirmation. Follow each suite's documented aggregation; do not mix profiles or metrics. For unstable JIT outcomes, retain all fork means and use separate diagnostics rather than treating trimmed scores as proof.
 
 Record known CPU/JIT-sensitive behavior with scope, evidence, unresolved questions and the chosen implementation. Do not repeat the same investigation without new evidence (changed hot path, materially worse result on the same CPU, or a new relevant JDK/backend). Keep unresolved cases visible; do not use them to excuse unrelated regressions.
 
