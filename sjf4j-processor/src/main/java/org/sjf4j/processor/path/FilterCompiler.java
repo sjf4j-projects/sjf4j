@@ -1,8 +1,6 @@
 package org.sjf4j.processor.path;
 
 import org.sjf4j.path.FilterExpr;
-
-import java.util.regex.Pattern;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -12,6 +10,7 @@ import javax.lang.model.type.TypeMirror;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /** Lowers the supported subset of FilterExpr into an immutable generation plan. */
 final class FilterCompiler {
