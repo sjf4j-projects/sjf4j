@@ -14,12 +14,10 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 
 /**
  * Loads a complete JSON Schema document from a retrieval URI.
@@ -136,50 +134,6 @@ public interface SchemaLoader {
 
         public URI baseUri() {
             return baseUri;
-        }
-
-        /**
-         * Recursively loads .json schema documents, mapping their relative file
-         * paths to an absolute logical directory URI (or file URIs if null).
-         * The map keys are retrieval URIs; declared $id values are unchanged.
-         * Only local file-system directories are supported; no network I/O occurs.
-         */
-        public Map<URI, JsonSchema> loadDir(URI logicalBaseUri) {
-            URI effectiveBaseUri = logicalBaseUri == null ? baseUri : logicalBaseUri;
-            if (!effectiveBaseUri.isAbsolute() || !effectiveBaseUri.toString().endsWith("/")
-                    || effectiveBaseUri.getRawQuery() != null || effectiveBaseUri.getRawFragment() != null) {
-                throw new IllegalArgumentException("schema base URI must be an absolute directory URI: "
-                        + effectiveBaseUri);
-            }
-            if (!"file".equalsIgnoreCase(baseUri.getScheme())) {
-                throw new IllegalArgumentException("schema directory must use a file: URI: " + baseUri);
-            }
-            Path root = Paths.get(baseUri);
-            if (!Files.isDirectory(root)) {
-                throw new IllegalArgumentException("schema directory not found: " + root);
-            }
-            Map<URI, JsonSchema> schemas = new LinkedHashMap<>();
-            try (Stream<Path> paths = Files.walk(root)) {
-                paths.filter(Files::isRegularFile)
-                        .filter(path -> path.getFileName().toString().endsWith(".json"))
-                        .sorted()
-                        .forEach(path -> {
-                            URI uri = path.toUri();
-                            URI retrievalUri = effectiveBaseUri.resolve(root.toUri().relativize(uri));
-                            JsonSchema schema = load(uri);
-                            if (schema == null) {
-                                throw new IllegalArgumentException("schema resource not found: " + uri);
-                            }
-                            if (schema instanceof ObjectSchema) {
-                                ((ObjectSchema) schema).retrievalUri(retrievalUri);
-                            }
-                            schemas.put(retrievalUri, schema);
-                        });
-            } catch (IOException e) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                        "failed to load schema directory", PathSegment.Root.INSTANCE, baseUri), e);
-            }
-            return schemas;
         }
 
         /** Resolves a relative reference against the configured schema directory. */
