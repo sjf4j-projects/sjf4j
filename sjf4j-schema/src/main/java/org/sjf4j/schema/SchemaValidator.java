@@ -35,7 +35,7 @@ public final class SchemaValidator {
 
     /** Creates a validator using the default local schema directory and strict format checking. */
     public SchemaValidator() {
-        this(new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR), null, true);
+        this(new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR), null, true);
     }
 
     /**
@@ -151,7 +151,7 @@ public final class SchemaValidator {
         } else if (!anno.externalSchemasRef().trim().isEmpty()) {
             URI base = loader.resolve(URI.create(""));
             if (!base.isAbsolute() || !base.toString().endsWith("/")) {
-                base = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
+                base = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR;
             }
             external = new SchemaLoader.Local(base, clazz.getClassLoader())
                     .loadExternalSchemas("", anno.externalSchemasRef());
@@ -161,9 +161,7 @@ public final class SchemaValidator {
             // A binding with external resources owns its registry; neither the
             // caller's registry nor sibling POJO plans are modified.
             scoped = new SchemaRegistry(registry.getDefaultDialect(), registry.getPlanningOptions());
-            for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-                scoped.index(entry.getKey(), entry.getValue());
-            }
+            scoped.index(external);
             // Preserve explicit caller-provided catalog resources, but recompile
             // their object plans in this binding's own reference context.
             scoped.indexRegistry(registry);
