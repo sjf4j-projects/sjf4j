@@ -8,8 +8,8 @@ import java.util.Map;
 /**
  * Object-shaped schema model.
  * <p>
- * Resource metadata lives in {@link SchemaResource}; compilation state lives
- * in {@link SchemaPlan}.
+ * Resource metadata is maintained separately; compilation state lives in
+ * {@link SchemaPlan}.
  */
 public final class ObjectSchema extends JsonObject implements JsonSchema {
 
