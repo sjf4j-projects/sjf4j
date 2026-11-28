@@ -24,7 +24,7 @@ class SchemaExactNumbersTest {
         ObjectSchema exponent = (ObjectSchema) JsonSchema.fromJson("{\"minimum\":1.23e-400}");
         assertEquals(0, new BigDecimal("1.23e-400").compareTo(
                 assertInstanceOf(BigDecimal.class, exponent.getNode("minimum"))));
-        assertTrue(JsonSchema.fromJson("true").createPlan().isValid(EXACT));
+        assertTrue(JsonSchema.fromJson("true").formulate().isValid(EXACT));
     }
 
     @Test
@@ -37,42 +37,43 @@ class SchemaExactNumbersTest {
         check("exclusiveMinimum", UPPER, true);
         check("exclusiveMaximum", EXACT, false);
         check("exclusiveMaximum", LOWER, true);
-        SchemaPlan multiple = JsonSchema.fromJson("{\"multipleOf\":" + DECIMAL + "}").createPlan();
+        SchemaPlan multiple = JsonSchema.fromJson("{\"multipleOf\":" + DECIMAL + "}").formulate();
         assertTrue(multiple.isValid(EXACT));
         assertTrue(multiple.isValid(EXACT.multiply(BigDecimal.valueOf(3))));
         assertFalse(multiple.isValid(UPPER));
     }
 
     private static void check(String keyword, BigDecimal value, boolean valid) {
-        SchemaPlan plan = JsonSchema.fromJson("{\"" + keyword + "\":" + DECIMAL + "}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"" + keyword + "\":" + DECIMAL + "}").formulate();
         assertEquals(valid, plan.isValid(value), keyword);
     }
 
     @Test
     void compoundLiteralsAndUniqueItemsUseNumericEquality() {
-        SchemaPlan constant = JsonSchema.fromJson("{\"const\":{\"n\":[" + DECIMAL + "]}}").createPlan();
-        SchemaPlan enumeration = JsonSchema.fromJson("{\"enum\":[{\"n\":[" + DECIMAL + "]}]}").createPlan();
+        SchemaPlan constant = JsonSchema.fromJson("{\"const\":{\"n\":[" + DECIMAL + "]}}").formulate();
+        SchemaPlan enumeration = JsonSchema.fromJson("{\"enum\":[{\"n\":[" + DECIMAL + "]}]}").formulate();
         for (SchemaPlan plan : Arrays.asList(constant, enumeration)) {
             assertTrue(plan.isValid(java.util.Collections.singletonMap("n", Arrays.asList(EXACT))));
             assertFalse(plan.isValid(java.util.Collections.singletonMap("n", Arrays.asList(LOWER))));
         }
-        SchemaPlan unique = JsonSchema.fromJson("{\"uniqueItems\":true}").createPlan();
+        SchemaPlan unique = JsonSchema.fromJson("{\"uniqueItems\":true}").formulate();
         assertTrue(unique.isValid(Arrays.asList(EXACT, LOWER)));
         assertFalse(unique.isValid(Arrays.asList(EXACT, EXACT.setScale(EXACT.scale() + 1))));
     }
 
     @Test
-    void resourceAndExternalMappingsRetainPrecision() throws Exception {
+    void resourceAndExternalMappingsRetainPrecision() {
         URI uri = URI.create("https://example.test/exact");
         String json = "{\"minimum\":" + DECIMAL + "}";
-        ObjectSchema loaded = (ObjectSchema) SchemaLoader.parse(uri, new StringReader(json));
-        assertEquals(uri, loaded.retrievalUri());
+        ObjectSchema loaded = (ObjectSchema) JsonSchema.fromJson(new StringReader(json));
         assertEquals(EXACT, loaded.getNode("minimum"));
+        assertTrue(loaded.formulate().isValid(EXACT));
+        assertFalse(loaded.formulate().isValid(LOWER));
         JsonSchema external = SchemaLoader.parseExternalSchemas("{\"" + uri + "\":" + json + "}").get(uri);
         assertEquals(EXACT, ((ObjectSchema) external).getNode("minimum"));
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(uri, external);
-        SchemaPlan plan = JsonSchema.fromJson("{\"$ref\":\"" + uri + "\"}").createPlan(registry);
+        SchemaPlan plan = JsonSchema.fromJson("{\"$ref\":\"" + uri + "\"}").formulate(registry);
         assertTrue(plan.isValid(EXACT));
         assertFalse(plan.isValid(LOWER));
     }

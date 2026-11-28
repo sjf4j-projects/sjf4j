@@ -65,7 +65,7 @@ public final class BooleanSchema implements JsonSchema {
      * references or nested resources.
      */
     @Override
-    public SchemaPlan createPlan(SchemaRegistry registry) {
+    public SchemaPlan formulate(SchemaRegistry registry) {
         return SchemaPlan.of(null, PathSegment.Root.INSTANCE, this);
     }
 

@@ -127,16 +127,16 @@ public class SchemaBenchmark {
             strictFormatEnabled = Boolean.parseBoolean(strictFormat);
 
             JsonSchema objectSchemaDoc = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-            objectSchema = objectSchemaDoc.createPlan();
+            objectSchema = objectSchemaDoc.formulate();
 
             JsonSchema arraySchemaDoc = JsonSchema.fromJson(ARRAY_SCHEMA_JSON);
-            arraySchema = arraySchemaDoc.createPlan();
+            arraySchema = arraySchemaDoc.formulate();
 
             JsonSchema stringSchemaDoc = JsonSchema.fromJson(STRING_SCHEMA_JSON);
-            stringSchema = stringSchemaDoc.createPlan();
+            stringSchema = stringSchemaDoc.formulate();
 
             JsonSchema numberSchemaDoc = JsonSchema.fromJson(NUMBER_SCHEMA_JSON);
-            numberSchema = numberSchemaDoc.createPlan();
+            numberSchema = numberSchemaDoc.formulate();
 
             objectNode = JSON.readNode(OBJECT_NODE_JSON, Object.class);
             arrayNode = JSON.readNode(ARRAY_NODE_JSON, Object.class);
@@ -148,7 +148,7 @@ public class SchemaBenchmark {
     @Benchmark
     public Object schema_compile_object() {
         JsonSchema schema = JsonSchema.fromJson(OBJECT_SCHEMA_JSON);
-        return schema.createPlan();
+        return schema.formulate();
     }
 
     @Benchmark

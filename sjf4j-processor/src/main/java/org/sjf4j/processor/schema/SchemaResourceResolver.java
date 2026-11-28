@@ -110,7 +110,7 @@ final class SchemaResourceResolver {
         Path resourceDirectory = findResourceDirectory(sourceElement);
         String externalJson = annotation.externalSchemas();
         if (externalJson.isEmpty() && !annotation.externalSchemasRef().trim().isEmpty()) {
-            URI externalRef = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(
+            URI externalRef = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(
                     annotation.externalSchemasRef().trim());
             externalJson = read(externalRef, resourceDirectory);
             if (externalJson == null) {
@@ -131,7 +131,7 @@ final class SchemaResourceResolver {
             selectedUri = documentUri;
             rootDocument = inline;
         } else {
-            URI baseDir = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
+            URI baseDir = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR;
             if (!ref.isEmpty()) {
                 selectedUri = baseDir.resolve(ref);
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
@@ -210,9 +210,7 @@ final class SchemaResourceResolver {
             if (snapshot.externalUris.contains(snapshot.uris[i])) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
-        for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-            registry.index(entry.getKey(), entry.getValue());
-        }
+        external.forEach(registry::index);
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
         if (registry.resolve(URI.create(snapshot.selectedUri)) == null) {

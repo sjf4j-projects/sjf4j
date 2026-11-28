@@ -89,7 +89,7 @@ public class CreekSchemaBenchmark {
             }
             String schema = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             plan = JsonSchema.fromJson(schema)
-                    .createPlan(new org.sjf4j.schema.SchemaRegistry(SchemaDialect.DRAFT_2020_12));
+                    .formulate(new org.sjf4j.schema.SchemaRegistry(SchemaDialect.DRAFT_2020_12));
             networkntSchema = com.networknt.schema.SchemaRegistry
                     .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
                     .getSchema(JACKSON.readTree(schema));

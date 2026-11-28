@@ -38,7 +38,7 @@ public class SchemaValidationTest {
                 "  \"const\": \"a\"\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("a"));
         assertFalse(plan.isValid("b"));
@@ -48,7 +48,7 @@ public class SchemaValidationTest {
     @Test
     public void testValidateSuccessReusesSharedResult() {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\"}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         ValidationResult result = plan.validate("ok");
         assertSame(ValidationResult.SUCCESS, result);
@@ -77,9 +77,9 @@ public class SchemaValidationTest {
         assertEquals(JsonType.NULL, instance.jsonType());
         assertEquals(1, value.encodes);
 
-        assertTrue(JsonSchema.fromJson("{\"type\":\"null\",\"const\":null}").createPlan().isValid(value));
-        assertFalse(JsonSchema.fromJson("{\"type\":\"string\"}").createPlan().isValid(value));
-        assertTrue(JsonSchema.fromJson("{\"enum\":[null]}").createPlan().isValid(value));
+        assertTrue(JsonSchema.fromJson("{\"type\":\"null\",\"const\":null}").formulate().isValid(value));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"string\"}").formulate().isValid(value));
+        assertTrue(JsonSchema.fromJson("{\"enum\":[null]}").formulate().isValid(value));
 
         // Reusing the wrapper must never expose a stale converted value.
         instance.reuse("plain", JsonType.STRING, false);
@@ -96,16 +96,16 @@ public class SchemaValidationTest {
         assertEquals(Collections.emptyMap(), mapInstance.raw());
         assertEquals(JsonType.UNKNOWN, mapInstance.jsonType());
         assertTrue(mapInstance.converted());
-        assertTrue(JsonSchema.fromJson("{\"const\":{}}").createPlan().isValid(objectValue));
-        assertFalse(JsonSchema.fromJson("{\"type\":\"object\"}").createPlan().isValid(objectValue));
+        assertTrue(JsonSchema.fromJson("{\"const\":{}}").formulate().isValid(objectValue));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"object\"}").formulate().isValid(objectValue));
 
         ListValue listValue = new ListValue();
         Instance listInstance = Instance.infer(listValue);
         assertSame(listValue, listInstance.node());
         assertEquals(Collections.emptyList(), listInstance.raw());
         assertEquals(JsonType.UNKNOWN, listInstance.jsonType());
-        assertTrue(JsonSchema.fromJson("{\"const\":[]}").createPlan().isValid(listValue));
-        assertFalse(JsonSchema.fromJson("{\"type\":\"array\"}").createPlan().isValid(listValue));
+        assertTrue(JsonSchema.fromJson("{\"const\":[]}").formulate().isValid(listValue));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"array\"}").formulate().isValid(listValue));
     }
 
     @Test
@@ -118,7 +118,7 @@ public class SchemaValidationTest {
                 "  \"multipleOf\": 2\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(2));
         assertTrue(plan.isValid(8));
@@ -129,37 +129,37 @@ public class SchemaValidationTest {
     @Test
     public void testExactNumericBounds() {
         BigInteger max = new BigInteger("18446744073709551615");
-        SchemaPlan maximum = JsonSchema.fromNode(Collections.singletonMap("maximum", max)).createPlan();
+        SchemaPlan maximum = JsonSchema.fromNode(Collections.singletonMap("maximum", max)).formulate();
         assertTrue(maximum.isValid(max));
         assertFalse(maximum.isValid(max.add(BigInteger.ONE)));
-        SchemaPlan minimum = JsonSchema.fromNode(Collections.singletonMap("minimum", max.negate())).createPlan();
+        SchemaPlan minimum = JsonSchema.fromNode(Collections.singletonMap("minimum", max.negate())).formulate();
         assertTrue(minimum.isValid(max.negate()));
         assertFalse(minimum.isValid(max.negate().subtract(BigInteger.ONE)));
 
         BigDecimal bound = new BigDecimal("972783798187987123879878123.18878137");
         BigDecimal delta = new BigDecimal("0.000000001");
         SchemaPlan exclusiveMaximum = JsonSchema.fromNode(
-                Collections.singletonMap("exclusiveMaximum", bound)).createPlan();
+                Collections.singletonMap("exclusiveMaximum", bound)).formulate();
         assertTrue(exclusiveMaximum.isValid(bound.subtract(delta)));
         assertFalse(exclusiveMaximum.isValid(bound));
         assertFalse(exclusiveMaximum.isValid(bound.add(delta)));
         SchemaPlan exclusiveMinimum = JsonSchema.fromNode(
-                Collections.singletonMap("exclusiveMinimum", bound.negate())).createPlan();
+                Collections.singletonMap("exclusiveMinimum", bound.negate())).formulate();
         assertTrue(exclusiveMinimum.isValid(bound.negate().add(delta)));
         assertFalse(exclusiveMinimum.isValid(bound.negate()));
         assertFalse(exclusiveMinimum.isValid(bound.negate().subtract(delta)));
 
-        SchemaPlan largeLong = JsonSchema.fromJson("{\"maximum\":9007199254740992}").createPlan();
+        SchemaPlan largeLong = JsonSchema.fromJson("{\"maximum\":9007199254740992}").formulate();
         assertFalse(largeLong.isValid(9007199254740993L));
         SchemaPlan huge = JsonSchema.fromNode(
-                Collections.singletonMap("exclusiveMinimum", new BigDecimal("1e400"))).createPlan();
+                Collections.singletonMap("exclusiveMinimum", new BigDecimal("1e400"))).formulate();
         assertTrue(huge.isValid(new BigDecimal("2e400")));
         assertFalse(huge.isValid(new BigDecimal("1e400")));
     }
 
     @Test
     public void testMultipleOfDoesNotRoundQuotient() {
-        SchemaPlan three = JsonSchema.fromJson("{\"multipleOf\":3}").createPlan();
+        SchemaPlan three = JsonSchema.fromJson("{\"multipleOf\":3}").formulate();
         assertTrue(three.isValid(300000000000000000000d));
         assertFalse(three.isValid(100000000000000000000d));
         assertTrue(three.isValid(new BigInteger("300000000000000000000")));
@@ -178,7 +178,7 @@ public class SchemaValidationTest {
         assertFalse(three.isValid(9007199254740992d));
 
         SchemaPlan tenth = JsonSchema.fromNode(
-                Collections.singletonMap("multipleOf", new BigDecimal("0.1"))).createPlan();
+                Collections.singletonMap("multipleOf", new BigDecimal("0.1"))).formulate();
         assertTrue(tenth.isValid(0.3d));
         assertTrue(tenth.isValid(0.3f));
         assertFalse(tenth.isValid(new BigDecimal("0.300000000000000001")));
@@ -188,14 +188,14 @@ public class SchemaValidationTest {
     public void testExactNumericEqualityAndUniqueness() {
         BigDecimal first = new BigDecimal("0.123456789123456789");
         BigDecimal second = new BigDecimal("0.123456789123456790");
-        SchemaPlan constPlan = JsonSchema.fromNode(Collections.singletonMap("const", first)).createPlan();
+        SchemaPlan constPlan = JsonSchema.fromNode(Collections.singletonMap("const", first)).formulate();
         assertTrue(constPlan.isValid(first));
         assertFalse(constPlan.isValid(second));
         SchemaPlan enumPlan = JsonSchema.fromNode(
-                Collections.singletonMap("enum", Collections.singletonList(first))).createPlan();
+                Collections.singletonMap("enum", Collections.singletonList(first))).formulate();
         assertTrue(enumPlan.isValid(first));
         assertFalse(enumPlan.isValid(second));
-        SchemaPlan unique = JsonSchema.fromJson("{\"uniqueItems\":true}").createPlan();
+        SchemaPlan unique = JsonSchema.fromJson("{\"uniqueItems\":true}").formulate();
         assertTrue(unique.isValid(Arrays.asList(first, second)));
         assertFalse(unique.isValid(Arrays.asList(first, first.setScale(20))));
         assertFalse(unique.isValid(Arrays.asList(0.1f, new BigDecimal("0.10"))));
@@ -216,7 +216,7 @@ public class SchemaValidationTest {
                     "  \"pattern\": \"^[a-z]+$\"\n" +
                     "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("ab"));
         assertTrue(plan.isValid("abcd"));
@@ -228,8 +228,8 @@ public class SchemaValidationTest {
     @Test
     public void testJsonContentMediaType() {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-        SchemaPlan json = JsonSchema.fromJson("{\"contentMediaType\":\"application/json\"}").createPlan(registry);
-        SchemaPlan base64Json = JsonSchema.fromJson("{\"contentEncoding\":\"base64\",\"contentMediaType\":\"application/json\"}").createPlan(registry);
+        SchemaPlan json = JsonSchema.fromJson("{\"contentMediaType\":\"application/json\"}").formulate(registry);
+        SchemaPlan base64Json = JsonSchema.fromJson("{\"contentEncoding\":\"base64\",\"contentMediaType\":\"application/json\"}").formulate(registry);
 
         assertTrue(json.isValid("{\"foo\":\"bar\"}"));
         assertFalse(json.isValid("{:}"));
@@ -241,7 +241,7 @@ public class SchemaValidationTest {
         }
         assertFalse(json.isValid("{\"" + (char) 1 + "\":1}"));
         assertFalse(base64Json.isValid("/w=="));
-        SchemaPlan base64 = JsonSchema.fromJson("{\"contentEncoding\":\"base64\"}").createPlan(registry);
+        SchemaPlan base64 = JsonSchema.fromJson("{\"contentEncoding\":\"base64\"}").formulate(registry);
         assertTrue(base64.isValid("/w=="));
         assertTrue(base64Json.isValid("eyJmb28iOiAiYmFyIn0K"));
         assertFalse(base64Json.isValid("ezp9Cg=="));
@@ -256,7 +256,7 @@ public class SchemaValidationTest {
                 "  \"maxLength\": 2\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("e\u0301"));
     }
@@ -272,7 +272,7 @@ public class SchemaValidationTest {
                         "  \"items\": { \"type\": \"integer\" }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Arrays.asList(1, 2)));
         assertFalse(plan.isValid(Collections.emptyList()));
@@ -292,7 +292,7 @@ public class SchemaValidationTest {
                 "  \"items\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Arrays.asList("a", 1)));
         assertFalse(plan.isValid(Arrays.asList("a", 1, 2)));
@@ -307,7 +307,7 @@ public class SchemaValidationTest {
                 "\"type\":\"string\"},{\"type\":\"number\"}]," +
                 "\"additionalItems\":false" +
                 "}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Arrays.asList("a", 1)));
         assertFalse(plan.isValid(Arrays.asList("a", 1, 2)));
@@ -326,7 +326,7 @@ public class SchemaValidationTest {
                         "  }\n" +
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("a", 1);
@@ -350,7 +350,7 @@ public class SchemaValidationTest {
                 "  \"additionalProperties\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> ok = new HashMap<String, Object>();
         ok.put("x-a", 1);
@@ -370,7 +370,7 @@ public class SchemaValidationTest {
                 "  \"additionalProperties\": false\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("y", 1);
@@ -401,7 +401,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("name", 1);
@@ -423,7 +423,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> bad = new HashMap<>();
         bad.put("name", null);
@@ -438,7 +438,7 @@ public class SchemaValidationTest {
     @Test
     public void testArrayItemTypeErrorUsesIndexedInstancePathForNullLeaf() {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"string\"}}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         ValidationResult result = plan.validate(Arrays.asList("ok", null), true, false);
         assertFalse(result.isValid());
@@ -460,7 +460,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> bad = new HashMap<>();
         bad.put("site", URI.create("ftp://example.com"));
@@ -480,7 +480,7 @@ public class SchemaValidationTest {
                 "  \"propertyNames\": { \"pattern\": \"^[a-z]+$\" }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> bad = new HashMap<String, Object>();
         bad.put("Bad-Name", 1);
@@ -502,7 +502,7 @@ public class SchemaValidationTest {
                 "  }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> ok = new HashMap<>();
         ok.put("a", 1);
@@ -530,7 +530,7 @@ public class SchemaValidationTest {
                 "\"name\":{\"required\":[\"billing_address\"]}" +
                 "}" +
                 "}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"credit_card\":1,\"billing_address\":\"x\"}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"credit_card\":1}")));
@@ -545,7 +545,7 @@ public class SchemaValidationTest {
                 "\"type\":\"object\"," +
                 "\"dependencies\":{\"a\":[\"b\"]}" +
                 "}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
@@ -561,7 +561,7 @@ public class SchemaValidationTest {
                 "  ]\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("a"));
         assertTrue(plan.isValid(1));
@@ -574,7 +574,7 @@ public class SchemaValidationTest {
                 "\"oneOf\":[" +
                 "{\"required\":[\"missing\"],\"properties\":{\"present\":true}}," +
                 "{\"required\":[\"present\"]}" +
-                "]}").createPlan();
+                "]}").formulate();
         int[] entrySetCalls = {0};
         Map<String, Object> instance = new HashMap<String, Object>() {
             @Override
@@ -593,7 +593,7 @@ public class SchemaValidationTest {
     public void testFailFastOneOfChecksLaterMatchingCandidate() {
         SchemaPlan plan = JsonSchema.fromJson("{" +
                 "\"oneOf\":[{\"required\":[\"a\"]},{\"required\":[\"a\"]}]" +
-                "}").createPlan();
+                "}").formulate();
 
         ValidationResult result = plan.validate(Collections.singletonMap("a", 1), true, false);
         assertFalse(result.isValid());
@@ -605,7 +605,7 @@ public class SchemaValidationTest {
         SchemaPlan plan = JsonSchema.fromJson("{" +
                 "\"required\":[\"missing\"]," +
                 "\"properties\":{\"present\":{\"type\":\"string\"}}" +
-                "}").createPlan();
+                "}").formulate();
 
         ValidationResult result = plan.validate(Collections.singletonMap("present", 1));
         assertFalse(result.isValid());
@@ -624,7 +624,7 @@ public class SchemaValidationTest {
                 "  \"else\": { \"required\": [\"c\"] }\n" +
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         Map<String, Object> ok1 = new HashMap<>();
         ok1.put("a", 1);
@@ -660,7 +660,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
@@ -678,7 +678,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"abc\":1}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"Abc\":1}")));
@@ -693,7 +693,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(JsonArray.fromJson("[\"a\",1]")));
         assertFalse(plan.isValid(JsonArray.fromJson("[\"a\",\"b\"]")));
@@ -709,7 +709,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(JsonArray.fromJson("[1,2]")));
         assertFalse(plan.isValid(JsonArray.fromJson("[1,\"a\"]")));
@@ -727,7 +727,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":2}")));
@@ -745,7 +745,7 @@ public class SchemaValidationTest {
                         "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\"}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"a\":1,\"b\":\"x\",\"c\":3}")));
@@ -762,7 +762,7 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(JsonArray.fromJson("[1]")));
         assertFalse(plan.isValid(JsonArray.fromJson("[1,2]")));
@@ -777,7 +777,7 @@ public class SchemaValidationTest {
                 "}";
 
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
@@ -805,7 +805,7 @@ public class SchemaValidationTest {
         registry.index(metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{\"$schema\":\"http://localhost:1234/draft2020-12/format-assertion-true.json\",\"type\":\"string\",\"format\":\"email\"}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("a@b.com"));
         assertFalse(plan.isValid("not-email"));
@@ -828,7 +828,7 @@ public class SchemaValidationTest {
                 "\"type\":\"string\"" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid(1));
@@ -849,7 +849,7 @@ public class SchemaValidationTest {
                 "\"$schema\":\"https://example.com/meta/core-only\"," +
                 "\"type\":\"string\"" +
                 "}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("ok"));
         assertTrue(plan.isValid(1));
@@ -872,7 +872,7 @@ public class SchemaValidationTest {
                 "\"type\":\"string\"," +
                 "\"format\":\"email\"" +
                 "}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("a@b.com"));
         assertFalse(plan.isValid("not-email"));
@@ -896,7 +896,7 @@ public class SchemaValidationTest {
                 "\"type\":\"string\"," +
                 "\"format\":\"email\"" +
                 "}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
@@ -904,17 +904,18 @@ public class SchemaValidationTest {
 
     @Test
     public void testDraft2019FormatVocabularyActivatesFormatWithoutAssertion() {
-        ObjectSchema metaSchema = (ObjectSchema) new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR)
-                .load(URI.create("draft2019-09/schema.json"));
+        SchemaLoader loader = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
+        URI uri = loader.resolve(URI.create("draft2019-09/schema.json"));
+        JsonSchema metaSchema = loader.load(uri);
         SchemaRegistry registry = new SchemaRegistry();
-        registry.index(metaSchema);
+        registry.index(uri, metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
                 "\"type\":\"string\"," +
                 "\"format\":\"email\"" +
                 "}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
@@ -932,7 +933,7 @@ public class SchemaValidationTest {
                 "\"child\":{\"$recursiveRef\":\"#\"}" +
                 "}" +
                 "}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(Sjf4j.global().fromJson("{\"value\":\"root\",\"child\":{\"value\":\"leaf\"}}")));
         assertFalse(plan.isValid(Sjf4j.global().fromJson("{\"value\":\"root\",\"child\":{\"value\":1}}")));
@@ -950,7 +951,7 @@ public class SchemaValidationTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
 
-        SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
+        SchemaPlan plan = assertDoesNotThrow(() -> schema.formulate());
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid(1));
     }
@@ -958,7 +959,7 @@ public class SchemaValidationTest {
     @Test
     public void testUnknownFormatIgnoredInStrictMode() {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"unknown\"}");
-        SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
+        SchemaPlan plan = assertDoesNotThrow(() -> schema.formulate());
 
         assertTrue(plan.validate("still-valid", false, true).isValid());
     }
@@ -966,36 +967,36 @@ public class SchemaValidationTest {
     @Test
     public void testStrictFormatValidators() {
         JsonSchema hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}");
-        SchemaPlan hostnamePlan = hostname.createPlan();
+        SchemaPlan hostnamePlan = hostname.formulate();
         assertTrue(hostnamePlan.validate("hostname", false, true).isValid());
 
         JsonSchema ipv6 = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"ipv6\"}");
-        SchemaPlan ipv6Plan = ipv6.createPlan();
+        SchemaPlan ipv6Plan = ipv6.formulate();
         assertTrue(ipv6Plan.validate("::1", false, true).isValid());
 
         JsonSchema relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}");
-        SchemaPlan relativeJsonPointerPlan = relativeJsonPointer.createPlan();
+        SchemaPlan relativeJsonPointerPlan = relativeJsonPointer.formulate();
         assertTrue(relativeJsonPointerPlan.validate("0#", false, true).isValid());
 
         JsonSchema uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}");
-        SchemaPlan uriTemplatePlan = uriTemplate.createPlan();
+        SchemaPlan uriTemplatePlan = uriTemplate.formulate();
         assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", false, true).isValid());
     }
 
     @Test
     public void testStrictFormatValidatorsForDraft2020Fixes() {
-        SchemaPlan time = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"time\"}").createPlan();
+        SchemaPlan time = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"time\"}").formulate();
         assertTrue(time.validate("23:59:60Z", false, true).isValid());
         assertTrue(time.validate("01:29:60+01:30", false, true).isValid());
         assertFalse(time.validate("23:59:60+00:30", false, true).isValid());
         assertFalse(time.validate("12:00:00", false, true).isValid());
 
-        SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
+        SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").formulate();
         assertTrue(dateTime.validate("1998-12-31T23:59:60Z", false, true).isValid());
         assertFalse(dateTime.validate("+11963-06-19T08:30:06.283185Z", false, true).isValid());
         assertFalse(dateTime.validate("1990-12-31T15:59:59-24:00", false, true).isValid());
 
-        SchemaPlan duration = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"duration\"}").createPlan();
+        SchemaPlan duration = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"duration\"}").formulate();
         assertTrue(duration.validate("P1Y2M3DT4H5M6S", false, true).isValid());
         assertFalse(duration.validate("P", false, true).isValid());
         assertFalse(duration.validate("PT", false, true).isValid());
@@ -1004,13 +1005,13 @@ public class SchemaValidationTest {
         assertFalse(duration.validate("P1Y2D", false, true).isValid());
         assertFalse(duration.validate("PT1H2S", false, true).isValid());
 
-        SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
+        SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").formulate();
         assertTrue(email.validate("\"joe bloggs\"@example.com", false, true).isValid());
         assertTrue(email.validate("joe.bloggs@[127.0.0.1]", false, true).isValid());
         assertTrue(email.validate("joe.bloggs@[IPv6:::1]", false, true).isValid());
         assertFalse(email.validate("joe bloggs@example.com", false, true).isValid());
 
-        SchemaPlan idnEmail = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-email\"}").createPlan();
+        SchemaPlan idnEmail = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-email\"}").formulate();
         assertTrue(idnEmail.validate("실례@실례.테스트", false, true).isValid());
         assertTrue(idnEmail.validate("\u0085@example.com", false, true).isValid());
         assertFalse(idnEmail.validate("a\u0001@example.com", false, true).isValid());
@@ -1022,13 +1023,13 @@ public class SchemaValidationTest {
         assertFalse(idnEmail.validate(".a@example.com", false, true).isValid());
         assertFalse(idnEmail.validate("a..b@example.com", false, true).isValid());
 
-        SchemaPlan relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}").createPlan();
+        SchemaPlan relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}").formulate();
         assertTrue(relativeJsonPointer.validate("2147483648/a", false, true).isValid());
         assertTrue(relativeJsonPointer.validate("999999999999999999999999999999999999999999999999/a", false, true).isValid());
         assertFalse(relativeJsonPointer.validate("١/foo", false, true).isValid());
         assertFalse(relativeJsonPointer.validate("01/a", false, true).isValid());
 
-        SchemaPlan uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}").createPlan();
+        SchemaPlan uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}").formulate();
         assertTrue(uriTemplate.validate("a%41b{+a.b,%41:9999}{var*}", false, true).isValid());
         assertFalse(uriTemplate.validate("a|b", false, true).isValid());
         assertTrue(uriTemplate.validate("a'b", false, true).isValid());
@@ -1048,18 +1049,18 @@ public class SchemaValidationTest {
         assertFalse(uriTemplate.validate("{,+a}", false, true).isValid());
         assertFalse(uriTemplate.validate("foo}bar", false, true).isValid());
 
-        SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
+        SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").formulate();
         assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", false, true).isValid());
         assertFalse(iri.validate("http://2001:0db8:85a3:0000:0000:8a2e:0370:7334", false, true).isValid());
 
-        SchemaPlan iriReference = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri-reference\"}").createPlan();
+        SchemaPlan iriReference = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri-reference\"}").formulate();
         assertTrue(iriReference.validate("//[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/path", false, true).isValid());
         assertFalse(iriReference.validate("//2001:0db8:85a3:0000:0000:8a2e:0370:7334/path", false, true).isValid());
 
-        SchemaPlan regex = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"regex\"}").createPlan();
+        SchemaPlan regex = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"regex\"}").formulate();
         assertFalse(regex.validate("\\a", false, true).isValid());
 
-        SchemaPlan hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}").createPlan();
+        SchemaPlan hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}").formulate();
         assertFalse(hostname.validate("xn--X", false, true).isValid());
         assertFalse(hostname.validate("xn--al-0ea", false, true).isValid());
         assertFalse(hostname.validate("xn--S-jib3p", false, true).isValid());
@@ -1069,7 +1070,7 @@ public class SchemaValidationTest {
         assertFalse(hostname.validate("XN--aa---o47jg78q", false, true).isValid());
         assertTrue(hostname.validate("xn--11b2ezcw70k", false, true).isValid());
 
-        SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
+        SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").formulate();
         assertTrue(idnHostname.validate("a\u3002b", false, true).isValid());
         assertFalse(idnHostname.validate("\u3002", false, true).isValid());
         assertFalse(idnHostname.validate("example\u3002", false, true).isValid());
@@ -1098,23 +1099,23 @@ public class SchemaValidationTest {
 
     @Test
     public void testStrictFormatContractsForInternetIdentifiers() {
-        SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
+        SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").formulate();
         assertTrue(email.validate("user+tag@example.com", false, true).isValid());
         assertFalse(email.validate("user@example..com", false, true).isValid());
 
-        SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
+        SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").formulate();
         assertTrue(dateTime.validate("2024-02-29T12:30:00Z", false, true).isValid());
         assertFalse(dateTime.validate("2023-02-29T12:30:00Z", false, true).isValid());
 
-        SchemaPlan uri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri\"}").createPlan();
+        SchemaPlan uri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri\"}").formulate();
         assertTrue(uri.validate("https://example.com/a%20path?query=value#fragment", false, true).isValid());
         assertFalse(uri.validate("https://example.com/a space", false, true).isValid());
 
-        SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
+        SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").formulate();
         assertTrue(iri.validate("https://例え.テスト/検索", false, true).isValid());
         assertFalse(iri.validate("https://例え.テスト/has space", false, true).isValid());
 
-        SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
+        SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").formulate();
         assertTrue(idnHostname.validate("例え.テスト", false, true).isValid());
         assertFalse(idnHostname.validate("例え..テスト", false, true).isValid());
     }
@@ -1122,7 +1123,7 @@ public class SchemaValidationTest {
     @Test
     public void testNullSubschemaRejected() {
         JsonSchema schema = JsonSchema.fromJson("{\"items\":null}");
-        assertThrows(SchemaException.class, () -> schema.createPlan());
+        assertThrows(SchemaException.class, () -> schema.formulate());
     }
 
     @Test
@@ -1134,7 +1135,7 @@ public class SchemaValidationTest {
                 "  \"unevaluatedItems\": false\n" +
                 "}";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         plan.requireValid(JsonArray.fromJson("[1]"));
         assertTrue(plan.isValid(JsonArray.fromJson("[1]")));
@@ -1147,7 +1148,7 @@ public class SchemaValidationTest {
     public void testUniqueItemsSemanticEquality() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"type\":\"array\",\"uniqueItems\":true}"
-        ).createPlan();
+        ).formulate();
 
         // Numeric equality must ignore Java boxed types.
         assertFalse(plan.isValid(Arrays.asList(1, 1.0)));
@@ -1180,7 +1181,7 @@ public class SchemaValidationTest {
     public void testUniqueItemsLargeArrayAndHashCollisions() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"type\":\"array\",\"uniqueItems\":true}"
-        ).createPlan();
+        ).formulate();
 
         List<Object> values = new java.util.ArrayList<>();
         for (int i = 0; i < 64; i++) {

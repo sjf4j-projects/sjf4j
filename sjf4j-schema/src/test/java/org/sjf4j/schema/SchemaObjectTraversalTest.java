@@ -65,7 +65,7 @@ class SchemaObjectTraversalTest {
     }
 
     static SchemaPlan schema(String json) {
-        return JsonSchema.fromJson(json).createPlan();
+        return JsonSchema.fromJson(json).formulate();
     }
 
     @Test

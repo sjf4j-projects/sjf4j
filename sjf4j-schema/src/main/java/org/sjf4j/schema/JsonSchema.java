@@ -6,12 +6,14 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.node.NodeMapper;
 
+import java.io.Reader;
+
 
 /**
  * Parsed JSON Schema document represented as an OBNT object node or value node.
  * <p>
  * Implementations are lightweight schema models. Runtime validation uses the
- * compiled {@link SchemaPlan} returned by {@link #createPlan(SchemaRegistry)}.
+ * compiled {@link SchemaPlan} returned by {@link #formulate(SchemaRegistry)}.
  * A schema may be boolean ({@link BooleanSchema}) or object-shaped
  * ({@link ObjectSchema}); invalid schema content fails during parsing or
  * compilation rather than yielding a validation result for an instance.
@@ -32,7 +34,7 @@ public interface JsonSchema {
      * No compiled plans are registered. Passing {@code null} means "compile with an
      * empty external registry context".
      */
-    SchemaPlan createPlan(SchemaRegistry registry);
+    SchemaPlan formulate(SchemaRegistry registry);
 
 
     /*
@@ -43,12 +45,27 @@ public interface JsonSchema {
     /**
      * Compiles this schema with no caller-provided external registry.
      * <p>
-     * Built-in global meta-schemas are still available through the planner and
-     * registry internals. Their schema models are indexed eagerly, while their
-     * compiled plans are still created lazily on first resolution.
+     * Shared resources in {@link GlobalSchemas} are still available through the
+     * registry. Plans are compiled lazily in the current registry.
      */
+    default SchemaPlan formulate() {
+        return formulate(null);
+    }
+
+    /**
+     * @deprecated Use {@link #formulate(SchemaRegistry)} instead.
+     */
+    @Deprecated
+    default SchemaPlan createPlan(SchemaRegistry registry) {
+        return formulate(registry);
+    }
+
+    /**
+     * @deprecated Use {@link #formulate()} instead.
+     */
+    @Deprecated
     default SchemaPlan createPlan() {
-        return createPlan(null);
+        return formulate();
     }
 
     /*
@@ -64,6 +81,14 @@ public interface JsonSchema {
      */
     static JsonSchema fromJson(String json) {
         return SchemaSupport.readSchema(json);
+    }
+
+    /**
+     * Reads a schema model directly from a reader using exact generic numeric reads.
+     * The returned value is not compiled yet.
+     */
+    static JsonSchema fromJson(Reader reader) {
+        return SchemaSupport.readSchema(reader);
     }
 
     /**

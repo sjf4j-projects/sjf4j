@@ -395,7 +395,7 @@ public class ValidJsonSchemaTest {
 
     @Test
     public void testDefaultStrictFormatDisabled() {
-        SchemaValidator validator = new SchemaValidator(new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR), null, false);
+        SchemaValidator validator = new SchemaValidator(new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR), null, false);
         FormatUser user = new FormatUser();
         user.email = "not-email";
         assertTrue(validator.validate(user).isValid());

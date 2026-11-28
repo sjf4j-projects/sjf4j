@@ -21,7 +21,7 @@ class SchemaExceptionMessageTest {
     @MethodSource("negativeKeywords")
     void negativeKeyword_reportsSchemaLocation(String keyword) {
         SchemaException error = assertThrows(SchemaException.class,
-                () -> schema("{\"properties\":{\"nested\":{\"" + keyword + "\":-1}}}").createPlan());
+                () -> schema("{\"properties\":{\"nested\":{\"" + keyword + "\":-1}}}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid '" + keyword + "' keyword: value must be >= 0",
@@ -43,7 +43,7 @@ class SchemaExceptionMessageTest {
     @Test
     void invalidType_reportsSchemaLocation() {
         SchemaException error = assertThrows(SchemaException.class,
-                () -> schema("{\"type\":1}").createPlan());
+                () -> schema("{\"type\":1}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid 'type' keyword", "/type", SCHEMA_URI);
@@ -53,7 +53,7 @@ class SchemaExceptionMessageTest {
     @Test
     void invalidMultipleOf_reportsSchemaLocation() {
         SchemaException error = assertThrows(SchemaException.class,
-                () -> schema("{\"multipleOf\":0}").createPlan());
+                () -> schema("{\"multipleOf\":0}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid 'multipleOf' keyword", "/multipleOf", SCHEMA_URI);
@@ -62,7 +62,7 @@ class SchemaExceptionMessageTest {
     @Test
     void invalidPattern_reportsSchemaLocation() {
         SchemaException error = assertThrows(SchemaException.class,
-                () -> schema("{\"pattern\":\"[\"}").createPlan());
+                () -> schema("{\"pattern\":\"[\"}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid regex for keyword 'pattern'", "/pattern", SCHEMA_URI);
@@ -71,7 +71,7 @@ class SchemaExceptionMessageTest {
     @Test
     void invalidPatternProperties_reportsSchemaLocation() {
         SchemaException error = assertThrows(SchemaException.class,
-                () -> schema("{\"patternProperties\":{\"[\":{\"type\":\"string\"}}}").createPlan());
+                () -> schema("{\"patternProperties\":{\"[\":{\"type\":\"string\"}}}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.invalid", "invalid regex for keyword 'patternProperties'",
@@ -91,7 +91,7 @@ class SchemaExceptionMessageTest {
     void unsupportedLocalLoad_reportsRootLocation() {
         URI uri = URI.create("https://example.com/schema.json");
         SchemaException error = assertThrows(SchemaException.class,
-                () -> new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR).load(uri));
+                () -> new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR).load(uri));
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.load", "unsupported schema URI scheme", "/", uri.toString());
@@ -103,7 +103,7 @@ class SchemaExceptionMessageTest {
         String childUri = "https://example.com/child.json";
         SchemaException error = assertThrows(SchemaException.class,
                 () -> schema("{\"properties\":{\"nested\":{\"$id\":\"" + childUri + "\",\""
-                        + keyword + "\":\"missing\"}}}").createPlan());
+                        + keyword + "\":\"missing\"}}}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertSchemaMessage(error, "schema.resolve", "cannot resolve schema resource", "/" + keyword, childUri);
@@ -116,7 +116,7 @@ class SchemaExceptionMessageTest {
         String childUri = "urn:example:opaque";
         SchemaException error = assertThrows(SchemaException.class,
                 () -> schema("{\"properties\":{\"nested\":{\"$id\":\"" + childUri + "\",\""
-                        + keyword + "\":\"other\"}}}").createPlan());
+                        + keyword + "\":\"other\"}}}").formulate());
 
         assertEquals(SchemaException.class, error.getClass());
         assertEquals("SCHEMA schema.resolve: cannot resolve " + keyword + " URI 'other': base='"
@@ -147,7 +147,7 @@ class SchemaExceptionMessageTest {
 
     @Test
     void runtimeCycle_isNodeExceptionWithSchemaLocation() {
-        SchemaPlan plan = schema("{\"$ref\":\"#\"}").createPlan();
+        SchemaPlan plan = schema("{\"$ref\":\"#\"}").formulate();
 
         NodeException error = assertThrows(NodeException.class, () -> plan.validate("value"));
         assertEquals(NodeException.class, error.getClass());

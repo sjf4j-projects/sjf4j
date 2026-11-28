@@ -83,7 +83,7 @@ class CompiledValidatorCreekPhaseTest {
     @Test
     void compiledPartialChecksMatchFullPlan() {
         Validator validator = CompiledInstances.create(Validator.class);
-        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).formulate();
         List<Model> models = Arrays.asList(
                 new Model(BigDecimal.ONE, Kind.THIS, List.of("a", "b"), "good", List.of("A", 2)),
                 new Model(BigDecimal.ZERO, Kind.THIS, List.of("a"), "good", List.of("A")),

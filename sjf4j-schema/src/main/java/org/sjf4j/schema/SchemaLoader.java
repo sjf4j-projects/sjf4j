@@ -27,29 +27,24 @@ import java.util.Map;
 @FunctionalInterface
 public interface SchemaLoader {
 
+    /** Default classpath directory for annotation-based schema discovery. */
+    URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
+
     /**
      * Returns the parsed document, or null if it is missing.
      * Any URI fragment is ignored for retrieval; fragment resolution belongs to SchemaRegistry.
+     * The returned model does not carry its retrieval URI. Use {@link #resolve(URI)}
+     * and {@link SchemaRegistry#index(URI, JsonSchema)} to index the loaded document.
      */
     JsonSchema load(URI uri);
 
     /**
      * Resolves a reference to its retrieval URI. Loaders with a configured
-     * base directory should override this method to resolve relative refs.
+     * base directory should override this method to resolve relative refs to absolute URIs.
+     * Preserve any fragment for the caller's subsequent plan selection.
      */
     default URI resolve(URI uri) {
         return Asserts.notNull(uri, "uri");
-    }
-
-    /** Parses an already opened schema document and records its retrieval URI. */
-    static JsonSchema parse(URI uri, Reader reader) throws IOException {
-        URI document = SchemaUtil.documentUri(uri);
-        char[] chars = new char[4096];
-        StringBuilder json = new StringBuilder();
-        for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
-        JsonSchema schema = JsonSchema.fromJson(json.toString());
-        if (schema instanceof ObjectSchema) ((ObjectSchema) schema).retrievalUri(document);
-        return schema;
     }
 
     /**
@@ -172,7 +167,7 @@ public interface SchemaLoader {
             URI document = SchemaUtil.documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
-                return reader == null ? null : SchemaLoader.parse(document, reader);
+                return reader == null ? null : JsonSchema.fromJson(reader);
             } catch (IOException e) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                         "failed to read schema resource", PathSegment.Root.INSTANCE, document), e);

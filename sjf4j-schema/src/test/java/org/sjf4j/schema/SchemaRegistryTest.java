@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,7 +16,7 @@ class SchemaRegistryTest {
 
     @Test
     void loadSchemaFromMissingLocalUri_returnsNull() {
-        assertNull(new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR)
+        assertNull(new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR)
                 .load(URI.create("classpath:///json-schemas/missing-schema.json")));
     }
 
@@ -57,6 +58,49 @@ class SchemaRegistryTest {
     }
 
     @Test
+    void sameModelCanBeIndexedAtDifferentRetrievalUris() {
+        URI first = URI.create("https://a.example/root.json");
+        URI second = URI.create("https://b.example/root.json");
+        JsonSchema model = JsonSchema.fromJson("{\"$ref\":\"leaf.json\"}");
+        SchemaRegistry a = new SchemaRegistry();
+        SchemaRegistry b = new SchemaRegistry();
+
+        a.index(first, model);
+        a.index(first.resolve("leaf.json"), JsonSchema.fromJson("{\"type\":\"string\"}"));
+        b.index(second, model);
+        b.index(second.resolve("leaf.json"), JsonSchema.fromJson("{\"type\":\"integer\"}"));
+
+        assertTrue(a.resolve(first).isValid("text"));
+        assertFalse(a.resolve(first).isValid(42));
+        assertTrue(b.resolve(second).isValid(42));
+        assertFalse(b.resolve(second).isValid("text"));
+    }
+
+    @Test
+    void nestedResourceIdentityUsesOwningDocumentAndPointer() {
+        URI uri = URI.create("https://example.test/root.json");
+        String json = "{\"$defs\":{\"child\":{\"$id\":\"child.json\",\"type\":\"string\"}}}";
+        SchemaResource resource = new SchemaResource(uri, JsonSchema.fromJson(json));
+        SchemaPlan first = SchemaPlanner.buildPlan(resource, null);
+        SchemaPlan second = SchemaPlanner.buildPlan(resource, null);
+        SchemaPlan firstChild = first.findFragment("/$defs/child");
+        SchemaPlan secondChild = second.findFragment("/$defs/child");
+        assertTrue(firstChild.resource.sameResource(secondChild.resource));
+
+        SchemaResource other = new SchemaResource(uri, JsonSchema.fromJson(json));
+        SchemaPlan otherChild = SchemaPlanner.buildPlan(other, null).findFragment("/$defs/child");
+        assertFalse(firstChild.resource.sameResource(otherChild.resource));
+
+        SchemaRegistry registry = new SchemaRegistry();
+        String key = "https://example.test/child.json";
+        registry.registerPlans(Collections.singletonMap(key, firstChild));
+        registry.registerPlans(Collections.singletonMap(key, secondChild));
+        assertSame(firstChild, registry.resolve(key, null));
+        assertThrows(SchemaException.class,
+                () -> registry.registerPlans(Collections.singletonMap(key, otherChild)));
+    }
+
+    @Test
     void index_allowsOrderIndependentDeferredCompilation() {
         ObjectSchema rootSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"http://example.com/root\"," +
@@ -72,7 +116,7 @@ class SchemaRegistryTest {
         registry.index(rootSchema);
         registry.index(leafSchema);
 
-        SchemaPlan plan = rootSchema.createPlan(registry);
+        SchemaPlan plan = rootSchema.formulate(registry);
         assertTrue(plan.validate("x").isValid());
         assertFalse(plan.validate("").isValid());
     }
@@ -258,7 +302,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(new SchemaRegistry()));
+                () -> schema.formulate(new SchemaRegistry()));
         assertTrue(ex.getMessage().contains("cannot resolve schema resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
         assertTrue(ex.getMessage().contains("preload or register the referenced schema"));
         assertTrue(ex.getMessage().contains("keyword=/$ref"));
@@ -277,7 +321,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(registry));
+                () -> schema.formulate(registry));
         assertTrue(ex.getMessage().contains("cannot resolve schema fragment '#/$defs/foo'"));
         assertTrue(ex.getMessage().contains("resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
         assertTrue(ex.getMessage().contains("keyword=/$ref"));
@@ -292,7 +336,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(new SchemaRegistry()));
+                () -> schema.formulate(new SchemaRegistry()));
         assertTrue(ex.getMessage().contains("cannot resolve $schema 'http://localhost:1234/draft2020-12/metaschema-no-validation.json'"));
         assertTrue(ex.getMessage().contains("preload or register the metaschema"));
         assertTrue(ex.getMessage().contains("keyword=/$schema"));

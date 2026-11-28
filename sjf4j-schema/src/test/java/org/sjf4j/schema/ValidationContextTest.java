@@ -16,7 +16,7 @@ class ValidationContextTest {
     @Test
     void failFastKeepsOneErrorWhenUnevaluatedKeywordsContinueEvaluation() {
         SchemaPlan objectPlan = JsonSchema.fromJson(
-                "{\"required\":[\"x\"],\"unevaluatedProperties\":false}").createPlan();
+                "{\"required\":[\"x\"],\"unevaluatedProperties\":false}").formulate();
         Map<String, Object> invalidObject = Map.of("extra", 1);
 
         ValidationResult failFastResult = objectPlan.validate(invalidObject, true, false);
@@ -29,7 +29,7 @@ class ValidationContextTest {
         assertEquals(2, aggregateResult.count());
 
         SchemaPlan arrayPlan = JsonSchema.fromJson(
-                "{\"minItems\":2,\"unevaluatedItems\":false}").createPlan();
+                "{\"minItems\":2,\"unevaluatedItems\":false}").formulate();
         ValidationResult failFastArray = arrayPlan.validate(Collections.singletonList(1), true, false);
         assertFalse(failFastArray.isValid());
         assertEquals(1, failFastArray.count());
@@ -58,7 +58,7 @@ class ValidationContextTest {
         };
         Object[] nodes = {Map.of("extra", 1), List.of(1)};
         for (int i = 0; i < schemas.length; i++) {
-            SchemaPlan plan = JsonSchema.fromJson(schemas[i]).createPlan();
+            SchemaPlan plan = JsonSchema.fromJson(schemas[i]).formulate();
             Instance instance = Instance.infer(nodes[i]);
             instance.createEvaluated();
             EvaluationBits enclosing = instance.peekEvaluated();
@@ -76,7 +76,7 @@ class ValidationContextTest {
     @Test
     void userValidationExceptionIsNotSwallowed() {
         SchemaPlan plan = JsonSchema.fromJson(
-                "{\"properties\":{\"x\":{\"type\":\"integer\"}}}").createPlan();
+                "{\"properties\":{\"x\":{\"type\":\"integer\"}}}").formulate();
         ValidationException failure = ValidationException.failure("type", null, null,
                 org.sjf4j.path.PathSegment.Root.INSTANCE);
         Map<String, Object> broken = new AbstractMap<String, Object>() {
@@ -94,7 +94,7 @@ class ValidationContextTest {
     void probeAndDynamicScopeRestoreTheirFramesOnThrownException() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"$dynamicAnchor\":\"active\",\"anyOf\":[{\"required\":[\"x\"]},false]}"
-        ).createPlan();
+        ).formulate();
         ValidationContext ctx = new ValidationContext(false, false, false);
         Map<String, Object> broken = new AbstractMap<String, Object>() {
             @Override

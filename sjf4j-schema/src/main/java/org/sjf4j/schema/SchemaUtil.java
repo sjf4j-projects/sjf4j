@@ -391,6 +391,19 @@ public final class SchemaUtil {
         return i >= 0 ? s.substring(0, i) : s;
     }
 
+    /** Checks that a resource URI is absolute before indexing it. */
+    static void checkResourceUri(URI uri) {
+        Asserts.notNull(uri, "uri");
+        if (uri.toString().isEmpty()) {
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
+                    "schema uri must not be empty", PathSegment.Root.INSTANCE, uri));
+        }
+        if (!uri.isAbsolute()) {
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_URI,
+                    "schema uri must be absolute", PathSegment.Root.INSTANCE, uri));
+        }
+    }
+
     /**
      * Normalizes a schema-resource registry key from a URI string.
      */

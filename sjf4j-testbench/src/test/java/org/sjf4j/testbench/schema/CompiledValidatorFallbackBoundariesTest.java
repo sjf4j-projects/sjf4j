@@ -78,8 +78,8 @@ class CompiledValidatorFallbackBoundariesTest {
     @Test
     void rootAndNestedArrayItemsResolveFallbackPointers() {
         Arrays validator = CompiledInstances.create(Arrays.class);
-        SchemaPlan root = JsonSchema.fromJson(ROOT_ARRAY).createPlan();
-        SchemaPlan nested = JsonSchema.fromJson(NESTED_ARRAY).createPlan();
+        SchemaPlan root = JsonSchema.fromJson(ROOT_ARRAY).formulate();
+        SchemaPlan nested = JsonSchema.fromJson(NESTED_ARRAY).formulate();
 
         for (Map<String, Object> element : List.of(
                 Map.<String, Object>of(),
@@ -99,8 +99,8 @@ class CompiledValidatorFallbackBoundariesTest {
     @Test
     void localFallbackPreservesNullMemberPresence() {
         LocalFallback compiled = CompiledInstances.create(LocalFallback.class);
-        SchemaPlan objectPlan = JsonSchema.fromJson(LOCAL_FALLBACK).createPlan();
-        SchemaPlan arrayPlan = JsonSchema.fromJson(ARRAY_LOCAL_FALLBACK).createPlan();
+        SchemaPlan objectPlan = JsonSchema.fromJson(LOCAL_FALLBACK).formulate();
+        SchemaPlan arrayPlan = JsonSchema.fromJson(ARRAY_LOCAL_FALLBACK).formulate();
         for (Object x : java.util.Arrays.asList(null, "present")) {
             Map<String, Object> nested = new LinkedHashMap<>();
             nested.put("x", x);
@@ -120,8 +120,8 @@ class CompiledValidatorFallbackBoundariesTest {
     @Test
     void hugeIntegerValuesAndDivisorsKeepExactRuntimeParity() {
         PreciseInteger compiled = CompiledInstances.create(PreciseInteger.class);
-        SchemaPlan small = JsonSchema.fromJson(SMALL_DIVISOR).createPlan();
-        SchemaPlan huge = JsonSchema.fromJson(HUGE_DIVISOR).createPlan();
+        SchemaPlan small = JsonSchema.fromJson(SMALL_DIVISOR).formulate();
+        SchemaPlan huge = JsonSchema.fromJson(HUGE_DIVISOR).formulate();
 
         BigInteger twoTo64 = BigInteger.ONE.shiftLeft(64);
         for (BigInteger input : List.of(

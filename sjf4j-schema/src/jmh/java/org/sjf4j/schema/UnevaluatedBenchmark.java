@@ -67,8 +67,8 @@ public class UnevaluatedBenchmark {
         }
         properties.append("},\"unevaluatedProperties\":{\"type\":\"integer\"}}");
         items.append("],\"unevaluatedItems\":{\"type\":\"integer\"}}");
-        propertiesPlan = JsonSchema.fromJson(properties.toString()).createPlan();
-        itemsPlan = JsonSchema.fromJson(items.toString()).createPlan();
+        propertiesPlan = JsonSchema.fromJson(properties.toString()).formulate();
+        itemsPlan = JsonSchema.fromJson(items.toString()).formulate();
         if (!propertiesPlan.validate(object).isValid() || !itemsPlan.validate(array).isValid()) {
             throw new IllegalStateException("Invalid unevaluated benchmark fixture");
         }

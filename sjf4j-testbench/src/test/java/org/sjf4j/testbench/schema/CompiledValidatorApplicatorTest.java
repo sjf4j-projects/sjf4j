@@ -112,7 +112,7 @@ class CompiledValidatorApplicatorTest {
     @Test
     void allOfChecksAllBranchesAndObjectProperties() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(ALL_OBJECT).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(ALL_OBJECT).formulate();
         for (Map<String, Object> map : Arrays.asList(
                 Map.<String, Object>of("x", 1),
                 Map.<String, Object>of("x", 2, "y", "ok"),
@@ -127,7 +127,7 @@ class CompiledValidatorApplicatorTest {
     @Test
     void anyOfAcceptsMultipleMatchesAndShortCircuitsCorrectly() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(ANY_OVERLAP).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(ANY_OVERLAP).formulate();
         for (int n : new int[]{-1, 0, 1, 9, 10, 15, 20, 25, 30, 31}) {
             assertEquals(reference.isValid(n), compiled.any(n), "anyOf: " + n);
         }
@@ -138,15 +138,15 @@ class CompiledValidatorApplicatorTest {
     @Test
     void notInvertsEntireSubschemaAndHandlesBooleanSchemas() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(NOT_LITERAL).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(NOT_LITERAL).formulate();
         for (String s : new String[]{"blocked", "ok", ""}) {
             assertEquals(reference.isValid(s), compiled.not(s), s);
             assertTrue(compiled.booleanTrue(s));
             assertFalse(compiled.allFalse(s));
-            assertEquals(JsonSchema.fromJson(ANY_FALSE).createPlan().isValid(s),
+            assertEquals(JsonSchema.fromJson(ANY_FALSE).formulate().isValid(s),
                     compiled.anyFalse(s));
         }
-        SchemaPlan nested = JsonSchema.fromJson(NESTED).createPlan();
+        SchemaPlan nested = JsonSchema.fromJson(NESTED).formulate();
         for (int n : new int[]{0, 1, 2, 3}) {
             assertEquals(nested.isValid(n), compiled.nested(n), "not(oneOf): " + n);
         }
@@ -155,7 +155,7 @@ class CompiledValidatorApplicatorTest {
     @Test
     void applicatorsAndSiblingKeywordsAreConjoined() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(SIBLINGS).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(SIBLINGS).formulate();
         for (int n : new int[]{-1, 0, 2, 4, 6, 31}) {
             NumberModel model = new NumberModel(n);
             assertEquals(reference.isValid(model), compiled.siblings(model), "number: " + n);
@@ -167,18 +167,18 @@ class CompiledValidatorApplicatorTest {
     @Test
     void collectionItemsRefsAndStrictFormatRetainRuntimeBehavior() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan array = JsonSchema.fromJson(ARRAY).createPlan();
+        SchemaPlan array = JsonSchema.fromJson(ARRAY).formulate();
         for (List<Object> items : Arrays.asList(
                 List.<Object>of("ok"), Arrays.<Object>asList((Object) null),
                 List.<Object>of("bad"), List.<Object>of(123),
                 Arrays.<Object>asList("ok", null))) {
             assertEquals(array.isValid(items), compiled.array(items), items.toString());
         }
-        SchemaPlan refs = JsonSchema.fromJson(REF).createPlan();
+        SchemaPlan refs = JsonSchema.fromJson(REF).formulate();
         for (int n : new int[]{-1, 0, 12, 30, 31}) {
             assertEquals(refs.isValid(n), compiled.refs(n), "ref: " + n);
         }
-        SchemaPlan format = JsonSchema.fromJson(FORMAT).createPlan();
+        SchemaPlan format = JsonSchema.fromJson(FORMAT).formulate();
         for (String s : new String[]{"not-a-uuid", "fallback",
                 "123e4567-e89b-12d3-a456-426614174000"}) {
             for (boolean strict : new boolean[]{false, true}) {
@@ -202,11 +202,11 @@ class CompiledValidatorApplicatorTest {
     @Test
     void unsupportedBranchAndUnevaluatedScopeFallBackAsAWhole() {
         Fallback compiled = CompiledInstances.create(Fallback.class);
-        SchemaPlan regex = JsonSchema.fromJson(FALLBACK).createPlan();
+        SchemaPlan regex = JsonSchema.fromJson(FALLBACK).formulate();
         for (String s : new String[]{"a", "abc", "ok", "no"}) {
             assertEquals(regex.isValid(s), compiled.unsupported(s), s);
         }
-        SchemaPlan evaluated = JsonSchema.fromJson(UNEVALUATED).createPlan();
+        SchemaPlan evaluated = JsonSchema.fromJson(UNEVALUATED).formulate();
         for (Map<String, Object> map : Arrays.asList(
                 Map.<String, Object>of("x", 1),
                 Map.<String, Object>of("x", 1, "y", 2),

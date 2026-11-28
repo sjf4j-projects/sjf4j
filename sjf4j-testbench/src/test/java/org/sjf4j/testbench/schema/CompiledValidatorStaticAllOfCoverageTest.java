@@ -52,9 +52,9 @@ class CompiledValidatorStaticAllOfCoverageTest {
     @Test
     void staticPropertyAndPatternCoverageMatchesRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan props = JsonSchema.fromJson(PROPERTIES).createPlan();
-        SchemaPlan patterns = JsonSchema.fromJson(PATTERNS).createPlan();
-        SchemaPlan all = JsonSchema.fromJson(ALL_PROPERTIES).createPlan();
+        SchemaPlan props = JsonSchema.fromJson(PROPERTIES).formulate();
+        SchemaPlan patterns = JsonSchema.fromJson(PATTERNS).formulate();
+        SchemaPlan all = JsonSchema.fromJson(ALL_PROPERTIES).formulate();
         for (Object node : Arrays.asList(null, true, 42, List.of("not an object"),
                 Map.of(), Map.of("foo", "ok"), Map.of("bar", "ok"),
                 Map.of("bar", 3), Map.of("foobar", "ok"),
@@ -72,8 +72,8 @@ class CompiledValidatorStaticAllOfCoverageTest {
     @Test
     void staticIndexCoverageMatchesRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan prefix = JsonSchema.fromJson(PREFIX).createPlan();
-        SchemaPlan allItems = JsonSchema.fromJson(ALL_ITEMS).createPlan();
+        SchemaPlan prefix = JsonSchema.fromJson(PREFIX).formulate();
+        SchemaPlan allItems = JsonSchema.fromJson(ALL_ITEMS).formulate();
         for (Object node : Arrays.asList(null, 1, Map.of(), List.of(), List.of("foo"),
                 List.of(2), List.of("foo", 2), List.of("foo", 2.5),
                 List.of("foo", "bad"), List.of("foo", 2, "extra"),

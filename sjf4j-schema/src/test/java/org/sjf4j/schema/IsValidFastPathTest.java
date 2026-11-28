@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class IsValidFastPathTest {
     private static void check(String schema, Object valid, Object invalid) {
-        SchemaPlan plan = JsonSchema.fromJson(schema).createPlan();
+        SchemaPlan plan = JsonSchema.fromJson(schema).formulate();
         assertTrue(plan.isValid(valid));
         assertTrue(plan.validate(valid, true, false).isValid());
         assertFalse(plan.isValid(invalid));
@@ -19,8 +19,8 @@ class IsValidFastPathTest {
 
     @Test
     void booleanSchemasAndSimpleFailures() {
-        assertTrue(JsonSchema.fromJson("true").createPlan().isValid(null));
-        assertFalse(JsonSchema.fromJson("false").createPlan().isValid(null));
+        assertTrue(JsonSchema.fromJson("true").formulate().isValid(null));
+        assertFalse(JsonSchema.fromJson("false").formulate().isValid(null));
         check("{\"type\":\"integer\"}", 1, "bad");
         check("{\"const\":{\"value\":1}}",
                 Collections.singletonMap("value", 1), Collections.singletonMap("value", 2));
@@ -47,7 +47,7 @@ class IsValidFastPathTest {
     void evaluatedAnnotationsAndStrictFormat() {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"object\","
                 + "\"properties\":{\"name\":{\"type\":\"string\"}},"
-                + "\"unevaluatedProperties\":{\"type\":\"integer\"}}").createPlan();
+                + "\"unevaluatedProperties\":{\"type\":\"integer\"}}").formulate();
         Map<String, Object> valid = new HashMap<>();
         valid.put("name", "ok");
         valid.put("count", 1);

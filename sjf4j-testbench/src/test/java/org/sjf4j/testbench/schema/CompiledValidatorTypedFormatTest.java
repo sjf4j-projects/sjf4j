@@ -55,10 +55,10 @@ class CompiledValidatorTypedFormatTest {
     @Test
     void directUuidAndUriChecksMatchRuntime() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan uuid = JsonSchema.fromJson(UUID_SCHEMA).createPlan();
-        SchemaPlan uri = JsonSchema.fromJson(URI_SCHEMA).createPlan();
-        SchemaPlan ref = JsonSchema.fromJson(REFERENCE_SCHEMA).createPlan();
-        SchemaPlan length = JsonSchema.fromJson(UUID_LENGTH).createPlan();
+        SchemaPlan uuid = JsonSchema.fromJson(UUID_SCHEMA).formulate();
+        SchemaPlan uri = JsonSchema.fromJson(URI_SCHEMA).formulate();
+        SchemaPlan ref = JsonSchema.fromJson(REFERENCE_SCHEMA).formulate();
+        SchemaPlan length = JsonSchema.fromJson(UUID_LENGTH).formulate();
         UUID value = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         for (boolean strict : new boolean[]{false, true}) {
             assertEquals(uuid.isValid(value, strict), compiled.uuid(value, strict));
@@ -88,7 +88,7 @@ class CompiledValidatorTypedFormatTest {
     @Test
     void typedPojoPropertiesMatchRuntime() {
         Properties compiled = CompiledInstances.create(Properties.class);
-        SchemaPlan reference = JsonSchema.fromJson(PROPERTY_SCHEMA).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(PROPERTY_SCHEMA).formulate();
         UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         Holder absolute = new Holder(id, URI.create("https://example.org"));
         Holder relative = new Holder(id, URI.create("../relative"));

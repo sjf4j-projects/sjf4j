@@ -305,9 +305,7 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byPathPlans;
 
     final JsonSchema schema;
-    // Set only on nested resource roots during planning, for duplicate-ID checks.
-    // Not a resolution index; never changed after publication.
-    String nestedLocation;
+    final SchemaResource resource;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
     SchemaPlan(URI resourceUri, PathSegment keywordPs, Evaluator[] evaluators,
@@ -316,8 +314,9 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
                SchemaDialect dialect, Map<String, Boolean> vocabulary,
-               Annotation[] annotations) {
+               Annotation[] annotations, SchemaResource resource) {
         this.resourceUri = resourceUri;
+        this.resource = resource;
         this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
@@ -336,26 +335,17 @@ public final class SchemaPlan {
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, BooleanSchema schema) {
         return new SchemaPlan(resourceUri, keywordPs, new Evaluator[0], schema,
-                null, null, null, null, null, null, null);
-    }
-
-    static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
-                         Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
-                         Map<String, SchemaPlan> byPathPlans,
-                         ObjectSchema schema, SchemaDialect dialect,
-                         Map<String, Boolean> vocabulary) {
-        return of(resourceUri, keywordPs, evaluators, dynamicAnchor, byAnchorPlans,
-                byDynamicAnchorPlans, byPathPlans, schema, dialect, vocabulary, null);
+                null, null, null, null, null, null, null, null);
     }
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
-                         Annotation[] annotations) {
+                         Annotation[] annotations, SchemaResource resource) {
         return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                dialect, vocabulary, annotations);
+                dialect, vocabulary, annotations, resource);
     }
 
 }

@@ -31,7 +31,7 @@ class TypedFormatRuntimeTest {
     }
 
     private static SchemaPlan plan(String format) {
-        return JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"" + format + "\"}").createPlan();
+        return JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"" + format + "\"}").formulate();
     }
 
     @Test
@@ -53,7 +53,7 @@ class TypedFormatRuntimeTest {
         assertTrue(uuid.isValid("not-a-uuid", false));
 
         SchemaPlan length = JsonSchema.fromJson(
-                "{\"type\":\"string\",\"format\":\"uuid\",\"minLength\":37}").createPlan();
+                "{\"type\":\"string\",\"format\":\"uuid\",\"minLength\":37}").formulate();
         assertFalse(length.isValid(UUID_VALUE, true));
         assertFalse(length.isValid(UUID_VALUE, false));
         assertFalse(uuid.isValid((Object) null, true));
@@ -91,13 +91,13 @@ class TypedFormatRuntimeTest {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"type\":\"object\",\"properties\":{"
                 + "\"id\":{\"type\":\"string\",\"format\":\"uuid\",\"maxLength\":35},"
-                + "\"link\":{\"type\":\"string\",\"format\":\"uri\"}}}").createPlan();
+                + "\"link\":{\"type\":\"string\",\"format\":\"uri\"}}}").formulate();
         assertFalse(plan.isValid(new Holder(UUID_VALUE, URI.create("https://example.com")), true));
 
         SchemaPlan ordinary = JsonSchema.fromJson(
                 "{\"type\":\"object\",\"properties\":{"
                 + "\"id\":{\"type\":\"string\",\"format\":\"uuid\"},"
-                + "\"link\":{\"type\":\"string\",\"format\":\"uri\"}}}").createPlan();
+                + "\"link\":{\"type\":\"string\",\"format\":\"uri\"}}}").formulate();
         assertTrue(ordinary.isValid(new Holder(UUID_VALUE, URI.create("https://example.com")), true));
         assertFalse(ordinary.isValid(new Holder(UUID_VALUE, URI.create("../relative")), true));
     }

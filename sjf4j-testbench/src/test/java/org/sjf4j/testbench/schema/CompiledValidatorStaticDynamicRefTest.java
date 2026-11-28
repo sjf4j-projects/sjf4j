@@ -73,11 +73,11 @@ class CompiledValidatorStaticDynamicRefTest {
     @Test
     void staticallyResolvedDynamicReferencesMatchRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan plain = JsonSchema.fromJson(PLAIN_ANCHOR).createPlan();
-        SchemaPlan pointer = JsonSchema.fromJson(POINTER_TO_DYNAMIC_ANCHOR).createPlan();
-        SchemaPlan nonmatching = JsonSchema.fromJson(NONMATCHING_DYNAMIC_ANCHOR).createPlan();
-        SchemaPlan booleanPointer = JsonSchema.fromJson(BOOLEAN_POINTER).createPlan();
-        SchemaPlan nested = JsonSchema.fromJson(NESTED_POINTER).createPlan();
+        SchemaPlan plain = JsonSchema.fromJson(PLAIN_ANCHOR).formulate();
+        SchemaPlan pointer = JsonSchema.fromJson(POINTER_TO_DYNAMIC_ANCHOR).formulate();
+        SchemaPlan nonmatching = JsonSchema.fromJson(NONMATCHING_DYNAMIC_ANCHOR).formulate();
+        SchemaPlan booleanPointer = JsonSchema.fromJson(BOOLEAN_POINTER).formulate();
+        SchemaPlan nested = JsonSchema.fromJson(NESTED_POINTER).formulate();
         for (Object value : Arrays.asList(null, 1, "ok", "",
                 List.of("ok"), Map.of(), Map.of("value", "ok"),
                 Map.of("value", 1), Map.of("other", 1))) {
@@ -91,7 +91,7 @@ class CompiledValidatorStaticDynamicRefTest {
     @Test
     void sameDynamicRefCanCompileToDifferentTargetsBasedOnSchemaPath() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan plan = JsonSchema.fromJson(MULTIPLE_PATHS).createPlan();
+        SchemaPlan plan = JsonSchema.fromJson(MULTIPLE_PATHS).formulate();
         for (Object value : List.of(
                 Map.of("kindOfList", "numbers", "list", List.of(1, 2.5)),
                 Map.of("kindOfList", "numbers", "list", List.of("foo")),
@@ -107,7 +107,7 @@ class CompiledValidatorStaticDynamicRefTest {
     @Test
     void recursiveDynamicReferenceUsesOneCompiledContext() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan plan = JsonSchema.fromJson(RECURSIVE).createPlan();
+        SchemaPlan plan = JsonSchema.fromJson(RECURSIVE).formulate();
         for (Object value : List.of(
                 Map.of("value", 1),
                 Map.of("value", 1, "child", Map.of("value", 2)),
