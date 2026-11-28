@@ -7,7 +7,6 @@ import org.sjf4j.exception.RegexRejectedException;
 import org.sjf4j.regex.Regex;
 import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.Nodes;
-import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
 import java.util.Map;
@@ -147,23 +146,16 @@ public class FunctionRegistry {
     private static boolean regex(String name, Object target, Object[] args, boolean match) {
         if (args.length != 1)
             throw new NodeException(name + "(): expected exactly 1 argument, but got " + args.length);
-        return regex(name, target, args[0], RegexEngine.JDK_ENGINE, match);
+        return regex(target, args[0], RegexEngine.JDK_ENGINE, match);
     }
 
-    private static boolean regex(String name, Object target, Object argument,
-                                 RegexEngine engine, boolean match) {
-        String pattern;
-        try {
-            pattern = Nodes.toString(argument);
-        } catch (Exception e) {
-            throw new NodeException(name + "(): expected a string pattern argument, but was " +
-                    Types.name(argument), e);
-        }
-        if (pattern == null)
-            throw new NodeException(name + "(): expected a string pattern argument, but was null");
-        if (JsonType.of(target) != JsonType.STRING) return false;
+    private static boolean regex(Object target, Object argument, RegexEngine engine, boolean match) {
+        // RFC 9535: either non-string argument yields LogicalFalse.
+        if (JsonType.of(target) != JsonType.STRING ||
+                JsonType.of(argument) != JsonType.STRING) return false;
         String text = Nodes.toString(target);
-        if (text == null) return false;
+        String pattern = Nodes.toString(argument);
+        if (text == null || pattern == null) return false;
         Regex regex = compileRegex(engine, pattern);
         return match ? regex.matches(text) : regex.find(text);
     }
@@ -206,7 +198,7 @@ public class FunctionRegistry {
             FunctionDescriptor descriptor = get(name);
             if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
             try {
-                if (descriptor == builtin) return regex(name, target, argument, engine, match);
+                if (descriptor == builtin) return regex(target, argument, engine, match);
                 return descriptor.invoke(target, new Object[]{argument});
             } catch (BindingException | RegexRejectedException e) {
                 throw e;
