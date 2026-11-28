@@ -143,9 +143,9 @@ public class JsonPath {
      * in nested filter paths. Regex literals are compiled during parsing.
      * The match and search functions are not affected by this overload.
      */
-    public static JsonPath parse(String expr, RegexEngine regexEngine) {
+    public static JsonPath parse(String expr, RegexEngine engine) {
         Asserts.notNull(expr, "expr");
-        Asserts.notNull(regexEngine, "regexEngine");
+        Asserts.notNull(engine, "engine");
         expr = expr.trim();
         PathSegment[] segments;
         if (expr.isEmpty()) {
@@ -153,7 +153,7 @@ public class JsonPath {
         } else if (expr.startsWith("/")) {
             segments = PathSyntax.parsePointer(expr);
         } else {
-            segments = PathSyntax.parsePath(expr, regexEngine);
+            segments = PathSyntax.parsePath(expr, engine);
         }
         return new JsonPath(expr, segments);
     }
