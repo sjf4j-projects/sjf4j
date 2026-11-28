@@ -7,7 +7,7 @@ The goal is consistent JSON semantics across backends, formats, paths, patches, 
 
 ## Priorities
 
-1. Performance first.
+1. Performance first. Any potential performance regression must be explicitly discussed and approved before implementation.
 2. Correctness and cross-backend consistency.
 3. Small source size and small jar size.
 4. Simple, direct, readable code.
