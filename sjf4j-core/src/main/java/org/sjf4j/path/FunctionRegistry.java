@@ -142,27 +142,45 @@ public class FunctionRegistry {
         }
     }
 
-    private static boolean regex(String name, Object target, Object[] args, boolean match) {
+    private static boolean match(Object target, Object[] args) {
         if (args.length != 1)
-            throw new NodeException(name + "(): expected exactly 1 argument, but got " + args.length);
-        return regex(target, args[0], RegexEngine.JDK_ENGINE, match);
+            throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
+        return match(target, args[0], RegexEngine.JDK_ENGINE);
     }
 
-    private static boolean regex(Object target, Object argument, RegexEngine engine, boolean match) {
-        // RFC 9535: either non-string argument yields LogicalFalse.
+    private static boolean search(Object target, Object[] args) {
+        if (args.length != 1)
+            throw new NodeException("search(): expected exactly 1 argument, but got " + args.length);
+        return search(target, args[0], RegexEngine.JDK_ENGINE);
+    }
+
+    // RFC 9535: either non-string argument yields LogicalFalse.
+    private static boolean match(Object target, Object argument, RegexEngine engine) {
         if (JsonType.of(target) != JsonType.STRING ||
                 JsonType.of(argument) != JsonType.STRING) return false;
         String text = Nodes.toString(target);
         String pattern = Nodes.toString(argument);
-        if (text == null || pattern == null) return false;
-        Regex regex = compileRegex(engine, pattern);
-        return match ? regex.matches(text) : regex.find(text);
+        return text != null && pattern != null && compileRegex(engine, pattern).matches(text);
     }
 
-    private static boolean regex(Object target, Regex compiled, boolean match) {
+    private static boolean search(Object target, Object argument, RegexEngine engine) {
+        if (JsonType.of(target) != JsonType.STRING ||
+                JsonType.of(argument) != JsonType.STRING) return false;
+        String text = Nodes.toString(target);
+        String pattern = Nodes.toString(argument);
+        return text != null && pattern != null && compileRegex(engine, pattern).find(text);
+    }
+
+    private static boolean match(Object target, Regex compiled) {
         if (JsonType.of(target) != JsonType.STRING) return false;
         String text = Nodes.toString(target);
-        return text != null && (match ? compiled.matches(text) : compiled.find(text));
+        return text != null && compiled.matches(text);
+    }
+
+    private static boolean search(Object target, Regex compiled) {
+        if (JsonType.of(target) != JsonType.STRING) return false;
+        String text = Nodes.toString(target);
+        return text != null && compiled.find(text);
     }
 
     /**
@@ -171,14 +189,16 @@ public class FunctionRegistry {
      * the engine. Registered functions cannot be replaced, so no lookup is needed.
      */
     static BiFunction<Object, Object, Object> createRegexCall(String name, RegexEngine engine, Object literal) {
-        boolean match = "match".equals(name);
-        if (!match && !"search".equals(name)) return null;
+        boolean fullMatch = "match".equals(name);
+        if (!fullMatch && !"search".equals(name)) return null;
 
         if (literal instanceof String) {
             Regex compiled = compileRegex(engine, (String) literal);
-            return (target, argument) -> regex(target, compiled, match);
+            return fullMatch ? (target, argument) -> match(target, compiled)
+                    : (target, argument) -> search(target, compiled);
         }
-        return (target, argument) -> regex(target, argument, engine, match);
+        return fullMatch ? (target, argument) -> match(target, argument, engine)
+                : (target, argument) -> search(target, argument, engine);
     }
 
     // Pre-register build-in functions
@@ -212,8 +232,8 @@ public class FunctionRegistry {
             return null;
         }));
 
-        register(new FunctionDescriptor("match", (target, args) -> regex("match", target, args, true)));
-        register(new FunctionDescriptor("search", (target, args) -> regex("search", target, args, false)));
+        register(new FunctionDescriptor("match", FunctionRegistry::match));
+        register(new FunctionDescriptor("search", FunctionRegistry::search));
 
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", (target, args) -> {
