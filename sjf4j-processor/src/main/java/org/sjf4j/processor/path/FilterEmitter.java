@@ -1,5 +1,6 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.path.FilterExpr;
 import org.sjf4j.processor.CompilationContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.NodeReadEmitter;
@@ -13,7 +14,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import org.sjf4j.path.FilterExpr;
 
 /** Emits a direct predicate without runtime FilterExpr AST evaluation. */
 final class FilterEmitter {
