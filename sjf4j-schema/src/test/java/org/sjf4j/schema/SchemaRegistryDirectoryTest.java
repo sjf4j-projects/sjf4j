@@ -8,17 +8,18 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** A registry can preload complete directories while preserving canonical schema IDs. */
+/** Directory loading and batch indexing preserve retrieval and canonical schema IDs. */
 class SchemaRegistryDirectoryTest {
 
     @TempDir
     Path registryDirectory;
 
     @Test
-    void indexDirRegistersNestedResourcesAndResolvesCanonicalIds() throws IOException {
+    void loadDirAndIndexResolveCanonicalIds() throws IOException {
         Path nested = Files.createDirectories(registryDirectory.resolve("nested"));
         Path root = registryDirectory.resolve("strict.json");
         Path child = nested.resolve("base.json");
@@ -29,7 +30,9 @@ class SchemaRegistryDirectoryTest {
         Files.write(registryDirectory.resolve("ignored.txt"), "{}".getBytes(StandardCharsets.UTF_8));
 
         SchemaRegistry registry = new SchemaRegistry();
-        registry.indexDir(registryDirectory.toUri());
+        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir();
+        assertEquals(2, schemas.size());
+        registry.index(schemas);
         assertTrue(registry.contains(root.toUri()));
         assertTrue(registry.contains(child.toUri()));
         assertTrue(registry.contains(URI.create("https://example.test/base.json")));
@@ -40,7 +43,7 @@ class SchemaRegistryDirectoryTest {
     }
 
     @Test
-    void indexDirCanRegisterIdlessRemoteSchemasWithRetrievalBase() throws IOException {
+    void loadDirCanMapIdlessRemoteSchemasToLogicalBase() throws IOException {
         Path draft = Files.createDirectories(registryDirectory.resolve("draft2020-12"));
         Files.write(draft.resolve("integer.json"),
                 "{\"type\":\"integer\"}".getBytes(StandardCharsets.UTF_8));
@@ -51,7 +54,11 @@ class SchemaRegistryDirectoryTest {
 
         SchemaRegistry registry = new SchemaRegistry();
         URI remote = URI.create("http://localhost:1234/");
-        registry.indexDir(registryDirectory.toUri(), remote);
+        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir(remote);
+        assertEquals(2, schemas.size());
+        assertEquals(remote.resolve("draft2020-12/integer.json"),
+                ((ObjectSchema) schemas.get(remote.resolve("draft2020-12/integer.json"))).retrievalUri());
+        registry.index(schemas);
 
         assertTrue(registry.contains(remote.resolve("draft2020-12/integer.json")));
         assertTrue(registry.contains(URI.create("https://schemas.example/alias")));
@@ -65,7 +72,7 @@ class SchemaRegistryDirectoryTest {
     }
 
     @Test
-    void indexDirPreservesExistingRegistryEntries() throws IOException {
+    void batchIndexRejectsConflictsAndIndexIfAbsentPreservesExistingEntries() throws IOException {
         Files.write(registryDirectory.resolve("existing.json"),
                 "{\"$id\":\"https://example.test/existing.json\",\"type\":\"number\"}"
                         .getBytes(StandardCharsets.UTF_8));
@@ -73,7 +80,9 @@ class SchemaRegistryDirectoryTest {
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(URI.create("https://example.test/existing.json"),
                 JsonSchema.fromJson("{\"type\":\"string\"}"));
-        registry.indexDir(registryDirectory.toUri());
+        Map<URI, JsonSchema> schemas = new SchemaLoader.Local(registryDirectory.toUri()).loadDir();
+        assertThrows(SchemaException.class, () -> registry.index(schemas));
+        schemas.forEach(registry::indexIfAbsent);
 
         SchemaPlan plan = registry.resolve(URI.create("https://example.test/existing.json"));
         assertTrue(plan.isValid("string"));
@@ -81,11 +90,11 @@ class SchemaRegistryDirectoryTest {
     }
 
     @Test
-    void indexDirRequiresAnExistingFileDirectory() {
+    void loadDirRequiresAnExistingFileDirectory() {
         assertThrows(IllegalArgumentException.class,
-                () -> new SchemaRegistry().indexDir(URI.create("classpath:/schemas/")));
+                () -> new SchemaLoader.Local(URI.create("classpath:/schemas/")).loadDir());
         assertThrows(IllegalArgumentException.class,
-                () -> new SchemaRegistry().indexDir(
-                        URI.create(registryDirectory.resolve("missing").toUri().toString() + "/")));
+                () -> new SchemaLoader.Local(
+                        URI.create(registryDirectory.resolve("missing").toUri().toString() + "/")).loadDir());
     }
 }
