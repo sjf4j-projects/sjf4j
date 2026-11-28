@@ -127,7 +127,9 @@ public class FunctionRegistry {
     private static final FunctionDescriptor SEARCH = new FunctionDescriptor("search",
             (target, args) -> regex("search", target, args, false));
 
-    // Invalid constant expressions are compiled only once as well.
+    // RFC 9535 sections 2.4.6 and 2.4.7: invalid I-Regexp patterns yield LogicalFalse.
+    // Cache that result for invalid literals without a null check on the matching path.
+    // RegexRejectedException is not a syntax error and must propagate.
     private static final Regex NEVER_MATCH = new Regex() {
         @Override public boolean matches(String input) { return false; }
         @Override public boolean find(String input) { return false; }
