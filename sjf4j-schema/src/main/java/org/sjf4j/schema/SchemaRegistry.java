@@ -4,12 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Stream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -144,57 +139,13 @@ public class SchemaRegistry {
     }
 
     /**
-     * Recursively indexes JSON Schemas in a file-system directory, using file: retrieval
-     * URIs for schemas without $id. Plans remain lazy until resolve() is invoked.
-     *
-     * @param directory a file: URI or working-directory-relative directory URI ending in '/'
+     * Indexes schemas by their retrieval URIs without compiling them.
+     * The same conflict rules as {@link #index(URI, JsonSchema)} apply.
+     * Batch indexing is not transactional.
      */
-    public void indexDir(URI directory) {
-        indexDir(directory, null);
-    }
-
-    /**
-     * Indexes a local directory under a logical base URI.
-     * For example, directory/file.json is indexed as baseUri.resolve("file.json").
-     * The schema's own $id, when present, is still its canonical URI. This is
-     * useful for preloaded remote resources without $id; no network I/O occurs.
-     *
-     * @param directory a local directory containing .json schemas
-     * @param baseUri absolute directory URI ending in '/', or null to use local file: URIs
-     */
-    public void indexDir(URI directory, URI baseUri) {
-        SchemaLoader.Local loader = new SchemaLoader.Local(directory);
-        URI directoryUri = loader.baseUri();
-        URI effectiveBaseUri = baseUri == null ? directoryUri : baseUri;
-        if (!effectiveBaseUri.isAbsolute() || !effectiveBaseUri.toString().endsWith("/")
-                || effectiveBaseUri.getRawQuery() != null || effectiveBaseUri.getRawFragment() != null) {
-            throw new IllegalArgumentException("schema registry base URI must be an absolute directory URI: "
-                    + effectiveBaseUri);
-        }
-        if (!"file".equalsIgnoreCase(directoryUri.getScheme())) {
-            throw new IllegalArgumentException("schema registry directory must use a file: URI: " + directoryUri);
-        }
-        Path root = Paths.get(directoryUri);
-        if (!Files.isDirectory(root)) {
-            throw new IllegalArgumentException("schema registry directory not found: " + root);
-        }
-        try (Stream<Path> paths = Files.walk(root)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .sorted()
-                    .forEach(path -> {
-                        URI uri = path.toUri();
-                        JsonSchema schema = loader.load(uri);
-                        if (schema == null) {
-                            throw new IllegalArgumentException("schema registry resource not found: " + uri);
-                        }
-                        URI relative = root.toUri().relativize(uri);
-                        indexIfAbsent(effectiveBaseUri.resolve(relative), schema);
-                    });
-        } catch (IOException e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to index schema registry directory", PathSegment.Root.INSTANCE, directoryUri), e);
-        }
+    public void index(Map<URI, JsonSchema> schemas) {
+        Asserts.notNull(schemas, "schemas");
+        schemas.forEach(this::index);
     }
 
     /**
@@ -510,12 +461,10 @@ public class SchemaRegistry {
      */
     /** Global registry of built-in meta-schema resources. */
     public static final SchemaRegistry GLOBAL_SCHEMA_REGISTRY = new SchemaRegistry();
-    /** Default classpath directory for annotation-based schema discovery. */
-    public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 
     /** Fixed local resource loader for the built-in meta-schema catalog. */
     private static final SchemaLoader.Local BUILTIN_SCHEMA_LOADER =
-            new SchemaLoader.Local(DEFAULT_JSON_SCHEMA_DIR);
+            new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR);
 
     /**
      * Resolves a schema from the global built-in registry.
@@ -555,7 +504,7 @@ public class SchemaRegistry {
     }
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
-        URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
+        URI uri = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
         JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
         if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
