@@ -14,6 +14,7 @@ Maintain independent rolling baselines per **exact CPU model, execution mode (JV
 
 - Record source SHA, date/run, exact CPU per backend/group, OS/architecture, JDK or GraalVM build, dependency versions, JMH profile, inputs/seeds, and aggregation method. Retain latency, allocation where supported, fork/process results and links to raw artifacts.
 - Compare each exact case with the latest accepted matching CPU baseline, not simply the last run. Match workload, parameters and measurement protocol. Disclose JDK/dependency changes; do not attribute their effects to SJF4J without isolation. Changed profiles or fixtures need a new baseline.
+- Name dated reports `YYYY-MM-DD-vX.Y.Z[-snapshot][-mode].md` in the suite directory (e.g. `2026-11-12-v1.5.1-snapshot.md`). Use lowercase `snapshot` and add mode suffixes when needed to distinguish reports (`jvm`, `native-serial`, `native-parallel`). Record exact CPU models inside reports and indexes; a Full report may span several CPUs. Add a run-ID suffix only to disambiguate otherwise identical names.
 - Preserve dated reports in the existing suite directories; update only the matching CPU/backend/group index after review. Never replace other CPU entries or silently accept a suspected regression. A new CPU establishes its own baseline once a valid result is accepted. Missing CPU metadata is not a match.
 - Shared runners provide rolling diagnostic baselines, not controlled release measurements. Same CPU does not guarantee identical frequency, load, VM or JIT behavior. Do not infer regressions from cross-CPU deltas, including speedup ratios.
 
@@ -21,11 +22,11 @@ For Binding, start with [JVM](binding.md#cpu-baseline-index) and [Native Image](
 
 | Suite/group | CPU | Report |
 | --- | --- | --- |
-| Mapping | AMD EPYC 9V74 | [2026-11-12](mapping/mapstruct-v151snapshot-2026-11-12.md) |
-| JDBC Mapping | Intel Xeon 6975P-C | [2026-11-13](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-13.md) |
-| Path — Map/POJO/Parse | AMD EPYC 7763 | [2026-11-11](path/bookstore-v150-2026-11-11.md) |
-| Path — JsonNode | AMD EPYC 9V74 | [2026-11-11](path/bookstore-v150-2026-11-11.md) |
-| Schema | CPU not recorded in report | [2026-11-09](schema/creek-v150-2026-11-09.md) — historical only |
+| Mapping | AMD EPYC 9V74 | [2026-11-12](mapping/2026-11-12-v1.5.1-snapshot.md) |
+| JDBC Mapping | Intel Xeon 6975P-C | [2026-11-13](jdbc-mapping/2026-11-13-v1.5.1-snapshot.md) |
+| Path — Map/POJO/Parse | AMD EPYC 7763 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| Path — JsonNode | AMD EPYC 9V74 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| Schema | CPU not recorded in report | [2026-11-09](schema/2026-11-09-v1.5.0.md) — historical only |
 
 ## Regression review
 

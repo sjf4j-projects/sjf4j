@@ -14,13 +14,13 @@ Latest accepted Full report per backend and exact CPU (JVM). Follow [Performance
 
 | Backend | Intel Xeon 6975P-C | AMD EPYC 7763 | AMD EPYC 9V45 | AMD EPYC 9V74 |
 | --- | --- | --- | --- | --- |
-| Jackson2 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
-| Jackson3 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
-| Fastjson2 | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — |
-| Gson | — | — | — | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
-| JSON-P | — | — | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
-| Simple | — | — | — | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) |
-| SnakeYAML | [2026-11-17](binding/fabien-v152snapshot-2026-11-17.md) | [2026-11-13](binding/fabien-v151snapshot-2026-11-13.md) | — | — |
+| Jackson2 | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) | — | [2026-11-13](binding/2026-11-13-v1.5.1-snapshot-jvm.md) | — |
+| Jackson3 | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) | — | [2026-11-13](binding/2026-11-13-v1.5.1-snapshot-jvm.md) | — |
+| Fastjson2 | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) | — | [2026-11-13](binding/2026-11-13-v1.5.1-snapshot-jvm.md) | — |
+| Gson | — | — | — | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) |
+| JSON-P | — | — | [2026-11-13](binding/2026-11-13-v1.5.1-snapshot-jvm.md) | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) |
+| Simple | — | — | — | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) |
+| SnakeYAML | [2026-11-17](binding/2026-11-17-v1.5.2-snapshot-jvm.md) | [2026-11-13](binding/2026-11-13-v1.5.1-snapshot-jvm.md) | — | — |
 
 The historical report records the CPU, source revision and profile; use only the matching backend rows. Targeted Jackson2 A/B results are recorded in [known performance characteristics](PERFORMANCE.md#known-performance-characteristics), not as Full replacements.
 
@@ -113,7 +113,7 @@ adapters used by the benchmark.
 
 **Full JMH on Temurin 25.0.5 · 3 independent forks · Best 2 Mean · two seeds · 1/10/100KB.** All **1,008** cases completed in [GitHub Actions run #44011622909](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909). These are exploratory shared-runner measurements; comparisons of absolute latency across jobs or runs are **not controlled**.
 
-**Previous results are preserved:** [v1.5.1-SNAPSHOT full detailed report](binding/fabien-v151snapshot-2026-11-13.md) · [2026-11-13 original JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434/artifacts/14012601017). The new [v1.5.2-SNAPSHOT full report](binding/fabien-v152snapshot-2026-11-17.md) covers every 1/10/100KB case.
+**Previous results are preserved:** [v1.5.1-SNAPSHOT full detailed report](binding/2026-11-13-v1.5.1-snapshot-jvm.md) · [2026-11-13 original JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434/artifacts/14012601017). The new [v1.5.2-SNAPSHOT full report](binding/2026-11-17-v1.5.2-snapshot-jvm.md) covers every 1/10/100KB case.
 
 **Runner CPUs (new run):** Intel Xeon 6975P-C for Jackson2/3, Fastjson2 and SnakeYAML; AMD EPYC 9V74 for Gson, JSON-P and Simple. The previous run used other CPUs for most backends. **Do not treat old/new µs/op deltas as controlled A/B evidence.** `Native / Compiled` below is computed *within each new backend run*; above 1× means Compiled is faster.
 
@@ -259,7 +259,7 @@ adapters used by the benchmark.
 | Write / Clients / Map | Simple | — | — | 279,807 | 272,551 | — |
 | Write / Clients / Map | SnakeYAML | 6,499,447 | — | 5,630,895 | 5,633,511 | 1.15× |
 
-**[Complete 1/10/100KB report](binding/fabien-v152snapshot-2026-11-17.md)** · **[New JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909/artifacts/14302041930)** · **[Previous v1.5.1-SNAPSHOT report](binding/fabien-v151snapshot-2026-11-13.md)** · **[Previous artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434/artifacts/14012601017)**
+**[Complete 1/10/100KB report](binding/2026-11-17-v1.5.2-snapshot-jvm.md)** · **[New JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909/artifacts/14302041930)** · **[Previous v1.5.1-SNAPSHOT report](binding/2026-11-13-v1.5.1-snapshot-jvm.md)** · **[Previous artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434/artifacts/14012601017)**
 
 ## Baseline policy
 
@@ -397,8 +397,8 @@ BINDING_BACKEND=jackson2 ./scripts/benchmark-binding.sh full
 
 | Release | Commit | JDK | Suite | Results |
 | --- | --- | --- | --- | --- |
-| v1.5.2-SNAPSHOT (GitHub Actions; exploratory) | `555137cf7a98` | 25.0.5 | 3 | [Full 1/10/100KB report](binding/fabien-v152snapshot-2026-11-17.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909) |
-| v1.5.1-SNAPSHOT (GitHub Actions; exploratory) | `13e34997b895` | 25.0.5 | 3 | [Full 1/10/100KB report](binding/fabien-v151snapshot-2026-11-13.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434) |
+| v1.5.2-SNAPSHOT (GitHub Actions; exploratory) | `555137cf7a98` | 25.0.5 | 3 | [Full 1/10/100KB report](binding/2026-11-17-v1.5.2-snapshot-jvm.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909) |
+| v1.5.1-SNAPSHOT (GitHub Actions; exploratory) | `13e34997b895` | 25.0.5 | 3 | [Full 1/10/100KB report](binding/2026-11-13-v1.5.1-snapshot-jvm.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434) |
 
 A controlled, same-hardware release baseline is still pending. The JVM results above
 use shared GitHub-hosted runners and are exploratory. The prior v1.5.1-SNAPSHOT snapshot and its original result links remain available in the release index. See [Binding Native Image](binding-native.md)

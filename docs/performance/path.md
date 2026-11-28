@@ -160,7 +160,7 @@ All **134 JMH cases** completed: 45 Map, 45 JsonNode, 30 POJO and 14 Parse. All 
 
 These results are workload-specific; compare implementations within the same input type and runner job. Map/POJO/Parse and JsonNode used different GitHub-hosted runner CPU models.
 
-**[Full versioned report and methodology](path/bookstore-v150-2026-11-11.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260)**
+**[Full versioned report and methodology](path/2026-11-11-v1.5.0.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260)**
 
 ## Baseline policy
 
@@ -217,7 +217,7 @@ Historical Map/POJO/Parse results used AMD EPYC 7763, while JsonNode used AMD EP
 
 | Release | Commit | JDK | Results |
 | --- | --- | --- | --- |
-| v1.5.0 (GitHub Actions; exploratory) | [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf) | 25.0.5+8 | [Full 1/10/100KB report](path/bookstore-v150-2026-11-11.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260) |
+| v1.5.0 (GitHub Actions; exploratory) | [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf) | 25.0.5+8 | [Full 1/10/100KB report](path/2026-11-11-v1.5.0.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260) |
 
 ## Reporting and ranking results
 

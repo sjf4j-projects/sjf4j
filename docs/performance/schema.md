@@ -91,7 +91,7 @@ Each roundtrip serializes the Creek POJO to a JSON `byte[]` and deserializes it 
 
 Validation uses the same prebuilt Creek fixture; the NetworkNT comparison uses the same pre-parsed JsonNode. The compiled validator has `fallback=true`. These results are from GitHub-hosted runners, not a hardware-independent performance guarantee.
 
-**[Full results and methodology](schema/creek-v150-2026-11-09.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629)**
+**[Full results and methodology](schema/2026-11-09-v1.5.0.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629)**
 
 ## Baseline policy
 
@@ -145,7 +145,7 @@ The published v1.5.0 results are from [Actions run #42543397629](https://github.
 
 | Release | Commit | JDK | Metric | Results |
 | --- | --- | --- | --- | --- |
-| v1.5.0 (GitHub Actions; exploratory) | [`c1d380c6327a`](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f) | 25.0.5 | Original 3-fork JMH mean, 400ms | [Creek Full report](schema/creek-v150-2026-11-09.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629) |
+| v1.5.0 (GitHub Actions; exploratory) | [`c1d380c6327a`](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f) | 25.0.5 | Original 3-fork JMH mean, 400ms | [Creek Full report](schema/2026-11-09-v1.5.0.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629) |
 
 ## Reporting and ranking results
 
