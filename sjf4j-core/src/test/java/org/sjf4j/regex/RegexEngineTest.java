@@ -1,6 +1,8 @@
 package org.sjf4j.regex;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.RegexRejectedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,17 +72,42 @@ class RegexEngineTest {
             compilations.incrementAndGet();
             return new JdkRegexEngine().compile(expression, flags);
         };
-        IllegalArgumentException rejection = new IllegalArgumentException("Rejected");
+        RegexRejectedException rejection = new RegexRejectedException("Rejected");
         RegexEngine guarded = engine.guardedBy((expression, flags) -> {
             throw rejection;
         });
 
-        assertSame(rejection, assertThrows(IllegalArgumentException.class,
+        assertSame(rejection, assertThrows(RegexRejectedException.class,
                 () -> guarded.compile("abc")));
+        assertEquals("Rejected", rejection.getMessage());
+        assertTrue(rejection instanceof NodeException);
         assertEquals(0, compilations.get());
 
         assertTrue(engine.compile("abc").matches("abc"));
         assertEquals(1, compilations.get());
+    }
+
+    @Test
+    void matchingRejectionIsDistinctFromMismatch() {
+        IllegalStateException cause = new IllegalStateException("Budget exhausted");
+        RegexRejectedException rejection = new RegexRejectedException("Matching limit exceeded", cause);
+        RegexEngine engine = (expression, flags) -> new Regex() {
+            @Override
+            public boolean matches(String input) {
+                throw rejection;
+            }
+
+            @Override
+            public boolean find(String input) {
+                throw rejection;
+            }
+        };
+
+        Regex regex = engine.guardedBy(RegexGuard.NONE).compile("abc");
+        assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.matches("abc")));
+        assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.find("abc")));
+        assertEquals("Matching limit exceeded", rejection.getMessage());
+        assertSame(cause, rejection.getCause());
     }
 
     @Test
