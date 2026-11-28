@@ -5,12 +5,12 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.regex.RegexEngine;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
-import org.sjf4j.regex.RegexEngine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
