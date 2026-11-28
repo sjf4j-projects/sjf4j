@@ -4,6 +4,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.RegexRejectedException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.NodeWalker;
@@ -317,6 +318,7 @@ public class JsonPath {
     }
 
     private NodeException _strict(Object container, Object value, String target, Exception cause) {
+        if (cause instanceof RegexRejectedException) return (RegexRejectedException) cause;
         String message = "cannot get " + target + " from path '" + this + "': container=" +
                 Types.name(container) + ", value=" + Types.name(value);
         if (cause instanceof BindingException) {
@@ -331,6 +333,7 @@ public class JsonPath {
     }
 
     private NodeException _lenient(Object container, Object value, String target, Exception cause) {
+        if (cause instanceof RegexRejectedException) return (RegexRejectedException) cause;
         String message = "cannot coerce value at path '" + this + "' to " + target + ": container=" +
                 Types.name(container) + ", value=" + Types.name(value);
         if (cause instanceof BindingException) {
@@ -1030,6 +1033,7 @@ public class JsonPath {
             }
             return Nodes.to(value, clazz);
         } catch (Exception e) {
+            if (e instanceof RegexRejectedException) throw (RegexRejectedException) e;
             String message = "cannot evaluate " + clazz.getName() + " from path '" + this + "': container=" +
                     Types.name(container) + ", value=" + Types.name(value);
             if (e instanceof BindingException) {
@@ -1073,6 +1077,7 @@ public class JsonPath {
             }
             return Nodes.as(value, clazz);
         } catch (Exception e) {
+            if (e instanceof RegexRejectedException) throw (RegexRejectedException) e;
             String message = "cannot coerce value at path '" + this + "' to " + clazz.getName() + ": container=" +
                     Types.name(container) + ", value=" + Types.name(value);
             if (e instanceof BindingException) {
