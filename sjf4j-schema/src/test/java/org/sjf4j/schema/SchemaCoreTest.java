@@ -21,6 +21,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class SchemaCoreTest {
 
     @Test
+    public void testFormulateAliases() {
+        JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\"}");
+        SchemaPlan plan = schema.formulate();
+        assertTrue(plan.isValid("abc"));
+        assertFalse(plan.isValid(1));
+        assertTrue(schema.createPlan().isValid("abc"));
+        assertFalse(schema.createPlan().isValid(1));
+
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(URI.create("https://example.org/string"), schema);
+        JsonSchema ref = JsonSchema.fromJson("{\"$ref\":\"https://example.org/string\"}");
+        SchemaPlan referenced = ref.formulate(registry);
+        assertTrue(referenced.isValid("abc"));
+        assertFalse(referenced.isValid(1));
+        assertTrue(ref.createPlan(registry).isValid("abc"));
+
+        assertTrue(BooleanSchema.TRUE.formulate().isValid(null));
+        assertFalse(BooleanSchema.FALSE.formulate(registry).isValid(null));
+    }
+
+
+    @Test
     public void testCompile1() {
         String json = "{  \"type\": \"string\" }";
         JsonSchema schema = JsonSchema.fromJson(json);
