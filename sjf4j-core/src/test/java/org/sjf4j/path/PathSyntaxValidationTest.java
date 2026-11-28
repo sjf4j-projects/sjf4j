@@ -2,6 +2,7 @@ package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.regex.RegexEngine;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,18 +23,18 @@ class PathSyntaxValidationTest {
 
     @Test
     void parsesAndRejectsBoundaryPathExpressions() {
-        assertEquals("$.name", PathSyntax.toPathExpr(PathSyntax.parsePath("name")));
-        assertEquals("@.name", PathSyntax.toPathExpr(PathSyntax.parsePath("@.name")));
-        assertEquals("$.sum(1, 2)", PathSyntax.toPathExpr(PathSyntax.parsePath("$.sum(1, 2)")));
-        assertEquals("$.items[?(@.age > 1.0)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.age > 1]")));
-        assertEquals("$.items[?(@.isbn == null)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.isbn == null]")));
-        assertEquals("$.items[?(@.enabled == true)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == true]")));
-        assertEquals("$.items[?(@.enabled == false)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == false]")));
+        assertEquals("$.name", PathSyntax.toPathExpr(PathSyntax.parsePath("name", RegexEngine.JDK_ENGINE)));
+        assertEquals("@.name", PathSyntax.toPathExpr(PathSyntax.parsePath("@.name", RegexEngine.JDK_ENGINE)));
+        assertEquals("$.sum(1, 2)", PathSyntax.toPathExpr(PathSyntax.parsePath("$.sum(1, 2)", RegexEngine.JDK_ENGINE)));
+        assertEquals("$.items[?(@.age > 1.0)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.age > 1]", RegexEngine.JDK_ENGINE)));
+        assertEquals("$.items[?(@.isbn == null)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.isbn == null]", RegexEngine.JDK_ENGINE)));
+        assertEquals("$.items[?(@.enabled == true)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == true]", RegexEngine.JDK_ENGINE)));
+        assertEquals("$.items[?(@.enabled == false)]", PathSyntax.toPathExpr(PathSyntax.parsePath("$.items[?@.enabled == false]", RegexEngine.JDK_ENGINE)));
 
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$."));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.."));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.name("));
-        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$#"));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.", RegexEngine.JDK_ENGINE));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$..", RegexEngine.JDK_ENGINE));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$.name(", RegexEngine.JDK_ENGINE));
+        assertThrows(NodeException.class, () -> PathSyntax.parsePath("$#", RegexEngine.JDK_ENGINE));
     }
 
     @Test
