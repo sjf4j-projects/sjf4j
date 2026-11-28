@@ -67,10 +67,14 @@ class FunctionRegistryRegexTest {
         assertFalse(regex("search", "(", "a"));
         assertFalse(regex("match", ".*", null));
         assertFalse(regex("search", ".*", null));
-        assertFalse(Boolean.TRUE.equals(FunctionRegistry.invoke("match", 123, new Object[]{".*"})));
+        for (String name : Arrays.asList("match", "search")) {
+            for (Object nonString : Arrays.asList(null, 123, true, Arrays.asList("a"), new HashMap<>())) {
+                assertEquals(false, FunctionRegistry.invoke(name, "a", new Object[]{nonString}));
+                assertEquals(false, FunctionRegistry.invoke(name, nonString, new Object[]{"a"}));
+            }
+            assertEquals(true, FunctionRegistry.invoke(name, 'a', new Object[]{'a'}));
+        }
 
-        assertThrows(NodeException.class,
-                () -> FunctionRegistry.invoke("match", "a", new Object[]{null}));
         assertThrows(NodeException.class,
                 () -> FunctionRegistry.invoke("match", "a", new Object[0]));
         assertThrows(NodeException.class,
