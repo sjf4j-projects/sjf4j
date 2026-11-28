@@ -7,6 +7,7 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
 
@@ -133,7 +134,17 @@ public class JsonPath {
      * Leading and trailing whitespace is removed before either syntax is parsed.
      */
     public static JsonPath parse(String expr) {
+        return parse(expr, RegexEngine.JDK_ENGINE);
+    }
+
+    /**
+     * Parses a path with the given engine for regex literals, including literals
+     * in nested filter paths. Regex literals are compiled during parsing.
+     * The match and search functions are not affected by this overload.
+     */
+    public static JsonPath parse(String expr, RegexEngine regexEngine) {
         Asserts.notNull(expr, "expr");
+        Asserts.notNull(regexEngine, "regexEngine");
         expr = expr.trim();
         PathSegment[] segments;
         if (expr.isEmpty()) {
@@ -141,7 +152,7 @@ public class JsonPath {
         } else if (expr.startsWith("/")) {
             segments = PathSyntax.parsePointer(expr);
         } else {
-            segments = PathSyntax.parsePath(expr);
+            segments = PathSyntax.parsePath(expr, regexEngine);
         }
         return new JsonPath(expr, segments);
     }
