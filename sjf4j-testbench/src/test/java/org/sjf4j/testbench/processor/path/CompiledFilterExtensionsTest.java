@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.FindByPath;
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.FunctionRegistry;
 import org.sjf4j.path.JsonPath;
 
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CompiledFilterExtensionsTest {
     record Item(String name, List<String> tags, int age, String pattern) {}
@@ -137,7 +139,7 @@ class CompiledFilterExtensionsTest {
     }
 
     @Test
-    void customFunctionRegistrationRemainsDynamic() {
+    void customFunctionRegistrationIsUnique() {
         Queries compiled = CompiledInstances.create(Queries.class);
         Root root = fixture();
         String query = "$.items[?(phase3CustomCheck(@.name))].name";
@@ -148,10 +150,11 @@ class CompiledFilterExtensionsTest {
         assertMatches(root, query, compiled.customFunction(root), List.of("Alice"));
         assertMatches(root, nested, compiled.nestedFunction(root), List.of("Alice"));
 
-        FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("phase3CustomCheck",
-                (target, args) -> "Bob".equals(target)));
-        assertMatches(root, query, compiled.customFunction(root), List.of("Bob"));
-        assertMatches(root, nested, compiled.nestedFunction(root), List.of("Bob"));
+        assertThrows(NodeException.class, () -> FunctionRegistry.register(
+                new FunctionRegistry.FunctionDescriptor("phase3CustomCheck",
+                        (target, args) -> "Bob".equals(target))));
+        assertMatches(root, query, compiled.customFunction(root), List.of("Alice"));
+        assertMatches(root, nested, compiled.nestedFunction(root), List.of("Alice"));
     }
 
     private static Root fixture() {

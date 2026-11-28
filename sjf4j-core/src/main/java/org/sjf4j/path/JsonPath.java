@@ -139,9 +139,9 @@ public class JsonPath {
     }
 
     /**
-     * Parses a path with the given engine for regex literals, including literals
-     * in nested filter paths. Regex literals are compiled during parsing.
-     * The match and search functions are not affected by this overload.
+     * Parses a path with the given engine for regex literals and match/search
+     * functions, including nested filter paths. Constant regexes are compiled
+     * during parsing; dynamic function arguments are compiled during evaluation.
      */
     public static JsonPath parse(String expr, RegexEngine engine) {
         Asserts.notNull(expr, "expr");
@@ -1004,7 +1004,7 @@ public class JsonPath {
             Object value = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
             if (value == MISSING) return null;
             PathSegment.Function func = (PathSegment.Function) ps;
-            return FunctionRegistry.invoke(func.name, value, func.resolvedArgs);
+            return func.invoke(value);
         }
         List<Object> result = new ArrayList<>();
         _findAll(container, container, 1, segments.length, result, Function.identity(), new NodeWalker.Access());
@@ -1012,7 +1012,7 @@ public class JsonPath {
 
         if (ps instanceof PathSegment.Function) {
             PathSegment.Function func = (PathSegment.Function) ps;
-            return FunctionRegistry.invoke(func.name, result.size() == 1 ? result.get(0) : result, func.resolvedArgs);
+            return func.invoke(result.size() == 1 ? result.get(0) : result);
         }
         return result;
     }

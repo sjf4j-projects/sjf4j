@@ -223,7 +223,7 @@ final class FilterParser {
         // empty arg list
         if (pos < source.length() && source.charAt(pos) == ')') {
             pos++;
-            return new FilterExpr.FunctionExpr(name, args);
+            return new FilterExpr.FunctionExpr(name, args, engine);
         }
 
         // arguments
@@ -249,7 +249,7 @@ final class FilterParser {
             throw new NodeException("expected ',' or ')' in function call '" + name + "'");
         }
 
-        return new FilterExpr.FunctionExpr(name, args);
+        return new FilterExpr.FunctionExpr(name, args, engine);
     }
 
     /**

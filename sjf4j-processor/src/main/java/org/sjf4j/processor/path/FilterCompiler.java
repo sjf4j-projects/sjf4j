@@ -54,8 +54,7 @@ final class FilterCompiler {
             for (int i = 0; i < args.size(); i++) {
                 compiled[i] = compile(args.get(i), rootType, currentType);
             }
-            // FunctionRegistry is replaceable at runtime: generated code must
-            // dispatch through it rather than bake in built-in implementations.
+            // Custom functions may be registered after code generation.
             return FilterPlan.function(function.name(), compiled);
         }
         if (expression instanceof FilterExpr.PathExpr) {

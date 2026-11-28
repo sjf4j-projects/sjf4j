@@ -12,6 +12,7 @@ import org.sjf4j.util.Asserts;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
 /**
@@ -263,13 +264,25 @@ public interface FilterExpr {
 
         final String name;
         final List<FilterExpr> args;
+        private final BiFunction<Object, Object, Object> regexCall;
 
         /**
          * Creates a function expression.
          */
         public FunctionExpr(String name, List<FilterExpr> args) {
+            this(name, args, RegexEngine.JDK_ENGINE);
+        }
+
+        FunctionExpr(String name, List<FilterExpr> args, RegexEngine engine) {
             this.name = name;
             this.args = args;
+            if (args.size() == 2) {
+                FilterExpr pattern = args.get(1);
+                Object literal = pattern instanceof LiteralExpr ? ((LiteralExpr) pattern).value() : null;
+                this.regexCall = FunctionRegistry.createRegexCall(name, engine, literal);
+            } else {
+                this.regexCall = null;
+            }
         }
 
         public String name() {
@@ -288,6 +301,9 @@ public interface FilterExpr {
             int size = args.size();
             if (size == 0) throw new NodeException("function '" + name + "' requires a target argument");
             Object target = args.get(0).eval(rootNode, currentNode, access);
+            if (regexCall != null) {
+                return regexCall.apply(target, args.get(1).eval(rootNode, currentNode, access));
+            }
             Object[] values = size <= 1 ? NO_ARGS : new Object[size - 1];
             for (int i = 1; i < size; i++) {
                 values[i - 1] = args.get(i).eval(rootNode, currentNode, access);

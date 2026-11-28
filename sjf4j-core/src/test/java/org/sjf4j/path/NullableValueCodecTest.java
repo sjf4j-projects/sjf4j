@@ -110,6 +110,10 @@ class NullableValueCodecTest {
         assertEquals(5, FunctionRegistry.invoke("length", new Text("hello"), new Object[0]));
         assertEquals(false, FunctionRegistry.invoke("match", nullable, new Object[]{"hello"}));
         assertEquals(false, FunctionRegistry.invoke("search", nullable, new Object[]{"hello"}));
+        assertEquals(false, FunctionRegistry.invoke("match", "hello", new Object[]{nullable}));
+        assertEquals(false, FunctionRegistry.invoke("search", "hello", new Object[]{nullable}));
+        assertEquals(true, FunctionRegistry.invoke("match", "hello", new Object[]{new Text("hello")}));
+        assertEquals(true, FunctionRegistry.invoke("search", "hello", new Object[]{new Text("ell")}));
         assertEquals(true, FunctionRegistry.invoke("match", new Text("hello"), new Object[]{"hello"}));
         assertEquals(true, FunctionRegistry.invoke("search", new Text("hello"), new Object[]{"ell"}));
     }

@@ -37,7 +37,9 @@ For Binding, start with [JVM](binding.md#cpu-baseline-index) and [Native Image](
 | Mapping | AMD EPYC 9V74 | [2026-11-12](mapping/2026-11-12-v1.5.1-snapshot.md) |
 | JDBC Mapping | Intel Xeon 6975P-C | [2026-11-13](jdbc-mapping/2026-11-13-v1.5.1-snapshot.md) |
 | JDBC Mapping | AMD EPYC 7763 | [2026-11-27](jdbc-mapping/2026-11-27-v1.5.3-snapshot.md) |
-| Path — Map/POJO/Parse | AMD EPYC 7763 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| Path — Map/Parse | AMD EPYC 7763 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| Path — POJO | AMD EPYC 7763 | [2026-11-28](path/2026-11-28-v1.5.3-snapshot.md) |
+| Path — Map/JsonNode/Parse | Intel Xeon 6975P-C | [2026-11-28](path/2026-11-28-v1.5.3-snapshot.md) |
 | Path — JsonNode | AMD EPYC 9V74 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
 | Schema | CPU not recorded in report | [2026-11-09](schema/2026-11-09-v1.5.0.md) — historical only |
 

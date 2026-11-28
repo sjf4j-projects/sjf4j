@@ -3,9 +3,11 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Numbers;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 
 /**
@@ -348,16 +350,29 @@ public abstract class PathSegment {
         public final String name;
         public final List<String> args;
         public final Object[] resolvedArgs;
+        private final BiFunction<Object, Object, Object> regexCall;
 
         /**
          * Creates a function-call segment.
          */
         public Function(PathSegment parent, String name, List<String> args) {
+            this(parent, name, args, RegexEngine.JDK_ENGINE);
+        }
+
+        Function(PathSegment parent, String name, List<String> args, RegexEngine engine) {
             super(parent);
             this.name = name;
             this.args = args;
             this.resolvedArgs = _resolveFunctionArgs(args);
+            this.regexCall = resolvedArgs.length == 1
+                    ? FunctionRegistry.createRegexCall(name, engine, resolvedArgs[0]) : null;
         }
+
+        Object invoke(Object target) {
+            if (regexCall != null) return regexCall.apply(target, resolvedArgs[0]);
+            return FunctionRegistry.invoke(name, target, resolvedArgs);
+        }
+
         @Override public String toString() {
             if (args == null || args.isEmpty()) return "." + name + "()";
             return "." + name + "(" + String.join(", ", args) + ")";

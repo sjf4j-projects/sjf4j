@@ -216,7 +216,7 @@ public final class PathSyntax {
     }
 
     /**
-     * Parses a JSONPath using the given engine for regex literals.
+     * Parses a JSONPath using the given engine for regex literals and match/search functions.
      */
     public static PathSegment[] parsePath(String expr, RegexEngine engine) {
         Asserts.notNull(engine, "engine");
@@ -435,7 +435,7 @@ public final class PathSyntax {
                     }
                     String funcName = expr.substring(start, i);
                     String args = expr.substring(i + 1, end); // inside (...)
-                    lastSegment = new PathSegment.Function(lastSegment, funcName, _parseFunctionArgs(args));
+                    lastSegment = new PathSegment.Function(lastSegment, funcName, _parseFunctionArgs(args), engine);
                     i = end + 1;
                     continue;
                 }
@@ -842,7 +842,7 @@ public final class PathSyntax {
     }
 
     /**
-     * Parses a filter using the given engine for regex literals.
+     * Parses a filter using the given engine for regex literals and match/search functions.
      */
     public static FilterExpr parseFilter(String s, RegexEngine engine) {
         Asserts.notNull(engine, "engine");
