@@ -100,4 +100,159 @@ class PathRegexEngineTest {
         assertSame(rejection, assertThrows(RegexRejectedException.class,
                 () -> nested.find(nestedInput, Object.class)));
     }
+
+    @Test
+    void constantFunctionsCompileOnceAndSelectOperation() {
+        AtomicInteger compilations = new AtomicInteger();
+        AtomicInteger matches = new AtomicInteger();
+        AtomicInteger finds = new AtomicInteger();
+        RegexEngine engine = (expression, flags) -> {
+            assertEquals("A", expression);
+            assertEquals(0, flags);
+            compilations.incrementAndGet();
+            return new Regex() {
+                @Override
+                public boolean matches(String input) {
+                    matches.incrementAndGet();
+                    return input.equals("custom");
+                }
+
+                @Override
+                public boolean find(String input) {
+                    finds.incrementAndGet();
+                    return input.contains("custom");
+                }
+            };
+        };
+        JsonArray input = JsonArray.of("custom", "prefix custom", "A", 1);
+        JsonPath match = JsonPath.parse("$[?match(@, 'A')]", engine);
+        JsonPath search = JsonPath.parse("$[?search(@, 'A')]", engine);
+        assertEquals(2, compilations.get());
+        for (int i = 0; i < 2; i++) {
+            assertEquals(Collections.singletonList("custom"), match.find(input, String.class));
+            assertEquals(Arrays.asList("custom", "prefix custom"), search.copy().find(input, String.class));
+        }
+        assertEquals(2, compilations.get());
+        assertEquals(6, matches.get());
+        assertEquals(6, finds.get());
+    }
+
+    @Test
+    void terminalAndNestedFunctionsUseParsedEngine() {
+        AtomicInteger compilations = new AtomicInteger();
+        RegexEngine engine = (expression, flags) -> {
+            compilations.incrementAndGet();
+            assertEquals("A", expression);
+            return RegexEngine.JDK_ENGINE.create("custom", flags);
+        };
+        JsonObject input = JsonObject.of("name", "custom", "names", JsonArray.of("prefix custom"));
+        JsonPath match = JsonPath.parse("$.name.match('A')", engine);
+        JsonPath search = JsonPath.parse("$.names[*].search('A')", engine);
+        JsonPath nested = JsonPath.parse("$[?@.name.match('A')]", engine);
+        assertEquals(3, compilations.get());
+        for (int i = 0; i < 2; i++) {
+            assertEquals(Boolean.TRUE, match.eval(input, Boolean.class));
+            assertEquals(Boolean.TRUE, search.eval(input, Boolean.class));
+            assertEquals(1, nested.find(JsonArray.of(input), Object.class).size());
+        }
+        assertEquals(3, compilations.get());
+    }
+
+    @Test
+    void dynamicFunctionsCompilePerEvaluationWithoutCache() {
+        AtomicInteger compilations = new AtomicInteger();
+        RegexEngine engine = (expression, flags) -> {
+            compilations.incrementAndGet();
+            return RegexEngine.JDK_ENGINE.create(expression, flags);
+        };
+        JsonObject alice = JsonObject.of("name", "Alice", "pattern", "A.*");
+        JsonObject bob = JsonObject.of("name", "Bob", "pattern", "A.*");
+        JsonObject invalid = JsonObject.of("name", "Alice", "pattern", "[");
+        JsonArray input = JsonArray.of(alice, bob, invalid);
+        JsonPath match = JsonPath.parse("$[?match(@.name, @.pattern)].name", engine);
+        JsonPath search = JsonPath.parse("$[?search(@.name, @.pattern)].name", engine);
+        assertEquals(0, compilations.get());
+        for (int i = 0; i < 2; i++) {
+            assertEquals(Collections.singletonList("Alice"), match.find(input, String.class));
+            assertEquals(Collections.singletonList("Alice"), search.find(input, String.class));
+        }
+        assertEquals(12, compilations.get());
+    }
+
+    @Test
+    void invalidConstantFunctionsDoNotRecompile() {
+        AtomicInteger compilations = new AtomicInteger();
+        RegexEngine engine = (expression, flags) -> {
+            compilations.incrementAndGet();
+            return RegexEngine.JDK_ENGINE.create(expression, flags);
+        };
+        JsonPath match = JsonPath.parse("$[?match(@, '[')]", engine);
+        JsonPath search = JsonPath.parse("$.name.search('[')", engine);
+        assertEquals(2, compilations.get());
+        for (int i = 0; i < 2; i++) {
+            assertTrue(match.find(JsonArray.of("a", "b"), String.class).isEmpty());
+            assertEquals(Boolean.FALSE, search.eval(JsonObject.of("name", "a"), Boolean.class));
+        }
+        assertEquals(2, compilations.get());
+    }
+
+    @Test
+    void guardChecksConstantAndDynamicFunctions() {
+        RegexEngine guarded = RegexEngine.JDK_ENGINE.guardedBy(RegexGuard.BASIC);
+        for (String name : Arrays.asList("match", "search")) {
+            assertThrows(RegexRejectedException.class,
+                    () -> JsonPath.parse("$[?" + name + "(@, '(a+)+')]", guarded));
+            assertThrows(RegexRejectedException.class,
+                    () -> JsonPath.parse("$.name." + name + "('(a+)+')", guarded));
+            assertThrows(RegexRejectedException.class,
+                    () -> JsonPath.parse("$[?@.name." + name + "('(a+)+')]", guarded));
+            JsonPath dynamic = JsonPath.parse("$[?" + name + "(@.name, @.pattern)]", guarded);
+            JsonArray input = JsonArray.of(JsonObject.of("name", "a", "pattern", "(a+)+"));
+            assertThrows(RegexRejectedException.class, () -> dynamic.find(input, Object.class));
+        }
+    }
+
+    @Test
+    void functionMatchingRejectionIsNotWrapped() {
+        RegexRejectedException rejection = new RegexRejectedException("Budget exhausted");
+        RegexEngine engine = (expression, flags) -> new Regex() {
+            @Override public boolean matches(String input) { throw rejection; }
+            @Override public boolean find(String input) { throw rejection; }
+        };
+        JsonObject input = JsonObject.of("name", "a", "pattern", "a");
+        for (String name : Arrays.asList("match", "search")) {
+            JsonPath constant = JsonPath.parse("$[?" + name + "(@.name, 'a')]", engine);
+            JsonPath dynamic = JsonPath.parse("$[?" + name + "(@.name, @.pattern)]", engine);
+            JsonPath terminal = JsonPath.parse("$.name." + name + "('a')", engine);
+            assertSame(rejection, assertThrows(RegexRejectedException.class,
+                    () -> constant.find(JsonArray.of(input), Object.class)));
+            assertSame(rejection, assertThrows(RegexRejectedException.class,
+                    () -> dynamic.find(JsonArray.of(input), Object.class)));
+            assertSame(rejection, assertThrows(RegexRejectedException.class,
+                    () -> terminal.eval(input, Boolean.class)));
+            assertSame(rejection, assertThrows(RegexRejectedException.class,
+                    () -> terminal.evalAs(input, Boolean.class)));
+        }
+    }
+
+    @Test
+    void parsedFunctionsStillHonorRegistryReplacement() {
+        JsonPath filter = JsonPath.parse("$[?match(@, 'a')]");
+        JsonPath terminal = JsonPath.parse("$.name.match('a')");
+        FunctionRegistry.FunctionDescriptor original = FunctionRegistry.get("match");
+        try {
+            FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("match", (target, args) -> {
+                assertEquals("a", args[0]);
+                return "custom".equals(target);
+            }));
+            assertEquals(Collections.singletonList("custom"),
+                    filter.find(JsonArray.of("a", "custom"), String.class));
+            assertEquals(Boolean.TRUE, terminal.eval(JsonObject.of("name", "custom"), Boolean.class));
+        } finally {
+            FunctionRegistry.register(original);
+        }
+        assertEquals(Collections.singletonList("a"),
+                filter.find(JsonArray.of("a", "custom"), String.class));
+        assertEquals(Boolean.FALSE, terminal.eval(JsonObject.of("name", "custom"), Boolean.class));
+    }
 }
