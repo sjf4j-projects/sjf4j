@@ -65,9 +65,9 @@ class SchemaExactNumbersTest {
     void resourceAndExternalMappingsRetainPrecision() throws Exception {
         URI uri = URI.create("https://example.test/exact");
         String json = "{\"minimum\":" + DECIMAL + "}";
-        ObjectSchema loaded = (ObjectSchema) SchemaLoader.parse(uri, new StringReader(json));
+        SchemaResource loaded = SchemaLoader.parse(uri, new StringReader(json));
         assertEquals(uri, loaded.retrievalUri());
-        assertEquals(EXACT, loaded.getNode("minimum"));
+        assertEquals(EXACT, ((ObjectSchema) loaded.schema()).getNode("minimum"));
         JsonSchema external = SchemaLoader.parseExternalSchemas("{\"" + uri + "\":" + json + "}").get(uri);
         assertEquals(EXACT, ((ObjectSchema) external).getNode("minimum"));
         SchemaRegistry registry = new SchemaRegistry();
