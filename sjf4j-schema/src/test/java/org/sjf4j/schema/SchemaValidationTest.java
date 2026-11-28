@@ -904,10 +904,11 @@ public class SchemaValidationTest {
 
     @Test
     public void testDraft2019FormatVocabularyActivatesFormatWithoutAssertion() {
-        SchemaResource metaSchema = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR)
-                .load(URI.create("draft2019-09/schema.json"));
+        SchemaLoader loader = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
+        URI uri = loader.resolve(URI.create("draft2019-09/schema.json"));
+        JsonSchema metaSchema = loader.load(uri);
         SchemaRegistry registry = new SchemaRegistry();
-        registry.index(metaSchema);
+        registry.index(uri, metaSchema);
 
         JsonSchema schema = JsonSchema.fromJson("{" +
                 "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"," +
