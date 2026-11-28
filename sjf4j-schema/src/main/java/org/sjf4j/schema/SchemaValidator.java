@@ -176,7 +176,7 @@ public final class SchemaValidator {
             if (schema instanceof ObjectSchema) {
                 ((ObjectSchema) schema).retrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
             }
-            return schema.createPlan(scoped);
+            return schema.formulate(scoped);
         }
 
         // From ref

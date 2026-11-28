@@ -32,7 +32,7 @@ public interface JsonSchema {
      * No compiled plans are registered. Passing {@code null} means "compile with an
      * empty external registry context".
      */
-    SchemaPlan createPlan(SchemaRegistry registry);
+    SchemaPlan formulate(SchemaRegistry registry);
 
 
     /*
@@ -47,20 +47,24 @@ public interface JsonSchema {
      * registry internals. Their schema models are indexed eagerly, while their
      * compiled plans are still created lazily on first resolution.
      */
-    default SchemaPlan createPlan() {
-        return createPlan(null);
-    }
-
-    /** Formulates a runtime schema plan in the supplied registry context.
-     * Equivalent to {@link #createPlan(SchemaRegistry)}.
-     */
-    default SchemaPlan formulate(SchemaRegistry registry) {
-        return createPlan(registry);
-    }
-
-    /** Formulates a runtime schema plan without a caller-provided registry. */
     default SchemaPlan formulate() {
-        return createPlan();
+        return formulate(null);
+    }
+
+    /**
+     * @deprecated Use {@link #formulate(SchemaRegistry)} instead.
+     */
+    @Deprecated
+    default SchemaPlan createPlan(SchemaRegistry registry) {
+        return formulate(registry);
+    }
+
+    /**
+     * @deprecated Use {@link #formulate()} instead.
+     */
+    @Deprecated
+    default SchemaPlan createPlan() {
+        return formulate();
     }
 
     /*
