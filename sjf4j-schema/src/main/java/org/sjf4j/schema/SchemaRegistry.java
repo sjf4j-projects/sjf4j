@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Map;
@@ -246,14 +247,10 @@ public class SchemaRegistry {
      */
     void indexRegistry(SchemaRegistry source) {
         if (source == null || source == this) return;
-        java.util.IdentityHashMap<SchemaResource, Set<String>> groups =
-                new java.util.IdentityHashMap<SchemaResource, Set<String>>();
+        IdentityHashMap<SchemaResource, Set<String>> groups = new IdentityHashMap<>();
         for (Map.Entry<String, SchemaResource> entry : source.byIdResources.entrySet()) {
-            Set<String> aliases = groups.get(entry.getValue());
-            if (aliases == null) {
-                aliases = new HashSet<String>();
-                groups.put(entry.getValue(), aliases);
-            }
+            Set<String> aliases = groups.computeIfAbsent(entry.getValue(),
+                    k -> new HashSet<>());
             aliases.add(entry.getKey());
         }
         for (Map.Entry<SchemaResource, Set<String>> group : groups.entrySet()) {
