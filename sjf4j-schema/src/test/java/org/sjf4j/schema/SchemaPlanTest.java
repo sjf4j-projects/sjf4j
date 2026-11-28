@@ -36,8 +36,8 @@ class SchemaPlanTest {
         assertEquals(first.hashCode(), second.hashCode());
 
         SchemaRegistry registry = new SchemaRegistry();
-        SchemaPlan firstPlan = first.createPlan(registry);
-        SchemaPlan secondPlan = second.createPlan(registry);
+        SchemaPlan firstPlan = first.formulate(registry);
+        SchemaPlan secondPlan = second.formulate(registry);
 
         assertEquals("sjf4j", firstPlan.schemaUri().getScheme());
         assertTrue(firstPlan.schemaUri().toString().matches("sjf4j:/schema-\\d+/"));
@@ -52,7 +52,7 @@ class SchemaPlanTest {
     void anonymousBaseSupportsRelativeRootIdAndFragmentReferences() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"$id\":\"child\",\"$defs\":{\"value\":{\"type\":\"string\"}},"
-                        + "\"$ref\":\"#/$defs/value\"}").createPlan();
+                        + "\"$ref\":\"#/$defs/value\"}").formulate();
 
         assertTrue(plan.schemaUri().toString().matches("sjf4j:/schema-\\d+/child"));
         assertTrue(plan.isValid("text"));
@@ -63,21 +63,21 @@ class SchemaPlanTest {
     void absoluteRootIdIsPreservedWithoutAnonymousBase() {
         URI uri = URI.create("https://example.com/schema");
         SchemaPlan plan = JsonSchema.fromJson(
-                "{\"$id\":\"https://example.com/schema\",\"type\":\"string\"}").createPlan();
+                "{\"$id\":\"https://example.com/schema\",\"type\":\"string\"}").formulate();
 
         assertEquals(uri, plan.schemaUri());
     }
 
     @Test
     void booleanSchemaPlanStaysMinimal() {
-        SchemaPlan plan = BooleanSchema.FALSE.createPlan();
+        SchemaPlan plan = BooleanSchema.FALSE.formulate();
 
         assertFalse(plan.isValid("any"));
     }
 
     @Test
     void booleanFalseFallbackKeepsExplicitInstanceLocation() {
-        SchemaPlan plan = BooleanSchema.FALSE.createPlan();
+        SchemaPlan plan = BooleanSchema.FALSE.formulate();
         org.sjf4j.path.PathSegment location =
                 new org.sjf4j.path.PathSegment.Name(
                         org.sjf4j.path.PathSegment.Root.INSTANCE, "nested");
@@ -89,7 +89,7 @@ class SchemaPlanTest {
         assertEquals("/nested", result.getErrors().get(0).getInstancePs().rootedPointerExpr());
         assertEquals("false", result.getErrors().get(0).getKeyword());
 
-        assertTrue(BooleanSchema.TRUE.createPlan().evaluate("value", location,
+        assertTrue(BooleanSchema.TRUE.formulate().evaluate("value", location,
                 new ValidationContext(true, false, false)));
     }
 
@@ -138,7 +138,7 @@ class SchemaPlanTest {
 
     @Test
     void planStrictFormatDefaultCanBeOverriddenDirectly() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").formulate();
 
         assertTrue(plan.validate("not-email").isValid());
         assertFalse(plan.validate("not-email", false, true).isValid());
@@ -151,7 +151,7 @@ class SchemaPlanTest {
                 "\"$ref\":\"#/$defs/s\"" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid(1));
     }
@@ -163,7 +163,7 @@ class SchemaPlanTest {
                 "\"$ref\":\"#/$defs/bool\"" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("ok"));
     }
@@ -175,7 +175,7 @@ class SchemaPlanTest {
                 "\"$ref\":\"#/$defs/percent%25field\"" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid(1));
@@ -189,7 +189,7 @@ class SchemaPlanTest {
                 "\"$ref\":\"#/$defs/foo\"" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("a"));
@@ -228,7 +228,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(new Object[]{1}));
         assertFalse(plan.isValid(new Object[]{"a"}));
@@ -240,7 +240,7 @@ class SchemaPlanTest {
                 "\"$dynamicAnchor\":\"node\"," +
                 "\"required\":[\"missing\"]," +
                 "\"properties\":{\"present\":true}" +
-                "}").createPlan();
+                "}").formulate();
         ValidationContext ctx = new ValidationContext(true, false, false);
 
         assertFalse(plan.evaluate(Instance.infer(Collections.emptyMap()), null, ctx));
@@ -252,7 +252,7 @@ class SchemaPlanTest {
         for (String keyword : new String[]{"anyOf", "oneOf"}) {
             SchemaPlan plan = JsonSchema.fromJson("{\"" + keyword + "\":[" +
                     "{\"required\":[\"missing\"],\"unevaluatedProperties\":true},true]," +
-                    "\"unevaluatedProperties\":true}").createPlan();
+                    "\"unevaluatedProperties\":true}").formulate();
             Instance instance = Instance.infer(Collections.singletonMap("present", 1));
             ValidationContext ctx = new ValidationContext(true, false, false);
 
@@ -265,7 +265,7 @@ class SchemaPlanTest {
     void unevaluatedKeywordsApplyToTheirOwnTypesInBothModes() {
         SchemaPlan plan = JsonSchema.fromJson("{" +
                 "\"unevaluatedProperties\":false,\"unevaluatedItems\":false" +
-                "}").createPlan();
+                "}").formulate();
         for (Object instance : new Object[]{Collections.singletonMap("x", 1), Collections.singletonList(1)}) {
             assertFalse(plan.validate(instance, true, false).isValid());
             assertFalse(plan.validate(instance).isValid());
@@ -276,7 +276,7 @@ class SchemaPlanTest {
     void notSeesUnevaluatedPropertiesFailureOnObject() {
         SchemaPlan plan = JsonSchema.fromJson("{" +
                 "\"not\":{\"unevaluatedProperties\":false,\"unevaluatedItems\":false}" +
-                "}").createPlan();
+                "}").formulate();
         Object instance = Collections.singletonMap("a", 1);
 
         assertTrue(plan.isValid(instance));
@@ -285,7 +285,7 @@ class SchemaPlanTest {
 
     @Test
     void inapplicableUnevaluatedPropertiesLeavesNoFrame() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"unevaluatedProperties\":false}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"unevaluatedProperties\":false}").formulate();
         for (boolean failFast : new boolean[]{true, false}) {
             Instance instance = Instance.infer(Collections.singletonList(1));
             ValidationContext ctx = new ValidationContext(failFast, false, false);
@@ -299,7 +299,7 @@ class SchemaPlanTest {
     void oneOfDoesNotCountInapplicableUnevaluatedKeywordAsMatch() {
         SchemaPlan plan = JsonSchema.fromJson("{" +
                 "\"oneOf\":[{\"unevaluatedProperties\":false,\"unevaluatedItems\":false},true]" +
-                "}").createPlan();
+                "}").formulate();
         for (Object instance : new Object[]{Collections.singletonMap("x", 1), Collections.singletonList(1)}) {
             assertTrue(plan.isValid(instance));
             assertTrue(plan.validate(instance).isValid());
@@ -316,7 +316,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(new Object[]{1}));
         assertFalse(plan.isValid(new Object[]{"a"}));
@@ -332,7 +332,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(new Object[]{"a"}));
         assertFalse(plan.isValid(new Object[]{1}));
@@ -349,7 +349,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertTrue(plan.isValid(new Object[]{"a"}));
         assertFalse(plan.isValid(new Object[]{1}));
@@ -364,7 +364,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        assertThrows(SchemaException.class, schema::createPlan);
+        assertThrows(SchemaException.class, schema::formulate);
     }
 
     @Test
@@ -376,7 +376,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        assertThrows(SchemaException.class, schema::createPlan);
+        assertThrows(SchemaException.class, schema::formulate);
     }
 
     @Test
@@ -388,7 +388,7 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        assertThrows(SchemaException.class, schema::createPlan);
+        assertThrows(SchemaException.class, schema::formulate);
     }
 
     @Test
@@ -399,14 +399,14 @@ class SchemaPlanTest {
                 "}" +
                 "}");
 
-        assertThrows(SchemaException.class, schema::createPlan);
+        assertThrows(SchemaException.class, schema::formulate);
     }
 
     @Test
     void planHandlesSelfRefWithoutPlaceholderBreakage() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$ref\":\"#\"}");
 
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         assertThrows(NodeException.class, () -> plan.validate("Cyclic schema reference"));
     }

@@ -289,7 +289,7 @@ public final class OfficialAnnotationTest {
                                 Nodes.forEachObject(externalSchemas, (uri, schema) ->
                                         registry.index(URI.create(uri), JsonSchema.fromNode(schema)));
                             }
-                            plan = JsonSchema.fromNode(group.getNode("schema")).createPlan(registry);
+                            plan = JsonSchema.fromNode(group.getNode("schema")).formulate(registry);
                         } catch (Exception e) {
                             compileError = e;
                         }

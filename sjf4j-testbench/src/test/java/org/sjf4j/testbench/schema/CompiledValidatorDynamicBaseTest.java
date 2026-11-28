@@ -51,7 +51,7 @@ class CompiledValidatorDynamicBaseTest {
     @Test
     void genericOneOfWorksWithoutDeclaredPropertiesOrOneOfAnnotation() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).formulate();
         for (Base value : new Base[]{new Named(), new Aged(), new Both()}) {
             assertEquals(runtime.isValid(value), compiled.valid(value));
         }
@@ -61,6 +61,6 @@ class CompiledValidatorDynamicBaseTest {
     void nonFinalBaseDoesNotIgnoreRuntimeSubclassMembers() {
         Validator compiled = CompiledInstances.create(Validator.class);
         Extended value = new Extended();
-        assertEquals(JsonSchema.fromJson(SCHEMA).createPlan().isValid(value), compiled.valid(value));
+        assertEquals(JsonSchema.fromJson(SCHEMA).formulate().isValid(value), compiled.valid(value));
     }
 }

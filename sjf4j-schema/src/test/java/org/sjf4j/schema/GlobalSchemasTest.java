@@ -72,7 +72,7 @@ class GlobalSchemasTest {
         assertFalse(b.isValid(null));
 
         JsonSchema ref = JsonSchema.fromJson("{\"$ref\":\"" + uri + "\"}");
-        assertFalse(ref.createPlan().isValid(1));
+        assertFalse(ref.formulate().isValid(1));
         SchemaRegistry local = new SchemaRegistry();
         local.index(uri, BooleanSchema.TRUE);
         assertTrue(local.resolve(uri).isValid(1));

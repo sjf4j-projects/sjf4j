@@ -18,7 +18,7 @@ class AnnotationRuntimeTest {
             .collectAnnotations(true).build();
 
     private static ValidationResult validate(String schema, Object value) {
-        return JsonSchema.fromJson(schema).createPlan().validate(value, ANNOTATIONS);
+        return JsonSchema.fromJson(schema).formulate().validate(value, ANNOTATIONS);
     }
 
     private static List<String> values(ValidationResult result) {
@@ -85,7 +85,7 @@ class AnnotationRuntimeTest {
 
         ValidationResult withFailFast = JsonSchema.fromJson(
                 "{\"anyOf\":[{\"title\":\"A\"},{\"title\":\"B\"}]}")
-                .createPlan().validate(1, ValidationOptions.builder()
+                .formulate().validate(1, ValidationOptions.builder()
                         .collectAnnotations(true).failFast(true).build());
         assertEquals(Arrays.asList("A", "B"), values(withFailFast));
     }
@@ -198,7 +198,7 @@ class AnnotationRuntimeTest {
     void disabledCollectionDoesNotChangeLegacyResults() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"type\":\"object\",\"title\":\"Object\","
-                        + "\"required\":[\"missing\"]}").createPlan();
+                        + "\"required\":[\"missing\"]}").formulate();
         ValidationResult old = plan.validate(JsonObject.of());
         ValidationResult disabled = plan.validate(JsonObject.of(),
                 ValidationOptions.builder().build());
@@ -213,7 +213,7 @@ class AnnotationRuntimeTest {
                 .collectAnnotations(true).build();
         for (SchemaDialect dialect : SchemaDialect.values()) {
             ValidationResult result = JsonSchema.fromJson("{\"title\":\"Example\"}")
-                    .createPlan(new SchemaRegistry(dialect)).validate(42, options);
+                    .formulate(new SchemaRegistry(dialect)).validate(42, options);
             assertTrue(result.isValid(), dialect.toString());
             assertEquals(1, result.getAnnotations().size(), dialect.toString());
             assertEquals("title", result.getAnnotations().get(0).getKeyword(), dialect.toString());

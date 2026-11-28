@@ -113,7 +113,7 @@ class SchemaLoaderTest {
             Files.write(file, "false".getBytes(StandardCharsets.UTF_8));
             JsonSchema parsed = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
             assertTrue(parsed instanceof BooleanSchema);
-            assertFalse(parsed.createPlan().isValid("anything"));
+            assertFalse(parsed.formulate().isValid("anything"));
         } finally {
             Files.deleteIfExists(file);
         }
@@ -127,7 +127,7 @@ class SchemaLoaderTest {
                 "classpath:///schema-loader-classpath-test.json"}) {
             JsonSchema schema = loader.load(URI.create(reference));
             assertNotNull(schema, reference);
-            SchemaPlan plan = schema.createPlan();
+            SchemaPlan plan = schema.formulate();
             assertTrue(plan.isValid("ok"), reference);
             assertFalse(plan.isValid("x"), reference);
         }

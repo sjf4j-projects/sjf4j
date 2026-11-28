@@ -95,7 +95,7 @@ class CompiledValidatorContractTest {
         assertFalse(validator.isValid(badEmail, true));
         assertTrue(validator.isValid(badEmail, false));
         SchemaPlan reference = JsonSchema.fromJson(
-                Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+                Person.class.getAnnotation(ValidJsonSchema.class).value()).formulate();
         assertEquals(reference.isValid(badEmail, false), validator.isValid(badEmail, false));
         assertEquals(reference.isValid(badEmail, true), validator.isValid(badEmail, true));
         assertFalse(validator.isValid(null));
@@ -119,7 +119,7 @@ class CompiledValidatorContractTest {
         ValidationResult strict = validator.validate(invalid, true);
         assertFalse(strict.isValid());
         SchemaPlan reference = JsonSchema.fromJson(
-                Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+                Person.class.getAnnotation(ValidJsonSchema.class).value()).formulate();
         assertEquals(reference.validate(invalid, false, true).getErrors().size(),
                 strict.getErrors().size());
         assertTrue(strict.getErrors().size() >= 2, () -> strict.toString());

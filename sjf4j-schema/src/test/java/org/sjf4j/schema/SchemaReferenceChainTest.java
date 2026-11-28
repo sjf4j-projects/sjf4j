@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SchemaReferenceChainTest {
 
     private static SchemaPlan plan(String json) {
-        return JsonSchema.fromJson(json).createPlan();
+        return JsonSchema.fromJson(json).formulate();
     }
 
     @Test

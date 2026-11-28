@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ValidationContextResultTest {
     private static void check(String json, Object valid, Object invalid) {
-        SchemaPlan plan = JsonSchema.fromJson(json).createPlan();
+        SchemaPlan plan = JsonSchema.fromJson(json).formulate();
         assertTrue(plan.isValid(valid));
         assertTrue(plan.validate(valid).isValid());
         assertTrue(plan.validate(valid, true, false).isValid());
@@ -39,7 +39,7 @@ class ValidationContextResultTest {
     }
     @Test void allOfProbeRestoresEnclosingEvaluatedFrame() {
         SchemaPlan plan = JsonSchema.fromJson("{\"properties\":{\"x\":true},"
-                + "\"not\":{\"allOf\":[false]},\"unevaluatedProperties\":false}").createPlan();
+                + "\"not\":{\"allOf\":[false]},\"unevaluatedProperties\":false}").formulate();
         Map<String, Object> instance = Collections.singletonMap("x", 1);
         assertTrue(plan.isValid(instance));
         assertTrue(plan.validate(instance, true, false).isValid());

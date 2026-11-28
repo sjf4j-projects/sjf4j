@@ -175,7 +175,7 @@ JsonSchema schema = JsonSchema.fromJson("""
 }
 """);
 
-SchemaPlan plan = schema.createPlan();
+SchemaPlan plan = schema.formulate();
 ValidationResult result = plan.validate(user);
 ```
 

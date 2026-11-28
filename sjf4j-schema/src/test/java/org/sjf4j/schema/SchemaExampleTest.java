@@ -10,7 +10,7 @@ public class SchemaExampleTest {
     @Test
     public void testJsonSchema1() {
         JsonSchema schema = JsonSchema.fromJson("{ \"type\": \"number\" }");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         // Prepares the schema for validation
 
         assertTrue(plan.isValid(1));                              // Passes validation

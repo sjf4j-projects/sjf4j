@@ -103,7 +103,7 @@ public class CompiledValidatorPropertyCodecTest {
                 "{\"type\":\"object\",\"properties\":{"
                         + "\"millis\":{\"type\":\"number\",\"minimum\":2000},"
                         + "\"day\":{\"type\":\"string\",\"pattern\":\"^2026/11/02$\"},"
-                        + "\"standard\":{\"type\":\"string\"}}}").createPlan();
+                        + "\"standard\":{\"type\":\"string\"}}}").formulate();
         assertTrue(compiled.valid(times));
         assertEquals(plan.isValid(times), compiled.valid(times));
         times.millis = Instant.ofEpochMilli(1999);
@@ -118,7 +118,7 @@ public class CompiledValidatorPropertyCodecTest {
         Compiled validator = CompiledInstances.create(Compiled.class);
         FlagHolder holder = new FlagHolder();
         SchemaPlan reference = JsonSchema.fromJson(
-                "{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}").createPlan();
+                "{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}").formulate();
         assertTrue(reference.isValid(holder));
         assertTrue(validator.booleanCodec(holder));
         holder.flag = null;
@@ -139,7 +139,7 @@ public class CompiledValidatorPropertyCodecTest {
         Compiled compiled = CompiledInstances.create(Compiled.class);
         SchemaPlan reference = JsonSchema.fromJson(
                 "{\"properties\":{\"millis\":{\"anyOf\":["
-                + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").createPlan();
+                + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").formulate();
         Times value = new Times();
         assertTrue(compiled.scalarApplicator(value));
         assertEquals(reference.isValid(value), compiled.scalarApplicator(value));
@@ -155,7 +155,7 @@ public class CompiledValidatorPropertyCodecTest {
         Times value = new Times();
         Fallback compiled = CompiledInstances.create(Fallback.class);
         SchemaPlan reference = JsonSchema.fromJson(
-                "{\"properties\":{\"millis\":{\"type\":\"object\"}}}").createPlan();
+                "{\"properties\":{\"millis\":{\"type\":\"object\"}}}").formulate();
         assertFalse(reference.isValid(value));
         assertEquals(reference.isValid(value), compiled.structural(value));
 
@@ -164,7 +164,7 @@ public class CompiledValidatorPropertyCodecTest {
         // fallback must evaluate the parent POJO to retain epochMillis.
         SchemaPlan complex = JsonSchema.fromJson(
                 "{\"properties\":{\"millis\":{\"anyOf\":["
-                        + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").createPlan();
+                        + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").formulate();
         assertTrue(complex.isValid(value));
         assertEquals(complex.isValid(value), compiled.complexScalar(value));
         value.millis = Instant.ofEpochMilli(100);

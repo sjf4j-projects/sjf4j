@@ -88,7 +88,7 @@ class CompiledValidatorStaticUnevaluatedTest {
     @Test
     void localPropertyCoverageMatchesRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan properties = JsonSchema.fromJson(PROPERTIES).createPlan();
+        SchemaPlan properties = JsonSchema.fromJson(PROPERTIES).formulate();
         for (Object value : Arrays.asList(
                 null, 1, "string",
                 Map.of(), Map.of("name", "ok"), Map.of("name", 1),
@@ -103,7 +103,7 @@ class CompiledValidatorStaticUnevaluatedTest {
     @Test
     void localPatternCoverageMatchesRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan patterns = JsonSchema.fromJson(PATTERNS).createPlan();
+        SchemaPlan patterns = JsonSchema.fromJson(PATTERNS).formulate();
         for (Object value : List.of(
                 Map.of(), Map.of("xName", "anything"), Map.of("other", 2),
                 Map.of("other", "bad"), Map.of("xName", false, "other", 12))) {
@@ -114,16 +114,16 @@ class CompiledValidatorStaticUnevaluatedTest {
     @Test
     void suffixCoverageMatchesRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan prefix = JsonSchema.fromJson(PREFIX).createPlan();
-        SchemaPlan suffix = JsonSchema.fromJson(SUFFIX_SCHEMA).createPlan();
+        SchemaPlan prefix = JsonSchema.fromJson(PREFIX).formulate();
+        SchemaPlan suffix = JsonSchema.fromJson(SUFFIX_SCHEMA).formulate();
         for (Object value : Arrays.asList(
                 null, "string", List.of(), List.of(1), List.of("bad"),
                 List.of(1, 2), List.of(1, "ok"), List.of(1, "ok", "next"))) {
             assertEquals(prefix.isValid(value), direct.prefix(value), String.valueOf(value));
             assertEquals(suffix.isValid(value), direct.suffix(value), String.valueOf(value));
         }
-        SchemaPlan items = JsonSchema.fromJson(ITEMS_AND_UNEVALUATED).createPlan();
-        SchemaPlan prefixItems = JsonSchema.fromJson(PREFIX_ITEMS_AND_UNEVALUATED).createPlan();
+        SchemaPlan items = JsonSchema.fromJson(ITEMS_AND_UNEVALUATED).formulate();
+        SchemaPlan prefixItems = JsonSchema.fromJson(PREFIX_ITEMS_AND_UNEVALUATED).formulate();
         for (Object value : Arrays.asList(
                 null, "string", List.of(), List.of(1), List.of("bad"),
                 List.of(1, 2), List.of("ok", 2), List.of("ok", 2, 3),
@@ -135,9 +135,9 @@ class CompiledValidatorStaticUnevaluatedTest {
     @Test
     void adjacentAdditionalPropertiesMakesUnevaluatedRedundant() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan falsePlan = JsonSchema.fromJson(ADDITIONAL_FALSE).createPlan();
-        SchemaPlan truePlan = JsonSchema.fromJson(ADDITIONAL_TRUE).createPlan();
-        SchemaPlan schemaPlan = JsonSchema.fromJson(ADDITIONAL_SCHEMA).createPlan();
+        SchemaPlan falsePlan = JsonSchema.fromJson(ADDITIONAL_FALSE).formulate();
+        SchemaPlan truePlan = JsonSchema.fromJson(ADDITIONAL_TRUE).formulate();
+        SchemaPlan schemaPlan = JsonSchema.fromJson(ADDITIONAL_SCHEMA).formulate();
         for (Object value : Arrays.asList(null, "string", List.of(1),
                 Map.of(), Map.of("name", "ok"), Map.of("name", 42),
                 Map.of("xKey", "anything"), Map.of("other", 12),
@@ -158,10 +158,10 @@ class CompiledValidatorStaticUnevaluatedTest {
     @Test
     void coverageNeutralApplicatorsMatchRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan allItems = JsonSchema.fromJson(TRUE_ALLOF_ITEMS).createPlan();
-        SchemaPlan allProperties = JsonSchema.fromJson(TRUE_ALLOF_PROPERTIES).createPlan();
-        SchemaPlan notItems = JsonSchema.fromJson(NOT_ITEMS).createPlan();
-        SchemaPlan notProperties = JsonSchema.fromJson(NOT_PROPERTIES).createPlan();
+        SchemaPlan allItems = JsonSchema.fromJson(TRUE_ALLOF_ITEMS).formulate();
+        SchemaPlan allProperties = JsonSchema.fromJson(TRUE_ALLOF_PROPERTIES).formulate();
+        SchemaPlan notItems = JsonSchema.fromJson(NOT_ITEMS).formulate();
+        SchemaPlan notProperties = JsonSchema.fromJson(NOT_PROPERTIES).formulate();
         for (Object value : Arrays.asList(null, 1, List.of(), List.of("foo"),
                 List.of("foo", "bar"), List.of("foo", "bad"), List.of("bad"),
                 Map.of(), Map.of("foo", "ok"), Map.of("foo", 42),

@@ -108,7 +108,7 @@ public class CompiledValidatorValueBindingTest {
                 new LinkedHashMap<String, Object>()
         }) {
             MapValue value = new MapValue(raw);
-            boolean expected = JsonSchema.fromJson(SCHEMA).createPlan().isValid(value);
+            boolean expected = JsonSchema.fromJson(SCHEMA).formulate().isValid(value);
             assertEquals(expected, compiled.object(value));
             assertEquals(expected, compiled.wrapped(value));
             // The Map encoding is a leaf representation, not traversable OBNT.
@@ -137,12 +137,12 @@ public class CompiledValidatorValueBindingTest {
         assertEquals(true, compiled.array(List.of("abc")));
         assertEquals(false, compiled.array(listValue));
         assertEquals(JsonSchema.fromJson("{\"type\":\"array\",\"minItems\":1}")
-                .createPlan().isValid(listValue), compiled.array(listValue));
+                .formulate().isValid(listValue), compiled.array(listValue));
         Holder ordinary = new Holder(List.of("abc"));
         assertEquals(JsonType.OBJECT, JsonType.rawOf(Holder.class));
         assertEquals(true, Nodes.keySetInObject(ordinary).contains("items"));
         assertEquals(1, Nodes.sizeInArray(Nodes.getInObject(ordinary, "items")));
-        assertEquals(true, JsonSchema.fromJson("{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"minItems\":1}}}").createPlan().isValid(ordinary));
+        assertEquals(true, JsonSchema.fromJson("{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"minItems\":1}}}").formulate().isValid(ordinary));
         assertEquals(true, compiled.nested(ordinary));
         assertEquals(false, compiled.nested(new Holder(listValue)));
 

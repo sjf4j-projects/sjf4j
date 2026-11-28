@@ -20,10 +20,10 @@ class SchemaResourceLimitsTest {
         assertEquals(1, bounded.getPlanningOptions().getMaxSchemas());
         assertThrows(NullPointerException.class, () -> new SchemaRegistry((PlanningOptions) null));
         JsonSchema object = JsonSchema.fromJson("{\"type\":\"integer\"}");
-        assertTrue(object.createPlan().isValid(1));
-        assertTrue(object.createPlan(bounded).isValid(1));
-        assertTrue(BooleanSchema.TRUE.createPlan(bounded).isValid(1));
-        assertFalse(BooleanSchema.FALSE.createPlan(bounded).isValid(1));
+        assertTrue(object.formulate().isValid(1));
+        assertTrue(object.formulate(bounded).isValid(1));
+        assertTrue(BooleanSchema.TRUE.formulate(bounded).isValid(1));
+        assertFalse(BooleanSchema.FALSE.formulate(bounded).isValid(1));
     }
 
     @Test
@@ -34,8 +34,8 @@ class SchemaResourceLimitsTest {
                 "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}}}"));
         JsonSchema schema = JsonSchema.fromJson("{\"$id\":\"https://example.test/temporary\","
                 + "\"$ref\":\"https://example.test/resource#/$defs/value\"}");
-        assertTrue(schema.createPlan(registry).isValid(1));
-        assertFalse(schema.createPlan(registry).isValid("bad"));
+        assertTrue(schema.formulate(registry).isValid(1));
+        assertFalse(schema.formulate(registry).isValid("bad"));
         assertFalse(registry.contains("https://example.test/temporary"));
         assertSame(cached, registry.resolve(resource));
         assertSame(cached.byPathPlans.get("/$defs/value"), registry.resolve(URI.create(resource + "#node")));
@@ -43,17 +43,17 @@ class SchemaResourceLimitsTest {
         URI uncached = URI.create("https://example.test/uncached");
         registry.index(uncached, JsonSchema.fromJson("{\"type\":\"integer\"}"));
         assertTrue(JsonSchema.fromJson("{\"$ref\":\"https://example.test/uncached\"}")
-                .createPlan(registry).isValid(1));
+                .formulate(registry).isValid(1));
         assertNull(registry.resolveBuilt(uncached));
     }
 
     @Test
     void planningCountsBooleanEmptyAndUnusedSchemas() {
         JsonSchema schema = JsonSchema.fromJson("{\"$defs\":{\"a\":true,\"b\":false,\"c\":{}}}");
-        assertThrows(SchemaException.class, () -> schema.createPlan(registry(3, 0)));
-        assertTrue(schema.createPlan(registry(4, 0)).isValid(1));
-        assertThrows(SchemaException.class, () -> schema.createPlan(registry(0, 1)));
-        assertTrue(schema.createPlan(registry(0, 2)).isValid(1));
+        assertThrows(SchemaException.class, () -> schema.formulate(registry(3, 0)));
+        assertTrue(schema.formulate(registry(4, 0)).isValid(1));
+        assertThrows(SchemaException.class, () -> schema.formulate(registry(0, 1)));
+        assertTrue(schema.formulate(registry(0, 2)).isValid(1));
     }
 
     @Test
@@ -64,15 +64,15 @@ class SchemaResourceLimitsTest {
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/external\"}");
         SchemaRegistry strict = registry(3, 0);
         strict.indexRegistry(source);
-        assertThrows(SchemaException.class, () -> root.createPlan(strict));
+        assertThrows(SchemaException.class, () -> root.formulate(strict));
         SchemaRegistry relaxed = registry(4, 0);
         relaxed.indexRegistry(source);
-        assertTrue(root.createPlan(relaxed).isValid(1));
+        assertTrue(root.formulate(relaxed).isValid(1));
         assertNotSame(cached, relaxed.resolve(uri));
         assertSame(cached, source.resolve(uri));
-        assertTrue(root.createPlan(relaxed).isValid(1));
+        assertTrue(root.formulate(relaxed).isValid(1));
         SchemaPlan local = relaxed.resolve(uri);
-        assertSame(local, ((Evaluator.RefEvaluator) root.createPlan(relaxed).evaluators[0]).plan);
+        assertSame(local, ((Evaluator.RefEvaluator) root.formulate(relaxed).evaluators[0]).plan);
     }
 
     @Test
@@ -86,12 +86,12 @@ class SchemaResourceLimitsTest {
         SchemaRegistry bounded = registry(2, 0);
         bounded.indexRegistry(source);
         assertNull(bounded.resolve(childUri));
-        assertThrows(SchemaException.class, () -> root.createPlan(bounded));
+        assertThrows(SchemaException.class, () -> root.formulate(bounded));
         SchemaPlan owner = bounded.resolve(rootUri);
         SchemaPlan child = bounded.resolve(childUri);
         assertSame(owner.byPathPlans.get("/$defs/child"), child);
         assertNotSame(source.resolve(childUri), child);
-        SchemaPlan plan = root.createPlan(bounded);
+        SchemaPlan plan = root.formulate(bounded);
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("bad"));
         assertSame(child, ((Evaluator.RefEvaluator) plan.evaluators[0]).plan);
@@ -107,13 +107,13 @@ class SchemaResourceLimitsTest {
         JsonSchema root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/a\"}");
         SchemaRegistry enough = registry(5, 5);
         enough.indexRegistry(source);
-        assertTrue(root.createPlan(enough).isValid(1));
+        assertTrue(root.formulate(enough).isValid(1));
         SchemaRegistry shallow = registry(0, 4);
         shallow.indexRegistry(source);
-        assertThrows(SchemaException.class, () -> root.createPlan(shallow));
+        assertThrows(SchemaException.class, () -> root.formulate(shallow));
         SchemaRegistry small = registry(4, 0);
         small.indexRegistry(source);
-        assertThrows(SchemaException.class, () -> root.createPlan(small));
+        assertThrows(SchemaException.class, () -> root.formulate(small));
     }
 
     @Test
@@ -125,7 +125,7 @@ class SchemaResourceLimitsTest {
                 "{\"$dynamicAnchor\":\"node\",\"type\":\"integer\"}"));
         JsonSchema schema = JsonSchema.fromJson(
                 "{\"$ref\":\"https://example.test/a\",\"$dynamicRef\":\"https://example.test/b#node\"}");
-        SchemaPlan plan = schema.createPlan(registry);
+        SchemaPlan plan = schema.formulate(registry);
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid("bad"));
     }
@@ -135,13 +135,13 @@ class SchemaResourceLimitsTest {
         for (String keyword : new String[]{"$ref", "$dynamicRef"}) {
             JsonSchema schema = JsonSchema.fromJson("{\"" + keyword + "\":\"#/custom\","
                     + "\"custom\":{\"not\":false}}");
-            SchemaException failure = assertThrows(SchemaException.class, schema::createPlan);
+            SchemaException failure = assertThrows(SchemaException.class, schema::formulate);
             assertTrue(failure.getMessage().contains("cannot resolve schema fragment '#/custom'"));
         }
         JsonSchema known = JsonSchema.fromJson("{\"$ref\":\"#/$defs/target\","
                 + "\"$defs\":{\"target\":{\"not\":false}}}");
-        assertThrows(SchemaException.class, () -> known.createPlan(registry(2, 0)));
-        assertTrue(known.createPlan(registry(3, 0)).isValid(1));
+        assertThrows(SchemaException.class, () -> known.formulate(registry(2, 0)));
+        assertTrue(known.formulate(registry(3, 0)).isValid(1));
     }
 
     @Test
@@ -228,7 +228,7 @@ class SchemaResourceLimitsTest {
         URI dependency = URI.create("https://example.test/dependency");
         SchemaPlan cached = registry.register(dependency, JsonSchema.fromJson("{\"not\":false}"));
         SchemaPlan root = JsonSchema.fromJson("{\"$ref\":\"https://example.test/dependency\"}")
-                .createPlan(registry);
+                .formulate(registry);
         assertSame(cached, ((Evaluator.RefEvaluator) root.evaluators[0]).plan);
         assertTrue(root.isValid(1));
     }
@@ -249,8 +249,8 @@ class SchemaResourceLimitsTest {
         ValidationOptions options = ValidationOptions.builder()
                 .collectAnnotations(true).maxEvaluations(1)
                 .maxEvaluationDepth(1).maxErrors(1).build();
-        SchemaPlan accepted = BooleanSchema.TRUE.createPlan();
-        SchemaPlan rejected = BooleanSchema.FALSE.createPlan();
+        SchemaPlan accepted = BooleanSchema.TRUE.formulate();
+        SchemaPlan rejected = BooleanSchema.FALSE.formulate();
         assertSame(ValidationResult.SUCCESS, accepted.validate(null, options));
         assertDoesNotThrow(() -> accepted.requireValid(null, options));
         ValidationResult result = rejected.validate(null, options);
@@ -279,9 +279,9 @@ class SchemaResourceLimitsTest {
         ValidationOptions options = ValidationOptions.builder()
                 .failFast(false).collectAnnotations(true).maxErrors(1)
                 .maxEvaluations(1).maxEvaluationDepth(1).build();
-        assertTrue(BooleanSchema.TRUE.createPlan().isValid(null, options));
-        assertFalse(BooleanSchema.FALSE.createPlan().isValid(null, options));
-        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"integer\"}").createPlan();
+        assertTrue(BooleanSchema.TRUE.formulate().isValid(null, options));
+        assertFalse(BooleanSchema.FALSE.formulate().isValid(null, options));
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"integer\"}").formulate();
         assertFalse(plan.isValid(1, options));
         ValidationOptions enough = ValidationOptions.builder().maxEvaluations(2)
                 .collectAnnotations(true).build();
@@ -291,7 +291,7 @@ class SchemaResourceLimitsTest {
 
     @Test
     void evaluationCountsSchemaAndEvaluatorCalls() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}").formulate();
         Object data = Arrays.asList(1, 2);
         assertTrue(plan.isValid(data, ValidationOptions.builder().maxEvaluations(7).build()));
         ValidationOptions exhausted = ValidationOptions.builder().maxEvaluations(6).build();
@@ -302,19 +302,19 @@ class SchemaResourceLimitsTest {
         ValidationException required = assertThrows(ValidationException.class,
                 () -> plan.requireValid(data, exhausted));
         assertEquals("maxEvaluations", required.getResult().getLastError().getKeyword());
-        SchemaPlan empty = JsonSchema.fromJson("{\"items\":true}").createPlan();
+        SchemaPlan empty = JsonSchema.fromJson("{\"items\":true}").formulate();
         assertFalse(empty.isValid(data, ValidationOptions.builder().maxEvaluations(3).build()));
         assertTrue(empty.isValid(data, ValidationOptions.builder().maxEvaluations(4).build()));
     }
 
     @Test
     void evaluationDepthIncludesReferencesAndResetsForSiblings() {
-        SchemaPlan refs = JsonSchema.fromJson("{\"$ref\":\"#/$defs/a\",\"$defs\":{\"a\":{\"$ref\":\"#/$defs/b\"},\"b\":true}}").createPlan();
+        SchemaPlan refs = JsonSchema.fromJson("{\"$ref\":\"#/$defs/a\",\"$defs\":{\"a\":{\"$ref\":\"#/$defs/b\"},\"b\":true}}").formulate();
         assertTrue(refs.isValid(1, ValidationOptions.builder().maxEvaluationDepth(3).build()));
         assertFalse(refs.isValid(1, ValidationOptions.builder().maxEvaluationDepth(2).build()));
-        SchemaPlan items = JsonSchema.fromJson("{\"items\":true}").createPlan();
+        SchemaPlan items = JsonSchema.fromJson("{\"items\":true}").formulate();
         assertTrue(items.isValid(Arrays.asList(1, 2, 3), ValidationOptions.builder().maxEvaluationDepth(2).build()));
-        SchemaPlan recursive = JsonSchema.fromJson("{\"properties\":{\"next\":{\"$ref\":\"#\"}}}").createPlan();
+        SchemaPlan recursive = JsonSchema.fromJson("{\"properties\":{\"next\":{\"$ref\":\"#\"}}}").formulate();
         Map<String, Object> cycle = new HashMap<>();
         cycle.put("next", cycle);
         assertFalse(recursive.isValid(cycle, ValidationOptions.builder().maxEvaluationDepth(8).build()));
@@ -322,13 +322,13 @@ class SchemaResourceLimitsTest {
 
     @Test
     void maxErrorsStopsValidationWithoutCountingProbeFailures() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").formulate();
         ValidationOptions options = ValidationOptions.builder().maxErrors(2).build();
         ValidationResult invalid = plan.validate(Arrays.asList("a", "b", "c"), options);
         assertFalse(invalid.isValid());
         assertEquals(2, invalid.getErrors().size());
         assertTrue(plan.validate(Arrays.asList(1, 2, 3), options).isValid());
-        SchemaPlan probe = JsonSchema.fromJson("{\"anyOf\":[false,{\"type\":\"integer\"}]}").createPlan();
+        SchemaPlan probe = JsonSchema.fromJson("{\"anyOf\":[false,{\"type\":\"integer\"}]}").formulate();
         options = ValidationOptions.builder().maxErrors(1).build();
         assertTrue(probe.validate(1, options).isValid());
         assertTrue(probe.validate(1, options).getErrors().isEmpty());
@@ -337,7 +337,7 @@ class SchemaResourceLimitsTest {
 
     @Test
     void limitErrorsAbortEvenIgnoredBranches() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"not\":{\"type\":\"integer\"}}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"not\":{\"type\":\"integer\"}}").formulate();
         ValidationOptions options = ValidationOptions.builder().maxEvaluationDepth(1).build();
         ValidationResult result = plan.validate("text", options);
         assertFalse(result.isValid());
@@ -345,7 +345,7 @@ class SchemaResourceLimitsTest {
         assertEquals("maxEvaluationDepth", result.getLastError().getKeyword());
         assertFalse(plan.isValid("text", options));
 
-        SchemaPlan any = JsonSchema.fromJson("{\"anyOf\":[false,true]}").createPlan();
+        SchemaPlan any = JsonSchema.fromJson("{\"anyOf\":[false,true]}").formulate();
         ValidationOptions limited = ValidationOptions.builder().maxEvaluations(3).build();
         ValidationResult steps = any.validate(1, limited);
         assertFalse(steps.isValid());
@@ -355,7 +355,7 @@ class SchemaResourceLimitsTest {
 
     @Test
     void maxErrorsAbortsBeforeLaterExecutionLimit() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"items\":{\"type\":\"integer\"}}").formulate();
         ValidationOptions options = ValidationOptions.builder().maxErrors(1).maxEvaluations(4).build();
         ValidationResult result = plan.validate(Arrays.asList("bad", "also bad"), options);
         assertFalse(result.isValid());
@@ -374,7 +374,7 @@ class SchemaResourceLimitsTest {
 
     @Test
     void maxErrorsStopsInsideSingleEvaluator() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"a\",\"b\",\"c\"]}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"a\",\"b\",\"c\"]}").formulate();
         ValidationResult result = plan.validate(java.util.Collections.emptyMap(),
                 ValidationOptions.builder().maxErrors(2).build());
         assertFalse(result.isValid());

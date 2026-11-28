@@ -38,7 +38,7 @@ class CompiledValidatorDependentRequiredTest {
     @Test
     void matchesRuntimeForNullValuesAndMultipleDependencies() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).formulate();
         Map<String, Object> map = new LinkedHashMap<>();
         for (String key : new String[]{"a", "b", "c", "d"}) {
             assertEquals(runtime.isValid(map), compiled.valid(map), map.toString());
@@ -56,7 +56,7 @@ class CompiledValidatorDependentRequiredTest {
         PojoValidator compiled = CompiledInstances.create(PojoValidator.class);
         Model model = new Model();
         String schema = "{\"type\":\"object\",\"dependentRequired\":{\"a\":[\"b\",\"c\"]}}";
-        assertEquals(JsonSchema.fromJson(schema).createPlan().isValid(model),
+        assertEquals(JsonSchema.fromJson(schema).formulate().isValid(model),
                 compiled.valid(model));
     }
 
@@ -68,7 +68,7 @@ class CompiledValidatorDependentRequiredTest {
                 + "\"dependentRequired\":{\"a\":[\"b\"]}}";
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("a", 1);
-        assertEquals(true, JsonSchema.fromJson(draft07).createPlan().isValid(input));
-        assertEquals(false, JsonSchema.fromJson(latest).createPlan().isValid(input));
+        assertEquals(true, JsonSchema.fromJson(draft07).formulate().isValid(input));
+        assertEquals(false, JsonSchema.fromJson(latest).formulate().isValid(input));
     }
 }

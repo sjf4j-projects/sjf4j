@@ -74,8 +74,8 @@ class CompiledValidatorExactNumbersTest {
     @Test
     void generatedCompoundConstantsAreDecodedExactly() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan constant = JsonSchema.fromJson(COMPOUND_CONST).createPlan();
-        SchemaPlan enumeration = JsonSchema.fromJson(COMPOUND_ENUM).createPlan();
+        SchemaPlan constant = JsonSchema.fromJson(COMPOUND_CONST).formulate();
+        SchemaPlan enumeration = JsonSchema.fromJson(COMPOUND_ENUM).formulate();
         for (BigDecimal value : Arrays.asList(EXACT, LOWER, UPPER)) {
             Map<String, List<BigDecimal>> input = Collections.singletonMap("n", Collections.singletonList(value));
             boolean expected = value.compareTo(EXACT) == 0;

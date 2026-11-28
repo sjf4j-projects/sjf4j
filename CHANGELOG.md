@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added `JsonSchema.formulate()` and deprecated `createPlan()`.
 - Added `exactNumbers` support for Runtime and Compiled binding.
 
 ### Changed

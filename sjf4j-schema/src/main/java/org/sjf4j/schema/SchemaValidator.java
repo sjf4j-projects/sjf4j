@@ -171,7 +171,7 @@ public final class SchemaValidator {
         String inline = anno.value();
         if (!inline.isEmpty()) {
             JsonSchema schema = JsonSchema.fromJson(inline);
-            if (schema instanceof BooleanSchema) return schema.createPlan(scoped);
+            if (schema instanceof BooleanSchema) return schema.formulate(scoped);
             return SchemaPlanner.buildPlan(new SchemaResource(URI.create("sjf4j:/" + clazz.getName() + "/"), schema), scoped);
         }
 

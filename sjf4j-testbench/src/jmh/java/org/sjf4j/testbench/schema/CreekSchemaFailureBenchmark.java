@@ -47,7 +47,7 @@ public class CreekSchemaFailureBenchmark {
         try (InputStream stream = getClass().getResourceAsStream("/schema/creek-2020-12.json")) {
             if (stream == null) throw new IllegalStateException("Creek schema fixture not found");
             plan = JsonSchema.fromJson(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
-                    .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
+                    .formulate(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
         }
 
         TestModel model = state.model;

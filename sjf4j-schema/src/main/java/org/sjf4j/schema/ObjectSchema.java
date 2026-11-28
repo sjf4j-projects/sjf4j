@@ -37,7 +37,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * Compiles this root schema without modifying the provided registry.
      */
     @Override
-    public SchemaPlan createPlan(SchemaRegistry registry) {
+    public SchemaPlan formulate(SchemaRegistry registry) {
         return SchemaPlanner.buildPlan(new SchemaResource(null, this), registry);
     }
 

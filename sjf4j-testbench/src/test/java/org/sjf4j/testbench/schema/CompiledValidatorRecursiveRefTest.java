@@ -159,7 +159,7 @@ class CompiledValidatorRecursiveRefTest {
 
     private static void assertParity(String schema, java.util.function.Predicate<Object> compiled,
                                      Object... values) {
-        SchemaPlan runtime = JsonSchema.fromJson(schema).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(schema).formulate();
         for (Object value : values) {
             assertEquals(runtime.isValid(value), compiled.test(value),
                     "schema: " + schema + " instance: " + value);

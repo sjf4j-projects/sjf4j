@@ -116,7 +116,7 @@ class SchemaRegistryTest {
         registry.index(rootSchema);
         registry.index(leafSchema);
 
-        SchemaPlan plan = rootSchema.createPlan(registry);
+        SchemaPlan plan = rootSchema.formulate(registry);
         assertTrue(plan.validate("x").isValid());
         assertFalse(plan.validate("").isValid());
     }
@@ -302,7 +302,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(new SchemaRegistry()));
+                () -> schema.formulate(new SchemaRegistry()));
         assertTrue(ex.getMessage().contains("cannot resolve schema resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
         assertTrue(ex.getMessage().contains("preload or register the referenced schema"));
         assertTrue(ex.getMessage().contains("keyword=/$ref"));
@@ -321,7 +321,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(registry));
+                () -> schema.formulate(registry));
         assertTrue(ex.getMessage().contains("cannot resolve schema fragment '#/$defs/foo'"));
         assertTrue(ex.getMessage().contains("resource 'http://localhost:1234/draft2020-12/detached-ref.json'"));
         assertTrue(ex.getMessage().contains("keyword=/$ref"));
@@ -336,7 +336,7 @@ class SchemaRegistryTest {
                 "}");
 
         SchemaException ex = assertThrows(SchemaException.class,
-                () -> schema.createPlan(new SchemaRegistry()));
+                () -> schema.formulate(new SchemaRegistry()));
         assertTrue(ex.getMessage().contains("cannot resolve $schema 'http://localhost:1234/draft2020-12/metaschema-no-validation.json'"));
         assertTrue(ex.getMessage().contains("preload or register the metaschema"));
         assertTrue(ex.getMessage().contains("keyword=/$schema"));
