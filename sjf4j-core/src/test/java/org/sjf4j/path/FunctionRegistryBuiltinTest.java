@@ -51,6 +51,20 @@ class FunctionRegistryBuiltinTest {
     }
 
     @Test
+    void registeredNamesCannotBeReplacedOrRemoved() {
+        for (String name : FunctionRegistry.getFunctionNames()) {
+            FunctionRegistry.FunctionDescriptor original = FunctionRegistry.get(name);
+            assertThrows(NodeException.class, () -> FunctionRegistry.register(
+                    new FunctionRegistry.FunctionDescriptor(name, (target, args) -> null)));
+            assertTrue(original == FunctionRegistry.get(name));
+        }
+        assertThrows(UnsupportedOperationException.class,
+                () -> FunctionRegistry.getFunctionNames().remove("match"));
+        assertThrows(UnsupportedOperationException.class,
+                () -> FunctionRegistry.getFunctionNames().clear());
+    }
+
+    @Test
     void testBuiltinErrorsAndCustomRegistration() {
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("missing", null, NO_ARGS));
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("length", "abc", new Object[]{1}));
@@ -64,11 +78,11 @@ class FunctionRegistryBuiltinTest {
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("first", JsonArray.of(), new Object[]{1}));
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("last", JsonArray.of(), new Object[]{1}));
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", NO_ARGS));
-        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{null}));
-        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("match", "abc", new Object[]{JsonObject.of("p", 1)}));
+        assertEquals(false, FunctionRegistry.invoke("match", "abc", new Object[]{null}));
+        assertEquals(false, FunctionRegistry.invoke("match", "abc", new Object[]{JsonObject.of("p", 1)}));
         assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", NO_ARGS));
-        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{null}));
-        assertThrows(NodeException.class, () -> FunctionRegistry.invoke("search", "abc", new Object[]{JsonObject.of("p", 1)}));
+        assertEquals(false, FunctionRegistry.invoke("search", "abc", new Object[]{null}));
+        assertEquals(false, FunctionRegistry.invoke("search", "abc", new Object[]{JsonObject.of("p", 1)}));
         assertThrows(NodeException.class, () -> new FunctionRegistry.FunctionDescriptor("", (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor(null, (target, args) -> null));
         assertThrows(NullPointerException.class, () -> new FunctionRegistry.FunctionDescriptor("x", null));
@@ -77,6 +91,9 @@ class FunctionRegistryBuiltinTest {
                 new FunctionRegistry.FunctionDescriptor("triple", (target, args) -> ((Number) target).intValue() * 3);
         FunctionRegistry.register(descriptor);
 
+        assertThrows(NodeException.class, () -> FunctionRegistry.register(descriptor));
+        assertThrows(NodeException.class, () -> FunctionRegistry.register(
+                new FunctionRegistry.FunctionDescriptor("triple", (target, args) -> -1)));
         assertEquals("triple", descriptor.getName());
         assertEquals(12, FunctionRegistry.invoke("triple", 4, NO_ARGS));
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("boom", (target, args) -> {
