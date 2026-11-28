@@ -1,0 +1,143 @@
+name: Path Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/path-benchmark.yml"
+      - "scripts/benchmark-path.sh"
+      - "scripts/analyze-path-benchmark.py"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java"
+      - "sjf4j-testbench/build.gradle.kts"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Benchmark profile
+        required: true
+        type: choice
+        default: smoke
+        options: [smoke, quick, full]
+
+permissions:
+  contents: read
+
+env:
+  PROFILE: ${{ inputs.profile || 'smoke' }}
+
+concurrency:
+  group: path-${{ github.ref }}-${{ inputs.profile || 'smoke' }}
+  cancel-in-progress: false
+
+jobs:
+  build-jmh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Validate runner and report scripts
+        run: |
+          bash -n scripts/benchmark-path.sh
+          python3 -m py_compile scripts/analyze-path-benchmark.py
+
+      - name: Compile JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Upload JMH jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-jmh-jar
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  benchmark:
+    name: ${{ inputs.profile || 'smoke' }} / ${{ matrix.shape }}
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shape: [map, jsonnode, pojo, parse]
+    env:
+      PATH_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v8
+        with:
+          name: path-jmh-jar
+          path: sjf4j-testbench/build/libs
+      - name: Record runner hardware
+        shell: bash
+        run: |
+          OUT="build/performance/path/${{ matrix.shape }}"
+          mkdir -p "$OUT"
+          {
+            echo "Group: ${{ matrix.shape }}"
+            echo "Profile: $PROFILE"
+            echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Commit: $GITHUB_SHA"
+            lscpu
+            grep Cpus_allowed_list /proc/self/status || true
+            free -h
+            java -version 2>&1
+          } > "$OUT/runner.txt"
+      - name: Run benchmark
+        run: bash scripts/benchmark-path.sh "$PROFILE" "${{ matrix.shape }}"
+      - name: Upload raw results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-${{ env.PROFILE }}-${{ matrix.shape }}-${{ github.run_id }}
+          path: build/performance/path/${{ matrix.shape }}/
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 30
+
+  collect-results:
+    name: Combined results
+    needs: [build-jmh, benchmark]
+    if: ${{ always() && needs.build-jmh.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download group artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: path-${{ env.PROFILE }}-*-${{ github.run_id }}
+          path: results
+      - name: Generate Full Best 2 Mean report
+        if: ${{ env.PROFILE == 'full' && needs.benchmark.result == 'success' }}
+        shell: bash
+        run: |
+          python3 scripts/analyze-path-benchmark.py \
+            "results/path-full-map-${{ github.run_id }}/path-map.json" \
+            "results/path-full-jsonnode-${{ github.run_id }}/path-jsonnode.json" \
+            "results/path-full-pojo-${{ github.run_id }}/path-pojo.json" \
+            "results/path-full-parse-${{ github.run_id }}/path-parse.json" \
+            --output results/report.md
+          cat results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload combined artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-combined-${{ env.PROFILE }}-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 30
