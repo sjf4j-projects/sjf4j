@@ -1,4 +1,4 @@
-name: Jackson2 Write Helper Isolation (JDK 25)
+name: Jackson2 Write Helper Isolation on EPYC 7763 (JDK 25)
 
 on:
   push:
@@ -10,20 +10,44 @@ permissions:
 
 jobs:
   isolate:
+    name: EPYC 7763 probe ${{ matrix.slot }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        slot: [1, 2, 3, 4]
     steps:
+      - name: Check runner CPU
+        id: cpu
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          lscpu | tee results/environment.txt
+          if grep -q 'AMD EPYC 7763' results/environment.txt; then
+            echo 'match=true' >> "$GITHUB_OUTPUT"
+            echo 'EPYC 7763 matched; run full isolation.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'match=false' >> "$GITHUB_OUTPUT"
+            echo 'Skipped: runner is not EPYC 7763.' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/checkout@v4
+        if: steps.cpu.outputs.match == 'true'
         with:
           fetch-depth: 0
           path: source
           persist-credentials: false
       - uses: actions/setup-java@v6
+        if: steps.cpu.outputs.match == 'true'
         with:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
+        if: steps.cpu.outputs.match == 'true'
       - name: Build historical revisions and controlled helper variants
+        if: steps.cpu.outputs.match == 'true'
         working-directory: source
         shell: bash
         run: |
@@ -103,6 +127,7 @@ jobs:
             git restore -- "$emitter"
           done
       - name: Measure variants on the same JVM runner
+        if: steps.cpu.outputs.match == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -123,6 +148,7 @@ jobs:
             done
           done
       - name: Summarize matched cases
+        if: steps.cpu.outputs.match == 'true'
         shell: bash
         run: |
           python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -162,11 +188,29 @@ jobs:
                   values.extend((f'{v:.3f}', f'{(v/c-1)*100:+.2f}%'))
               print('| ' + ' | '.join((variant, *values)) + ' |')
           PY
+      - name: Capture independent C2 compilation and inlining diagnostics
+        if: steps.cpu.outputs.match == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$GITHUB_WORKSPACE/results"
+          jars="$RUNNER_TEMP/jackson2-write-jars"
+          java -XX:+PrintFlagsFinal -version > "$out/hotspot-flags.txt" 2>&1
+          for variant in baseline pre398 post398 candidate instance explicit-null instance-explicit-null; do
+            java -jar "$jars/$variant.jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+              -p backend=jackson2 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -t 1 -f 1 -wi 5 -i 3 -w 1s -r 1s -foe true \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$out/$variant/hotspot-%p.xml -XX:+PrintCompilation -XX:+PrintInlining" \
+              > "$out/$variant/jit-inlining.log" 2>&1
+            echo "Captured $variant C2 diagnostic (not used for performance scores)"
+            grep -E 'writeStringMember|_writeUser|FabienBindings.*Jackson2.*writeUsers' "$out/$variant/jit-inlining.log" | tail -n 25 || true
+          done
       - name: Upload results and generated code
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson2-write-helper-isolation-${{ github.run_id }}
+          name: jackson2-write-helper-epyc-${{ github.run_id }}-${{ matrix.slot }}
           path: results/
           if-no-files-found: warn
           retention-days: 30
