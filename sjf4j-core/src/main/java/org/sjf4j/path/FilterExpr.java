@@ -356,11 +356,11 @@ public interface FilterExpr {
         /**
          * Creates and compiles a regex literal expression.
          */
-        public RegexExpr(String source, String expression, int flags, RegexEngine regexEngine) {
+        public RegexExpr(String source, String expression, int flags, RegexEngine engine) {
             this.source = source;
             this.expression = expression;
             this.flags = flags;
-            this.regex = regexEngine.create(expression, flags);
+            this.regex = engine.create(expression, flags);
         }
 
         public String expression() {
