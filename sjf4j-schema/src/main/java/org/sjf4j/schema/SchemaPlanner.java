@@ -124,7 +124,6 @@ public final class SchemaPlanner {
                                          Map<String, SchemaPlan> byPathPlans,
                                          PlanningContext context, SchemaDialect dialect,
                                          Map<String, Boolean> vocabulary) {
-        _checkVocabulary(schema, ps, vocabulary);
 
         // $defs / definitions
         if (_allowsKeyword(dialect, vocabulary, "$defs")) {
@@ -759,21 +758,6 @@ public final class SchemaPlanner {
             }
         }
         return inheritedVocabulary;
-    }
-
-    /**
-     * Placeholder hook for vocabulary-specific schema-shape checks.
-     * <p>
-     * SJF4J treats declared vocabularies as active whether they are required or
-     * optional. A missing vocabulary entry means the planner should not compile
-     * known keywords from that vocabulary by default. The current implementation
-     * needs no extra per-keyword rejection here, so the hook is intentionally a
-     * no-op.
-     */
-    private static void _checkVocabulary(ObjectSchema schema, PathSegment ps, Map<String, Boolean> vocabulary) {
-        // The current planner only needs this hook for vocabulary-aware compile
-        // decisions. Declared vocabularies may be required or optional; both are
-        // still valid dialect members, so there is nothing to reject here.
     }
 
     /**
