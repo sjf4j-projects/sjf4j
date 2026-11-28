@@ -66,7 +66,7 @@ class ExternalSchemasAnnotationTest {
         assertFalse(oldPlan.isValid(new PrecompiledBaseBean("ok")));
 
         SchemaValidator validator = new SchemaValidator(
-                new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR), catalog, true);
+                new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR), catalog, true);
         assertTrue(validator.validate(new PrecompiledBaseBean("ok")).isValid());
         assertFalse(validator.validate(new PrecompiledBaseBean(123)).isValid());
 
