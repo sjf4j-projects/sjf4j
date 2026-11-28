@@ -222,20 +222,15 @@ public class MappingFullBenchmark {
     @State(Scope.Thread)
     public static class JsonState extends SizedState {
         public Map<String, Object> map;
-        public JsonObject jsonObject;
         public MapStructMapper mapstruct;
         public Sjf4jMapper compiled;
 
         @Setup(Level.Trial)
         public void setup() {
             map = new LinkedHashMap<>();
-            jsonObject = new JsonObject();
             map.put("sku", "sku-123");
             map.put("name", "widget");
             map.put("count", 7);
-            jsonObject.put("sku", "sku-123");
-            jsonObject.put("name", "widget");
-            jsonObject.put("count", 7);
             // Extra, unmapped fields make the source 1/10/100KB-ish. The
             // fixed-key projection is deliberately independent of input width.
             int extra = sizeKb * 1024 / 64;
@@ -243,12 +238,10 @@ public class MappingFullBenchmark {
                 String key = "extra-" + i;
                 String value = "abcdefghijklmnopqrstuvwxyz0123456789";
                 map.put(key, value);
-                jsonObject.put(key, value);
             }
             mapstruct = Mappers.getMapper(MapStructMapper.class);
             compiled = CompiledInstances.create(Sjf4jMapper.class);
             JsonTarget expectedMap = mapstruct.jsonMap(map);
-            JsonTarget expectedObject = mapstruct.jsonObject(jsonObject);
             check("sku-123".equals(expectedMap.sku())
                     && "widget".equals(expectedMap.name())
                     && Objects.equals(7, expectedMap.count()), "Map projected fields");
@@ -256,10 +249,6 @@ public class MappingFullBenchmark {
             // String/Integer input; no coercion is needed for this comparison.
             check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map STRICT to POJO");
             check(Objects.equals(expectedMap, compiled.jsonMapCast(map)), "Map CAST to POJO");
-            check(Objects.equals(expectedObject, compiled.jsonObject(jsonObject)),
-                    "JsonObject STRICT to POJO");
-            check(Objects.equals(expectedObject, compiled.jsonObjectCast(jsonObject)),
-                    "JsonObject CAST to POJO");
         }
     }
 
@@ -302,9 +291,6 @@ public class MappingFullBenchmark {
     @Benchmark public JsonTarget json_map_mapstruct(JsonState s) { return s.mapstruct.jsonMap(s.map); }
     @Benchmark public JsonTarget json_map_cast(JsonState s) { return s.compiled.jsonMapCast(s.map); }
     @Benchmark public JsonTarget json_map_strict(JsonState s) { return s.compiled.jsonMap(s.map); }
-    @Benchmark public JsonTarget json_object_mapstruct(JsonState s) { return s.mapstruct.jsonObject(s.jsonObject); }
-    @Benchmark public JsonTarget json_object_cast(JsonState s) { return s.compiled.jsonObjectCast(s.jsonObject); }
-    @Benchmark public JsonTarget json_object_strict(JsonState s) { return s.compiled.jsonObject(s.jsonObject); }
 
     @CompiledMapper
     public interface Sjf4jMapper {
@@ -355,12 +341,6 @@ public class MappingFullBenchmark {
 
         @MappingOptions(raws = RawPolicy.CAST)
         JsonTarget jsonMapCast(Map<String, Object> source);
-
-        @MappingOptions(raws = RawPolicy.STRICT)
-        JsonTarget jsonObject(JsonObject source);
-
-        @MappingOptions(raws = RawPolicy.CAST)
-        JsonTarget jsonObjectCast(JsonObject source);
     }
 
     @org.mapstruct.Mapper
@@ -414,11 +394,6 @@ public class MappingFullBenchmark {
         @org.mapstruct.Mapping(target = "name", expression = "java((String) source.get(\"name\"))")
         @org.mapstruct.Mapping(target = "count", expression = "java(source.get(\"count\"))")
         JsonTarget jsonMap(Map<String, Object> source);
-
-        @org.mapstruct.Mapping(target = "sku", expression = "java((String) source.getNode(\"sku\"))")
-        @org.mapstruct.Mapping(target = "name", expression = "java((String) source.getNode(\"name\"))")
-        @org.mapstruct.Mapping(target = "count", expression = "java(source.getNode(\"count\"))")
-        JsonTarget jsonObject(JsonObject source);
     }
 
     public record FlatSource(String first, String last, String ignored) {}

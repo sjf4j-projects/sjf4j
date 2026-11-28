@@ -14,7 +14,7 @@ GROUPS = {
     "collection": (("collection_item", False), ("collection_list", True),
                    ("collection_sequential", True), ("collection_mapitems", True),
                    ("collection_mapone", True), ("collection_map", True)),
-    "json": (("json_map", True), ("json_object", True)),
+    "json": (("json_map", True),),
 }
 LABELS = {
     "order_classic": "Classic Order (Arey-style)",
@@ -31,7 +31,6 @@ LABELS = {
     "collection_mapone": "Map with 1 large List",
     "collection_map": "Map with 8 short Lists",
     "json_map": "Map → POJO",
-    "json_object": "JsonObject → POJO",
 }
 
 
@@ -162,7 +161,7 @@ def main():
         "## Interpretation",
         "",
         "A ratio above 1× means SJF4J is faster; below 1× means MapStruct is faster.",
-        "JSON compares MapStruct's explicit Java casts with CAST and STRICT independently.",
+        "JSON Map projection compares MapStruct's explicit Java casts with CAST and STRICT independently.",
         "Do not average across sizes or input shapes. Update is an in-place workload.",
         "These results are exploratory when collected on shared GitHub Actions runners.",
         "Original JMH 3-fork means and error bounds remain in the raw JSON; JMH",
