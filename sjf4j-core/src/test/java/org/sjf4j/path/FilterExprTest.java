@@ -5,6 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
+import org.sjf4j.regex.RegexEngine;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -172,7 +173,7 @@ class FilterExprTest {
         assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(right, left, FilterExpr.Op.LE).eval(root, root, new NodeWalker.Access()));
         assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(true), new FilterExpr.LiteralExpr(true), FilterExpr.Op.AND).eval(root, root, new NodeWalker.Access()));
         assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(false), new FilterExpr.LiteralExpr(true), FilterExpr.Op.OR).eval(root, root, new NodeWalker.Access()));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha")), FilterExpr.Op.MATCH).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.RegexExpr("/ha/", "ha", 0, RegexEngine.JDK_ENGINE), FilterExpr.Op.MATCH).eval(root, root, new NodeWalker.Access()));
         assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.LiteralExpr("ha"), FilterExpr.Op.MATCH).eval(root, root, new NodeWalker.Access()));
         assertEquals("(2 > 1)", new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).toString());
 
@@ -180,7 +181,7 @@ class FilterExprTest {
         FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", Arrays.asList(new FilterExpr.LiteralExpr(Arrays.asList(1, 2, 3))));
         assertEquals(3, functionExpr.eval(root, root, new NodeWalker.Access()));
 
-        FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha"));
+        FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", "ha", 0, RegexEngine.JDK_ENGINE);
         assertSame(regexExpr.eval(root, root, new NodeWalker.Access()), regexExpr.eval(root, root, new NodeWalker.Access()));
         assertEquals("/ha/", regexExpr.toString());
 

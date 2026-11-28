@@ -29,9 +29,7 @@ final class FilterCompiler {
             throw unsupported("literal type " + value.getClass().getName());
         }
         if (expression instanceof FilterExpr.RegexExpr) {
-            // Reuse the parsed Pattern and its flags; the emitter caches the
-            // same pattern once rather than recompiling it for every item.
-            return FilterPlan.literal(((FilterExpr.RegexExpr) expression).pattern());
+            return FilterPlan.literal(expression);
         }
         if (expression instanceof FilterExpr.ArrayExpr) {
             List<Object> values = ((FilterExpr.ArrayExpr) expression).literalValues();

@@ -36,11 +36,11 @@ public interface RegexEngine {
      * @throws IllegalArgumentException if the expression or flags are invalid or unsupported
      * @throws RegexRejectedException if the expression is rejected by a security policy
      */
-    Regex compile(String expression, int flags);
+    Regex create(String expression, int flags);
 
     /** Compiles an expression without additional flags. */
-    default Regex compile(String expression) {
-        return compile(expression, 0);
+    default Regex create(String expression) {
+        return create(expression, 0);
     }
 
     /**
@@ -51,7 +51,7 @@ public interface RegexEngine {
         Objects.requireNonNull(guard, "guard");
         return (expression, flags) -> {
             guard.check(expression, flags);
-            return compile(expression, flags);
+            return create(expression, flags);
         };
     }
 }

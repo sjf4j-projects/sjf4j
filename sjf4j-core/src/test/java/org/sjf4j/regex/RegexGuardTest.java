@@ -116,11 +116,11 @@ class RegexGuardTest {
     @Test
     void caretAfterNegationIsLiteral() {
         for (String characterClass : Arrays.asList("[^^]", "[^]]", "[a&&[^^]]", "[^^^]", "[a^]")) {
-            RegexEngine.JDK_ENGINE.compile(characterClass + "(a+)+");
+            RegexEngine.JDK_ENGINE.create(characterClass + "(a+)+");
             assertThrows(RegexRejectedException.class,
                     () -> RegexGuard.BASIC.check(characterClass + "(a+)+", 0), characterClass);
             String deep = characterClass + repeat('(', 33) + "a" + repeat(')', 33);
-            RegexEngine.JDK_ENGINE.compile(deep);
+            RegexEngine.JDK_ENGINE.create(deep);
             assertThrows(RegexRejectedException.class,
                     () -> RegexGuard.BASIC.check(deep, 0), characterClass);
             RegexGuard.BASIC.check(characterClass + "(ab)+", 0);
@@ -130,12 +130,12 @@ class RegexGuardTest {
     @Test
     void guardedEngineIsOptInAndPreservesSyntaxErrors() {
         RegexEngine guarded = RegexEngine.JDK_ENGINE.guardedBy(RegexGuard.BASIC);
-        assertTrue(guarded.compile("(ab)+").matches("abab"));
-        assertTrue(guarded.compile("abc", Pattern.CASE_INSENSITIVE).find("123ABC"));
-        assertThrows(RegexRejectedException.class, () -> guarded.compile("(a+)+"));
-        assertNotNull(RegexEngine.JDK_ENGINE.compile("(a+)+"));
-        assertThrows(PatternSyntaxException.class, () -> guarded.compile("["));
-        assertTrue(guarded.compile("(a+)+", Pattern.LITERAL).matches("(a+)+"));
+        assertTrue(guarded.create("(ab)+").matches("abab"));
+        assertTrue(guarded.create("abc", Pattern.CASE_INSENSITIVE).find("123ABC"));
+        assertThrows(RegexRejectedException.class, () -> guarded.create("(a+)+"));
+        assertNotNull(RegexEngine.JDK_ENGINE.create("(a+)+"));
+        assertThrows(PatternSyntaxException.class, () -> guarded.create("["));
+        assertTrue(guarded.create("(a+)+", Pattern.LITERAL).matches("(a+)+"));
     }
 
     private static String repeat(char ch, int count) {

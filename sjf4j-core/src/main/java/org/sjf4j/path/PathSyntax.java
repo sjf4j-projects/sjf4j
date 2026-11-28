@@ -1,17 +1,16 @@
 package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
-import org.sjf4j.util.Numbers;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Parser/formatter helpers for JSONPath and JSON Pointer.
  *
- * <p>This class centralizes all string parsing and formatting logic so
+ * <p>This class provides path parsing and formatting entry points so
  * {@link JsonPath} can focus on execution semantics.
  */
 public final class PathSyntax {
@@ -213,6 +212,14 @@ public final class PathSyntax {
      * descendant, union, slice, filter, and terminal function calls.
      */
     public static PathSegment[] parsePath(String expr) {
+        return parsePath(expr, RegexEngine.JDK_ENGINE);
+    }
+
+    /**
+     * Parses a JSONPath using the given engine for regex literals.
+     */
+    public static PathSegment[] parsePath(String expr, RegexEngine engine) {
+        Asserts.notNull(engine, "engine");
         if (expr == null || expr.isEmpty()) throw new NodeException("expression must not be empty");
         PathSegment lastSegment;
         int i = 0;
@@ -360,7 +367,7 @@ public final class PathSyntax {
                 } else if (expr.charAt(contentStart) == '?') {
                     // Filter
                     int filterStart = _skipWhitespace(expr, contentStart + 1);
-                    FilterExpr filterExpr = _parseFilterRange(expr, filterStart, contentEnd);
+                    FilterExpr filterExpr = new FilterParser(expr, filterStart, engine).parse(contentEnd);
                     lastSegment = new PathSegment.Filter(lastSegment, filterExpr);
                 } else if (hasComma) {
                     // Union: can include indices, names, and slices like [1, 'name', 2:5]
@@ -494,18 +501,12 @@ public final class PathSyntax {
         return c != '.' && c != '[' && c != '(';
     }
 
-    private static boolean _isSimpleNameStart(char c) {
+    static boolean _isSimpleNameStart(char c) {
         return Character.isLetter(c) || c == '_';
     }
 
-    private static boolean _isSimpleNamePart(char c) {
+    static boolean _isSimpleNamePart(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
-    }
-
-    private static boolean _isFilterPathTerminator(char c) {
-        return c == ')' || c == ']' || c == ',' || c == '!'
-                || c == '=' || c == '<' || c == '>'
-                || c == '&' || c == '|' || Character.isWhitespace(c);
     }
 
     private static int _skipWhitespace(String expr, int i) {
@@ -837,528 +838,15 @@ public final class PathSyntax {
      * path references, regex literals, and function calls.
      */
     public static FilterExpr parseFilter(String s) {
-        return _parseFilterRange(s, 0, s.length());
-    }
-
-    private static FilterExpr _parseFilterRange(String s, int start, int endExclusive) {
-        int[] pos = {0};
-        pos[0] = start;
-        _skipWs(s, pos);
-        FilterExpr expr = _parseOr(s, pos);
-        _skipWs(s, pos);
-        if (pos[0] != endExclusive) {
-            throw new NodeException("trailing characters at position " + pos[0]);
-        }
-        return expr;
+        return parseFilter(s, RegexEngine.JDK_ENGINE);
     }
 
     /**
-     * Parses an OR expression.
+     * Parses a filter using the given engine for regex literals.
      */
-    private static FilterExpr _parseOr(String s, int[] pos) {
-        FilterExpr left = _parseAnd(s, pos);
-        while (true) {
-            _skipWs(s, pos);
-            if (_match(s, pos, "||")) {
-                FilterExpr right = _parseAnd(s, pos);
-                left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.OR);
-            } else break;
-        }
-        return left;
+    public static FilterExpr parseFilter(String s, RegexEngine engine) {
+        Asserts.notNull(engine, "engine");
+        return new FilterParser(s, 0, engine).parse(s.length());
     }
-
-    /**
-     * Parses an AND expression.
-     */
-    private static FilterExpr _parseAnd(String s, int[] pos) {
-        FilterExpr left = _parseCompare(s, pos);
-        while (true) {
-            _skipWs(s, pos);
-            if (_match(s, pos, "&&")) {
-                FilterExpr right = _parseCompare(s, pos);
-                left = new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.AND);
-            } else break;
-        }
-        return left;
-    }
-
-    /**
-     * Parses a comparison expression.
-     */
-    private static FilterExpr _parseCompare(String s, int[] pos) {
-        FilterExpr left = _parseUnary(s, pos);
-        _skipWs(s, pos);
-
-        FilterExpr.Op op = null;
-        char c = _peekLast(s, pos);
-        if (c == '=') {
-            if (_match(s, pos, "==")) op = FilterExpr.Op.EQ;
-            else if (_match(s, pos, "=~")) op = FilterExpr.Op.MATCH;
-        } else if (c == '!') {
-            if (_match(s, pos, "!=")) op = FilterExpr.Op.NE;
-        } else if (c == '>') {
-            if (_match(s, pos, ">=")) op = FilterExpr.Op.GE;
-            else if (_match(s, pos, ">")) op = FilterExpr.Op.GT;
-        } else if (c == '<') {
-            if (_match(s, pos, "<=")) op = FilterExpr.Op.LE;
-            else if (_match(s, pos, "<")) op = FilterExpr.Op.LT;
-        } else if (c == 'i') {
-            if (_matchKeyword(s, pos, "in")) op = FilterExpr.Op.IN;
-        } else if (c == 'n') {
-            if (_matchKeyword(s, pos, "nin")) op = FilterExpr.Op.NIN;
-        }
-
-        if (op != null) {
-            FilterExpr right = _parseUnary(s, pos);
-            return new FilterExpr.BinaryExpr(left, right, op);
-        }
-
-        return left;
-    }
-
-    /**
-     * Parses a unary expression.
-     */
-    private static FilterExpr _parseUnary(String s, int[] pos) {
-        _skipWs(s, pos);
-        if (_match(s, pos, "!")) {
-            FilterExpr child = _parseUnary(s, pos);
-            return new FilterExpr.UnaryExpr(false, child);
-        }
-        return _parsePrimary(s, pos);
-    }
-
-    /**
-     * Parses a primary expression.
-     */
-    private static FilterExpr _parsePrimary(String s, int[] pos) {
-        _skipWs(s, pos);
-        char c = _peekLast(s, pos);
-
-        // (expr)
-        if (c == '(') {
-            pos[0]++;
-            FilterExpr expr = _parseOr(s, pos);
-            _skipWs(s, pos);
-            if (_peekLast(s, pos) != ')') {
-                throw new NodeException("missing closing ')' at position " + pos[0]);
-            }
-            pos[0]++;
-            return expr;
-        }
-
-        // String literal
-        if (c == '\'' || c == '"') {
-            return new FilterExpr.LiteralExpr(_parseString(s, pos));
-        }
-
-        // Array literal
-        if (c == '[') {
-            return _parseArrayLiteral(s, pos);
-        }
-
-        // Number literal
-        if (Character.isDigit(c) || c == '-') {
-            return new FilterExpr.LiteralExpr(_parseNumber(s, pos));
-        }
-
-        // Path: @.a.b or $.x.y
-        if (c == '@' || c == '$') {
-            FilterExpr.PathExpr fast = _tryParseSimpleFilterPathExpr(s, pos);
-            if (fast != null) return fast;
-            String path = _parsePath(s, pos);
-            return new FilterExpr.PathExpr(path);
-        }
-
-        // Regex: /^a/i
-        if (c == '/') {
-            return _parseRegex(s, pos);
-        }
-
-        if (_matchKeyword(s, pos, "null")) {
-            return new FilterExpr.LiteralExpr(null);
-        }
-        if (_matchKeyword(s, pos, "true")) {
-            return new FilterExpr.LiteralExpr(true);
-        }
-        if (_matchKeyword(s, pos, "false")) {
-            return new FilterExpr.LiteralExpr(false);
-        }
-
-        // Function: search(@.b, 'a')
-        if (_isNamePart(c)) {
-            return _parseFunction(s, pos);
-        }
-
-        throw new NodeException("unexpected character '" + c + "' at position " + pos[0]);
-    }
-
-    private static FilterExpr.ArrayExpr _parseArrayLiteral(String s, int[] pos) {
-        pos[0]++;
-        _skipWs(s, pos);
-
-        List<FilterExpr> elements = new ArrayList<>();
-        if (pos[0] < s.length() && s.charAt(pos[0]) == ']') {
-            pos[0]++;
-            return new FilterExpr.ArrayExpr(elements);
-        }
-
-        while (true) {
-            elements.add(_parseOr(s, pos));
-            _skipWs(s, pos);
-
-            if (pos[0] >= s.length()) {
-                throw new NodeException("missing closing ']' at position " + pos[0]);
-            }
-
-            char c = s.charAt(pos[0]);
-            if (c == ',') {
-                pos[0]++;
-                _skipWs(s, pos);
-                continue;
-            }
-            if (c == ']') {
-                pos[0]++;
-                return new FilterExpr.ArrayExpr(elements);
-            }
-            throw new NodeException("expected ',' or ']' in array literal at position " + pos[0]);
-        }
-    }
-
-    /**
-     * Parses a function call expression.
-     */
-    private static FilterExpr _parseFunction(String s, int[] pos) {
-        // function name
-        int start = pos[0];
-        while (pos[0] < s.length() && _isNamePart(s.charAt(pos[0]))) { pos[0]++; }
-        String name = s.substring(start, pos[0]);
-        _skipWs(s, pos);
-
-        if (pos[0] >= s.length() || s.charAt(pos[0]) != '(') {
-            throw new NodeException("expected '(' after function name '" + name + "'");
-        }
-        pos[0]++; // '('
-
-        List<FilterExpr> args = new ArrayList<>();
-        _skipWs(s, pos);
-
-        // empty arg list
-        if (pos[0] < s.length() && s.charAt(pos[0]) == ')') {
-            pos[0]++;
-            return new FilterExpr.FunctionExpr(name, args);
-        }
-
-        // arguments
-        while (true) {
-            FilterExpr arg = _parseOr(s, pos);
-            args.add(arg);
-            _skipWs(s, pos);
-
-            if (pos[0] >= s.length()) {
-                throw new NodeException("unterminated function call '" + name + "'");
-            }
-
-            char c = s.charAt(pos[0]);
-            if (c == ',') {
-                pos[0]++;
-                _skipWs(s, pos);
-                continue;
-            }
-            if (c == ')') {
-                pos[0]++;
-                break;
-            }
-            throw new NodeException("expected ',' or ')' in function call '" + name + "'");
-        }
-
-        return new FilterExpr.FunctionExpr(name, args);
-    }
-
-    /**
-     * Returns true if the char is valid in function names.
-     */
-    private static boolean _isNamePart(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
-    }
-
-    /**
-     * Advances the cursor over whitespace.
-     */
-    private static void _skipWs(String s, int[] pos) {
-        while (pos[0] < s.length() && Character.isWhitespace(s.charAt(pos[0]))) {
-            pos[0]++;
-        }
-    }
-
-    /**
-     * Matches and consumes the given operator token.
-     */
-    private static boolean _match(String s, int[] pos, String op) {
-        if (s.startsWith(op, pos[0])) {
-            pos[0] += op.length();
-            return true;
-        }
-        return false;
-    }
-
-    private static boolean _matchKeyword(String s, int[] pos, String keyword) {
-        int start = pos[0];
-        if (!s.startsWith(keyword, start)) {
-            return false;
-        }
-        int end = start + keyword.length();
-        if (end < s.length() && _isNamePart(s.charAt(end))) {
-            return false;
-        }
-        pos[0] = end;
-        return true;
-    }
-
-    /**
-     * Returns the current character or '\0' when out of range.
-     */
-    private static char _peekLast(String s, int[] pos) {
-        return pos[0] < s.length() ? s.charAt(pos[0]) : '\0';
-    }
-
-    /**
-     * Parses a quoted string literal.
-     */
-    private static String _parseString(String s, int[] pos) {
-        char quote = s.charAt(pos[0]++);
-        StringBuilder sb = new StringBuilder();
-        while (pos[0] < s.length()) {
-            char c = s.charAt(pos[0]++);
-
-            if (c == quote) {
-                return sb.toString();
-            }
-
-            if (c != '\\') {
-                sb.append(c);
-                continue;
-            }
-
-            if (pos[0] >= s.length()) {
-                throw new NodeException("unterminated escape sequence in string literal");
-            }
-
-            char next = s.charAt(pos[0]++);
-            switch (next) {
-                case '\\':
-                case '\'':
-                case '"':
-                    sb.append(next);
-                    break;
-                case 'b':
-                    sb.append('\b');
-                    break;
-                case 'f':
-                    sb.append('\f');
-                    break;
-                case 'n':
-                    sb.append('\n');
-                    break;
-                case 'r':
-                    sb.append('\r');
-                    break;
-                case 't':
-                    sb.append('\t');
-                    break;
-                case 'u':
-                    if (pos[0] + 4 > s.length()) {
-                        throw new NodeException("invalid unicode escape in string literal");
-                    }
-                    String hex = s.substring(pos[0], pos[0] + 4);
-                    try {
-                        sb.append((char) Integer.parseInt(hex, 16));
-                    } catch (NumberFormatException e) {
-                        throw new NodeException("invalid unicode escape in string literal", e);
-                    }
-                    pos[0] += 4;
-                    break;
-                default:
-                    throw new NodeException("invalid escape '\\" + next + "' in string literal");
-            }
-        }
-
-        // reached end without closing quote
-        throw new NodeException("unterminated string literal");
-    }
-
-    /**
-     * Parses a numeric literal.
-     */
-    private static Number _parseNumber(String s, int[] pos) {
-        return Numbers.parseDoubleLiteral(s, pos);
-    }
-
-    private static FilterExpr.PathExpr _tryParseSimpleFilterPathExpr(String s, int[] pos) {
-        int start = pos[0];
-        int i = start;
-        if (i >= s.length()) return null;
-
-        PathSegment current;
-        char head = s.charAt(i++);
-        if (head == '$') {
-            current = PathSegment.Root.INSTANCE;
-        } else if (head == '@') {
-            current = PathSegment.Current.INSTANCE;
-        } else {
-            return null;
-        }
-
-        ArrayList<PathSegment> segments = new ArrayList<>(4);
-        segments.add(current);
-
-        while (i < s.length()) {
-            char c = s.charAt(i);
-            if (_isFilterPathTerminator(c)) {
-                pos[0] = i;
-                return new FilterExpr.PathExpr(new JsonPath(s.substring(start, i),
-                        segments.toArray(new PathSegment[0])));
-            }
-            if (c != '.') {
-                return null;
-            }
-            if (i + 1 >= s.length() || s.charAt(i + 1) == '.' || !_isSimpleNameStart(s.charAt(i + 1))) {
-                return null;
-            }
-
-            int nameStart = i + 1;
-            i += 2;
-            while (i < s.length() && _isSimpleNamePart(s.charAt(i))) i++;
-            current = new PathSegment.Name(current, s.substring(nameStart, i));
-            segments.add(current);
-        }
-
-        pos[0] = i;
-        return new FilterExpr.PathExpr(new JsonPath(s.substring(start, i),
-                segments.toArray(new PathSegment[0])));
-    }
-
-    /**
-     * Parses a path literal within a filter expression.
-     */
-    private static String _parsePath(String s, int[] pos) {
-        int start = pos[0];
-        boolean inStr = false, escape = false, inBracket = false, inParen = false;
-        char quote = 0;
-
-        while (pos[0] < s.length()) {
-            char c = s.charAt(pos[0]);
-
-            if (escape) { escape = false; pos[0]++; continue; }
-            if (c == '\\') { escape = true; pos[0]++; continue; }
-
-            if (inStr) {
-                if (c == quote) inStr = false;
-                pos[0]++; continue;
-            }
-            if (c == '"' || c == '\'') {
-                inStr = true; quote = c;
-                pos[0]++; continue;
-            }
-
-            if (inBracket) {
-                if (c == ']') inBracket = false;
-                pos[0]++; continue;
-            }
-            if (c == '[') {
-                inBracket = true;
-                pos[0]++; continue;
-            }
-
-            if (inParen) {
-                if (c == ')') inParen = false;
-                pos[0]++; continue;
-            }
-            if (c == '(') {
-                inParen = true;
-                pos[0]++; continue;
-            }
-
-            // allowed path chars
-            if (Character.isAlphabetic(c) || Character.isDigit(c) ||
-                    c == '@' || c == '$' || c == '.' || c == '_' || c == '*') {
-                pos[0]++; continue;
-            }
-
-            break;
-        }
-        return s.substring(start, pos[0]);
-    }
-
-    /**
-     * Parses a regex literal with optional flags.
-     */
-    @SuppressWarnings("MagicConstant")
-    private static FilterExpr.RegexExpr _parseRegex(String s, int[] pos) {
-        int start = pos[0];
-        if (s.charAt(pos[0]) != '/') throw new NodeException("regex must start with '/' at position " + pos[0]);
-        pos[0]++;
-
-        boolean escape = false;
-        while (pos[0] < s.length()) {
-            char c = s.charAt(pos[0]);
-            if (escape) {
-                escape = false;
-                pos[0]++;
-                continue;
-            }
-            if (c == '\\') {
-                escape = true;
-                pos[0]++;
-                continue;
-            }
-            if (c == '/') {
-                // end of regex
-                String regex = s.substring(start + 1, pos[0]);
-                pos[0]++; // skip closing '/'
-
-                // parse optional flags
-                int flagsStart = pos[0];
-                while (pos[0] < s.length()) {
-                    char f = s.charAt(pos[0]);
-                    if (f == 'i' || f == 'm' || f == 's' || f == 'u' || f == 'g') {
-                        pos[0]++;
-                    } else {
-                        break;
-                    }
-                }
-                String flags = s.substring(flagsStart, pos[0]);
-                String source = s.substring(start, pos[0]);
-                Pattern pattern = Pattern.compile(regex, _toFlags(flags));
-                return new FilterExpr.RegexExpr(source, pattern);
-            }
-            pos[0]++;
-        }
-
-        throw new NodeException("unterminated regex starting at position " + start);
-    }
-
-    /**
-     * Converts regex flag letters to Pattern flags.
-     */
-    private static int _toFlags(String flags) {
-        int f = 0;
-        for (char c : flags.toCharArray()) {
-            switch (c) {
-                case 'i': f |= Pattern.CASE_INSENSITIVE; break;
-                case 'm': f |= Pattern.MULTILINE; break;
-                case 's': f |= Pattern.DOTALL; break;
-                case 'u': f |= Pattern.UNICODE_CASE; break;
-                case 'g':
-                    // Not support global
-                    break;
-                default:
-                    throw new NodeException("invalid regex flag '" + c + "' in JSONPath filter");
-            }
-        }
-        return f;
-    }
-
-
 
 }
