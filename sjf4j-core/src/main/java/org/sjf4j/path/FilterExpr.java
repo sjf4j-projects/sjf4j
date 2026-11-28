@@ -351,7 +351,7 @@ public interface FilterExpr {
         private final String source;
         private final String expression;
         private final int flags;
-        private final Object compiled;
+        private final Regex compiled;
 
         /**
          * Creates and compiles a regex literal expression.
@@ -360,9 +360,7 @@ public interface FilterExpr {
             this.source = source;
             this.expression = expression;
             this.flags = flags;
-            // Keep the default JDK matching path free of an extra wrapper.
-            this.compiled = regexEngine == RegexEngine.JDK_ENGINE
-                    ? Pattern.compile(expression, flags) : regexEngine.compile(expression, flags);
+            this.compiled = regexEngine.create(expression, flags);
         }
 
         public String expression() {
@@ -374,9 +372,9 @@ public interface FilterExpr {
         }
 
         /**
-         * Returns the compiled Pattern (default JDK engine) or Regex.
+         * Returns the compiled regex.
          */
-        public Object compiled() {
+        public Regex compiled() {
             return compiled;
         }
 
