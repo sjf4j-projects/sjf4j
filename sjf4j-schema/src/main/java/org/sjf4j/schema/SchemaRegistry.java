@@ -109,12 +109,12 @@ public class SchemaRegistry {
     /** Indexes a resource and returns its canonical URI, if any. */
     private URI _index(SchemaResource resource, boolean ifAbsent) {
         Asserts.notNull(resource, "resource");
-        URI retrievalUri = resource.retrievalUri();
-        if (resource.schema() instanceof BooleanSchema) {
-            _indexBoolean(retrievalUri, (BooleanSchema) resource.schema(), ifAbsent);
+        URI retrievalUri = resource.retrievalUri;
+        if (resource.schema instanceof BooleanSchema) {
+            _indexBoolean(retrievalUri, (BooleanSchema) resource.schema, ifAbsent);
             return retrievalUri;
         }
-        URI canonicalUri = resource.canonicalUri();
+        URI canonicalUri = resource.canonicalUri;
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
@@ -149,12 +149,12 @@ public class SchemaRegistry {
         URI canonicalUri = _index(resource, false);
         if (canonicalUri == null) {
             // A boolean document without a URI is not registered.
-            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) resource.schema());
+            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) resource.schema);
         }
         // Resolve the retrieval alias when present so it is also cached, even
         // if the canonical resource was previously planned. Register a root,
         // not the fragment of a legacy $id.
-        URI alias = resource.retrievalUri();
+        URI alias = resource.retrievalUri;
         return resolve((alias == null ? canonicalUri : alias).toString(), null);
     }
 
@@ -389,7 +389,7 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = SchemaUtil.normalizeUriKey(uri);
         SchemaResource resource = byIdResources.get(id);
-        if (resource != null) return (ObjectSchema) resource.schema();
+        if (resource != null) return (ObjectSchema) resource.schema;
 
         if (this != GLOBAL_SCHEMA_REGISTRY) {
             return GLOBAL_SCHEMA_REGISTRY.resolveSchema(uri);
