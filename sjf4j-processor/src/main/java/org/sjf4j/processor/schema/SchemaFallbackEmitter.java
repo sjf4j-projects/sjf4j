@@ -65,17 +65,14 @@ final class SchemaFallbackEmitter {
                 }
                 if (needsLoader) {
                     out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
-                            + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
+                            + "org.sjf4j.schema.SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR, "
                             + plan.name + ".class.getClassLoader());");
                 }
                 // Restore this binding's scoped external retrieval URI mappings.
                 if (externalMappings) {
-                    out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
-                            + "loader.loadExternalSchemas("
+                    out.line(registry + ".index(loader.loadExternalSchemas("
                             + plan.annotationExpression + ".externalSchemas(), "
-                            + plan.annotationExpression + ".externalSchemasRef()).entrySet())");
-                    out.line(registry + ".index(entry.getKey(), entry.getValue());");
-                    out.endBlock();
+                            + plan.annotationExpression + ".externalSchemasRef()));");
                 }
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
                     // External mappings are already indexed; never fetch their logical HTTP URIs.
