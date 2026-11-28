@@ -83,7 +83,7 @@ final class SchemaFallbackEmitter {
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + plan.annotationExpression + ".value()));");
                     } else {
-                        out.line(registry + ".index(loader.load(" + uri + "));");
+                        out.line(registry + ".index(" + uri + ", loader.load(" + uri + "));");
                     }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
