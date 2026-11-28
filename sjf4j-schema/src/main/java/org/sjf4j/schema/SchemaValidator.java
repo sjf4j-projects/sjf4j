@@ -213,24 +213,11 @@ public final class SchemaValidator {
         SchemaPlan plan = uri.isAbsolute() ? scoped.resolve(uri) : null;
         if (plan != null) return plan;
 
-        SchemaResource resource = loader.load(uri);
-        if (resource == null) return null;
-        URI selectedUri = resource.retrievalUri();
-        if (selectedUri == null) selectedUri = resource.canonicalUri();
-        if (selectedUri == null) {
-            return resource.createPlan(scoped);
-        }
-        if (uri.getRawFragment() != null) {
-            selectedUri = URI.create(SchemaUtil.documentUri(selectedUri) + "#" + uri.getRawFragment());
-        }
-        if (selectedUri.isAbsolute()) {
-            SchemaPlan existing = scoped.resolve(selectedUri);
-            if (existing != null) return existing;
-        }
-        SchemaPlan compiled = scoped.register(resource);
-        SchemaPlan selected = selectedUri.isAbsolute() ? scoped.resolve(selectedUri) : null;
-        // A resource without a registered URI yields an independent plan.
-        return selected == null ? compiled : selected;
+        URI document = SchemaUtil.documentUri(uri);
+        JsonSchema schema = loader.load(document);
+        if (schema == null) return null;
+        SchemaPlan compiled = scoped.register(document, schema);
+        return uri.getRawFragment() == null ? compiled : scoped.resolve(uri);
     }
 
 
