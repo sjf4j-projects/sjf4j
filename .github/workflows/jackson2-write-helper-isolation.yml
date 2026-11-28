@@ -1,0 +1,172 @@
+name: Jackson2 Write Helper Isolation (JDK 25)
+
+on:
+  push:
+    branches: [bench/jackson2-write-helper-isolation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build historical revisions and controlled helper variants
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$GITHUB_WORKSPACE/results"
+          jars="$RUNNER_TEMP/jackson2-write-jars"
+          mkdir -p "$out" "$jars"
+          { lscpu; free -h; java -version 2>&1; } | tee "$out/environment.txt"
+          emitter=sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java
+          for variant in baseline pre398 post398 candidate instance explicit-null instance-explicit-null; do
+            case "$variant" in
+              baseline) sha=555137cf7a98a5ecf0e46ac7efcdd4362e3c0e3e ;;
+              pre398) sha=39e3f7e18f22ac1aa26231284a43925e26b40309 ;;
+              post398) sha=c235bb72e5154e89f35a81b3b9d63e9b95142583 ;;
+              *) sha=9509bc7bf3a0bbd118e142ef4ceed860473f8929 ;;
+            esac
+            git checkout --detach "$sha"
+            mkdir -p "$out/$variant"
+            git rev-parse HEAD > "$out/$variant/commit.txt"
+            if [[ "$variant" == instance || "$variant" == explicit-null || "$variant" == instance-explicit-null ]]; then
+              python3 - "$variant" "$emitter" <<'PY'
+          from pathlib import Path
+          import sys
+
+          variant, filename = sys.argv[1:]
+          path = Path(filename)
+          source = path.read_text()
+          start = source.index("private void emitStringMemberHelper(")
+          stop = source.index("static String propertyExpression(", start)
+          helper = source[start:stop]
+
+          def replace_once(s, old, new):
+              assert s.count(old) == 1, old
+              return s.replace(old, new, 1)
+
+          if variant in ("instance", "instance-explicit-null"):
+              helper = replace_once(helper,
+                  'out.beginBlock("private static void " + helper + "(" + generator',
+                  'out.beginBlock((jackson2 && includeNulls ? "private void " : "private static void ") + helper + "(" + generator')
+          if variant in ("explicit-null", "instance-explicit-null"):
+              old = '''        if (!includeNulls) out.beginBlock("if (value != null)");
+                  out.line("nativeGenerator." + nameMethod + "(name);");
+                  out.line("nativeGenerator.writeString(value);");
+                  if (!includeNulls) out.endBlock();'''
+              new = '''        if (jackson2 && includeNulls) {
+                      out.beginBlock("if (value == null)");
+                      out.line("nativeGenerator." + nameMethod + "(name);");
+                      out.line("nativeGenerator.writeNull();");
+                      out.endBlock(" else {");
+                      out.indent();
+                      out.line("nativeGenerator." + nameMethod + "(name);");
+                      out.line("nativeGenerator.writeString(value);");
+                      out.endBlock();
+                  } else {
+                      if (!includeNulls) out.beginBlock("if (value != null)");
+                      out.line("nativeGenerator." + nameMethod + "(name);");
+                      out.line("nativeGenerator.writeString(value);");
+                      if (!includeNulls) out.endBlock();
+                  }'''
+              helper = replace_once(helper, old, new)
+
+          path.write_text(source[:start] + helper + source[stop:])
+          PY
+            fi
+            git diff -- "$emitter" > "$out/$variant/emitter.patch"
+            ./gradlew :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-build-cache
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f)
+            test -f "$jar"
+            cp "$jar" "$jars/$variant.jar"
+            find sjf4j-testbench/build -type f -name '*FabienBindings*Jackson2*.java' -exec cp {} "$out/$variant/" \;
+            jar tf "$jars/$variant.jar" > "$out/$variant/jar-entries.txt"
+            while IFS= read -r classfile; do
+              classname=${classfile%.class}
+              javap -p -c -classpath "$jars/$variant.jar" "${classname//\//.}" >> "$out/$variant/generated-bytecode.txt"
+            done < <(grep -E 'FabienBindings.*Jackson2.*Impl[^/]*\.class$' "$out/$variant/jar-entries.txt" || true)
+            rm "$out/$variant/jar-entries.txt"
+            git restore -- "$emitter"
+          done
+      - name: Measure variants on the same JVM runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$GITHUB_WORKSPACE/results"
+          jars="$RUNNER_TEMP/jackson2-write-jars"
+          for variant in candidate baseline pre398 post398 instance explicit-null instance-explicit-null candidate-repeat; do
+            jar="$jars/$variant.jar"
+            if [[ "$variant" == candidate-repeat ]]; then jar="$jars/candidate.jar"; fi
+            mkdir -p "$out/$variant"
+            for workload in users:1 clients:10; do
+              model=${workload%:*}
+              size=${workload#*:}
+              java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+                -p backend=jackson2 -p implementation=compiled,blackbird \
+                -p model="$model" -p shape=pojo -p sizeKb="$size" -p seed=12345,324 \
+                -t 1 -f 3 -wi 5 -i 5 -w 1s -r 1s -prof gc -foe true -rf json \
+                -rff "$out/$variant/$model.json" | tee "$out/$variant/$model.log"
+            done
+          done
+      - name: Summarize matched cases
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          from statistics import mean
+          variants = ('baseline', 'pre398', 'post398', 'candidate', 'instance', 'explicit-null', 'instance-explicit-null', 'candidate-repeat')
+          rows = {}
+          print('## Jackson2 helper isolation — Best 2 Mean, µs/op')
+          print('| Variant | Model | Seed | Compiled | Blackbird | BB/Compiled | Compiled B/op | Compiled fork means |')
+          print('|---|---|---|---:|---:|---:|---:|---|')
+          for variant in variants:
+              for model, size in (('users', '1'), ('clients', '10')):
+                  entries = json.loads(Path(f'results/{variant}/{model}.json').read_text())
+                  assert len(entries) == 4
+                  cases = {}
+                  for row in entries:
+                      p = row['params']
+                      assert (p['backend'], p['shape'], p['model'], p['sizeKb']) == ('jackson2', 'pojo', model, size)
+                      data = row['primaryMetric']['rawData']
+                      assert len(data) == 3 and all(len(f) == 5 for f in data)
+                      forks = [mean(f) for f in data]
+                      cases[p['implementation'], p['seed']] = (mean(sorted(forks)[:2]), row['secondaryMetrics']['gc.alloc.rate.norm']['score'], forks)
+                  for seed in ('12345', '324'):
+                      c, b = (cases[m, seed] for m in ('compiled', 'blackbird'))
+                      rows[variant, model, seed] = c[0], b[0]
+                      fs = ', '.join(f'{v:.3f}' for v in c[2])
+                      print(f'| {variant} | {model} {size}KB | {seed} | {c[0]:.3f} | {b[0]:.3f} | {b[0]/c[0]:.3f} | {c[1]:.0f} | {fs} |')
+          print()
+          print('| Variant | Users 1KB | Change vs candidate | Clients 10KB | Change vs candidate |')
+          print('|---|---:|---:|---:|---:|')
+          for variant in variants:
+              values = []
+              for model in ('users', 'clients'):
+                  v = mean(rows[variant, model, seed][0] for seed in ('12345', '324'))
+                  c = mean(rows['candidate', model, seed][0] for seed in ('12345', '324'))
+                  values.extend((f'{v:.3f}', f'{(v/c-1)*100:+.2f}%'))
+              print('| ' + ' | '.join((variant, *values)) + ' |')
+          PY
+      - name: Upload results and generated code
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson2-write-helper-isolation-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
