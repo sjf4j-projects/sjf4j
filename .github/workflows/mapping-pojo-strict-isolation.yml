@@ -1,0 +1,170 @@
+name: Mapping POJO and STRICT isolation (temporary)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mapping-pojo-strict-isolation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: source
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build historical revisions on one runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/results"
+          mkdir -p "$OUT"
+          lscpu | tee "$OUT/cpu.txt"
+          java -version 2>&1 | tee "$OUT/java.txt"
+          cd source
+          for entry in nov12:160bb56ba40344315a7a639b4a606a3012ddf660 nov20:8631400c020cc4163dd003f8c45e76c1ee09acf4 nov27:9509bc7bf3a0bbd118e142ef4ceed860473f8929; do
+            label="${entry%%:*}"
+            revision="${entry#*:}"
+            mkdir -p "$OUT/$label"
+            git checkout --detach "$revision"
+            ./gradlew :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-build-cache
+            jarfile=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -type f -print -quit)
+            test -n "$jarfile"
+            cp "$jarfile" "$OUT/$label/benchmark.jar"
+            for cls in 'MappingFullBenchmark$Sjf4jMapper_Impl' 'MappingFullBenchmark$MapStructMapperImpl'; do
+              file=$(find sjf4j-testbench/build -type f -name "$cls.java" -print -quit)
+              test -n "$file"
+              cp "$file" "$OUT/$label/$cls.java"
+              javap -p -c -classpath "$jarfile" "org.sjf4j.testbench.mapping.$cls" > "$OUT/$label/$cls.bytecode.txt"
+            done
+          done
+      - name: Isolate generated method shape and strict String fast path
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/results"
+          mkdir -p "$OUT/variant/classes"
+          cp "$OUT/nov27/benchmark.jar" "$OUT/variant/benchmark.jar"
+          cp "$OUT/nov27/MappingFullBenchmark\$Sjf4jMapper_Impl.java" "$OUT/variant/"
+          python3 - "$OUT/variant/MappingFullBenchmark\$Sjf4jMapper_Impl.java" <<'PY'
+          import re, sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          source = p.read_text()
+          owner = "org.sjf4j.testbench.mapping.MappingFullBenchmark."
+          def replace_body(text, method, body):
+              pattern = r'\bpublic\s+[\w.$]+\s+' + method + r'\s*\([\w.$]+\s+(\w+)\s*\)\s*\{'
+              matches = list(re.finditer(pattern, text))
+              if len(matches) != 1:
+                  raise ValueError(f"{method}: {len(matches)} declarations")
+              m = matches[0]
+              pos = m.end()
+              depth = 1
+              while depth:
+                  if text[pos] == '{': depth += 1
+                  if text[pos] == '}': depth -= 1
+                  pos += 1
+              return text[:m.end()] + '\n' + body.replace('@source', m[1]).replace('@owner', owner) + '\n    }' + text[pos:]
+          source = replace_body(source, 'flat', '''        if (@source == null) return null;
+                  @ownerFlatTarget target = new @ownerFlatTarget();
+                  target.surname = @source.last();
+                  target.first = @source.first();
+                  target.fullName = @source.first() + " " + @source.last();
+                  return target;''')
+          source = replace_body(source, 'profile', '''        if (@source == null) return null;
+                  String name = null;
+                  @ownerContactDto contactValue = null;
+                  name = @source.name();
+                  contactValue = contact(@source.contact());
+                  @ownerProfileDto target = new @ownerProfileDto(name, contactValue);
+                  return target;''')
+          source = replace_body(source, 'contact', '''        if (@source == null) return null;
+                  String city = null;
+                  String country = null;
+                  city = @source.city();
+                  country = @source.country();
+                  @ownerContactDto target = new @ownerContactDto(city, country);
+                  return target;''')
+          source = replace_body(source, 'jsonObject', '''        if (@source == null) return null;
+                  Object sku = @source.getNode("sku");
+                  String skuValue = sku instanceof String ? (String) sku : org.sjf4j.node.NodeMapper.toString(sku, org.sjf4j.NodeConfig.DEFAULT);
+                  Object name = @source.getNode("name");
+                  String nameValue = name instanceof String ? (String) name : org.sjf4j.node.NodeMapper.toString(name, org.sjf4j.NodeConfig.DEFAULT);
+                  Object count = @source.getNode("count");
+                  return new @ownerJsonTarget(skuValue, nameValue, count);''')
+          p.write_text(source)
+          PY
+          javac -proc:none -cp "$OUT/variant/benchmark.jar" -d "$OUT/variant/classes" "$OUT/variant/MappingFullBenchmark\$Sjf4jMapper_Impl.java"
+          jar uf "$OUT/variant/benchmark.jar" -C "$OUT/variant/classes" .
+          javap -p -c -classpath "$OUT/variant/benchmark.jar" 'org.sjf4j.testbench.mapping.MappingFullBenchmark$Sjf4jMapper_Impl' > "$OUT/variant/bytecode.txt"
+          diff -u "$OUT/nov27/MappingFullBenchmark\$Sjf4jMapper_Impl.java" "$OUT/variant/MappingFullBenchmark\$Sjf4jMapper_Impl.java" > "$OUT/variant/generated.diff" || test "$?" -eq 1
+      - name: Measure only Flat, Profile and JSON STRICT controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/results"
+          for variant in nov27 nov12 nov20 variant nov27-repeat; do
+            mkdir -p "$OUT/$variant"
+            jar_variant="${variant%-repeat}"
+            JAR="$OUT/$jar_variant/benchmark.jar"
+            java -jar "$JAR" '.*MappingFullBenchmark\.pojo_(flat|profile)_(compiled|mapstruct)$' -f 3 -t 1 -wi 5 -i 5 -w 1s -r 1s -prof gc -foe true -rf json -rff "$OUT/$variant/pojo.json" | tee "$OUT/$variant/pojo.log"
+            java -jar "$JAR" '.*MappingFullBenchmark\.json_(object|map)_(strict|cast|mapstruct)$' -p sizeKb=100 -f 3 -t 1 -wi 5 -i 5 -w 1s -r 1s -prof gc -foe true -rf json -rff "$OUT/$variant/json.json" | tee "$OUT/$variant/json.log"
+          done
+      - name: Report relative performance and fork means
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md
+          import json
+          from pathlib import Path
+          from statistics import mean
+          root = Path('results')
+          print('| Variant | Case | MapStruct / Compiled or STRICT | CAST / STRICT | SJF4J B/op | Fork means (ns/op) |')
+          print('| --- | --- | ---: | ---: | ---: | --- |')
+          for v in ['nov27', 'nov12', 'nov20', 'variant', 'nov27-repeat']:
+              rows = {}
+              for group in ['pojo','json']:
+                  data = json.loads((root/v/(group+'.json')).read_text())
+                  assert len(data) == (4 if group == 'pojo' else 6)
+                  for r in data:
+                      raw = r['primaryMetric']['rawData']
+                      assert len(raw) == 3 and all(len(f) == 5 for f in raw)
+                      f = list(map(mean, raw))
+                      rows[r['benchmark'].rsplit('.',1)[-1]] = (mean(sorted(f)[:2]), r['secondaryMetrics']['gc.alloc.rate.norm']['score'], f)
+              for case in ['pojo_flat','pojo_profile','json_object','json_map']:
+                  suffix = '_compiled' if case.startswith('pojo') else '_strict'
+                  score, alloc, f = rows[case+suffix]
+                  ratio = rows[case+'_mapstruct'][0]/score
+                  cast = f"{rows[case+'_cast'][0]/score:.4f}" if case.startswith('json') else '—'
+                  print(f"| {v} | {case} | {ratio:.4f} | {cast} | {alloc:.1f} | {' / '.join(f'{x:.3f}' for x in f)} |")
+          PY
+          cat results/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Capture JIT inlining separately
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/results"
+          for v in nov12 nov20 nov27 variant; do
+            JAR="$OUT/$v/benchmark.jar"
+            java -jar "$JAR" '.*MappingFullBenchmark\.pojo_(flat|profile)_compiled$' -f 1 -t 1 -wi 5 -i 2 -w 1s -r 1s -foe true -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining' > "$OUT/$v/pojo-inlining.log" 2>&1
+            java -jar "$JAR" '.*MappingFullBenchmark\.json_object_strict$' -p sizeKb=100 -f 1 -t 1 -wi 5 -i 2 -w 1s -r 1s -foe true -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining' > "$OUT/$v/strict-inlining.log" 2>&1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mapping-isolation-${{ github.run_id }}
+          path: |
+            results/
+            !results/**/*.jar
+            !results/**/classes/**
+          if-no-files-found: warn
+          retention-days: 30
