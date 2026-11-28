@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class SchemaCoreTest {
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testFormulateAliases() {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\"}");
         SchemaPlan plan = schema.formulate();
@@ -46,7 +47,7 @@ public class SchemaCoreTest {
     public void testCompile1() {
         String json = "{  \"type\": \"string\" }";
         JsonSchema schema = JsonSchema.fromJson(json);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         log.info("schema={}", schema);
 //        assertEquals("", schema.getUri().toString());
         assertTrue(plan.isValid("abc"));
@@ -57,7 +58,7 @@ public class SchemaCoreTest {
         String json = "{}";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         assertTrue(plan.isValid(1));
         assertTrue(plan.isValid("a"));
         assertTrue(plan.isValid(null));
@@ -75,7 +76,7 @@ public class SchemaCoreTest {
                 "}\n";
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         assertEquals("json-schema/base.json", schema.canonicalUri().toString());
         assertTrue(plan.isValid(13));
     }
@@ -88,7 +89,7 @@ public class SchemaCoreTest {
         assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
         assertEquals("defs/user.json", schema.canonicalUri().toString());
 
-        schema.createPlan();
+        schema.formulate();
 
         assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
         assertEquals("defs/user.json", schema.canonicalUri().toString());
@@ -97,7 +98,7 @@ public class SchemaCoreTest {
     @Test
     public void testCompiledSchemaBecomesReadOnly() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"type\":\"string\"}");
-        schema.createPlan();
+        schema.formulate();
 
         assertDoesNotThrow(() -> schema.put("title", "name"));
         assertDoesNotThrow(() -> schema.remove("type"));
@@ -140,7 +141,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         ValidationResult result = plan.validate(1);
         log.info("result={}", result);
@@ -158,7 +159,7 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, () -> schema.createPlan());
+        assertThrows(SchemaException.class, () -> schema.formulate());
     }
 
 
@@ -171,7 +172,7 @@ public class SchemaCoreTest {
                         "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         assertThrows(NodeException.class, () -> plan.isValid("StackOverflowError"));
     }
 
@@ -182,7 +183,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, () -> schema.createPlan());
+        assertThrows(SchemaException.class, () -> schema.formulate());
     }
 
     @Test
@@ -205,7 +206,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
 
         ValidationResult result = plan.validate(Sjf4j.global().fromJson("{\n" +
                 "  \"value\": 1,\n" +
@@ -228,7 +229,7 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"#/a/b\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, () -> schema.createPlan().validate("Not Found dynamicRef"));
+        assertThrows(SchemaException.class, () -> schema.formulate().validate("Not Found dynamicRef"));
     }
 
     @Test
@@ -236,7 +237,7 @@ public class SchemaCoreTest {
         String json = "{ \"$dynamicRef\": \"a.json#node\" }\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
-        assertThrows(SchemaException.class, () -> schema.createPlan());
+        assertThrows(SchemaException.class, () -> schema.formulate());
     }
 
 
@@ -248,7 +249,7 @@ public class SchemaCoreTest {
                 "  \"type\": \"number\"\n" +
                 "}\n";
         JsonSchema schema1 = JsonSchema.fromJson(json1);
-        schema1.createPlan();
+        schema1.formulate();
 
         String json2 = "{\n" +
                 "  \"$id\": \"https://example.org/child.json\",\n" +
@@ -256,7 +257,7 @@ public class SchemaCoreTest {
                 "  \"type\": \"string\"\n" +
                 "}\n";
         JsonSchema schema2 = JsonSchema.fromJson(json2);
-        schema2.createPlan();
+        schema2.formulate();
 
         String json3 = "{\n" +
                 "  \"$ref\": \"https://example.org/base.json\",\n" +
@@ -269,7 +270,7 @@ public class SchemaCoreTest {
         SchemaRegistry store = new SchemaRegistry();
         store.register(schema1);
         store.register(schema2);
-        SchemaPlan plan3 = schema3.createPlan(store);
+        SchemaPlan plan3 = schema3.formulate(store);
         log.info("schema3={}", schema3);
 
         ValidationResult result = plan3.validate("a");
@@ -286,10 +287,10 @@ public class SchemaCoreTest {
         JsonSchema schema1 = JsonSchema.fromJson("true");
         log.info("schema1={}", schema1);
         assertInstanceOf(BooleanSchema.class, schema1);
-        assertTrue(schema1.createPlan().validate(100).isValid());
+        assertTrue(schema1.formulate().validate(100).isValid());
 
         JsonSchema schema2 = JsonSchema.fromJson("{\"type\": \"number\"}");
-        SchemaPlan plan2 = schema2.createPlan();
+        SchemaPlan plan2 = schema2.formulate();
         log.info("schema2={}", schema2);
         assertInstanceOf(ObjectSchema.class, schema2);
         assertTrue(plan2.validate(100).isValid());

@@ -82,7 +82,7 @@ public class EvaluatorTraversalBenchmark {
                     + "\"unevaluatedItems\":" + NON_NEGATIVE + "}";
 
     private static SchemaPlan plan(String schemaJson) {
-        return JsonSchema.fromJson(schemaJson).createPlan();
+        return JsonSchema.fromJson(schemaJson).formulate();
     }
 
     private static void check(String label, SchemaPlan plan, Object node,

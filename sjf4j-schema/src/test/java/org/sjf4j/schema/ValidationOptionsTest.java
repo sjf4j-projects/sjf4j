@@ -12,7 +12,7 @@ class ValidationOptionsTest {
         assertFalse(options.isStrictFormat());
         assertFalse(options.isCollectAnnotations());
 
-        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"integer\"}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"integer\"}").formulate();
         assertEquals(plan.validate("not an integer").isValid(),
                 plan.validate("not an integer", options).isValid());
         assertEquals(plan.validate("not an integer").count(),
@@ -29,7 +29,7 @@ class ValidationOptionsTest {
         assertTrue(options.isFailFast());
         assertTrue(options.isStrictFormat());
 
-        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"minLength\":3}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"minLength\":3}").formulate();
         assertEquals(plan.validate(1, true, true).isValid(),
                 plan.validate(1, options).isValid());
 
@@ -45,7 +45,7 @@ class ValidationOptionsTest {
                 .collectAnnotations(true)
                 .build();
         assertTrue(options.isCollectAnnotations());
-        SchemaPlan plan = JsonSchema.fromJson("{\"title\":\"Example\"}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"title\":\"Example\"}").formulate();
         ValidationResult result = plan.validate(42, options);
         assertTrue(result.isValid());
         assertEquals(1, result.getAnnotations().size());

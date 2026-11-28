@@ -64,7 +64,7 @@ class EvaluationBitsTest {
                 values.add(i);
             }
             schema.append("],\"unevaluatedItems\":false}");
-            SchemaPlan plan = JsonSchema.fromJson(schema.toString()).createPlan();
+            SchemaPlan plan = JsonSchema.fromJson(schema.toString()).formulate();
 
             assertTrue(plan.validate(values).isValid(), "size=" + size);
             values.add(size);
@@ -91,7 +91,7 @@ class EvaluationBitsTest {
 
             Map<String, Object> values = new LinkedHashMap<>();
             for (int i = 0; i < size; i++) values.put("p" + i, i);
-            SchemaPlan plan = JsonSchema.fromJson(schema.toString()).createPlan();
+            SchemaPlan plan = JsonSchema.fromJson(schema.toString()).formulate();
 
             assertTrue(plan.validate(values).isValid(), "size=" + size);
             values.put("extra", 1);
