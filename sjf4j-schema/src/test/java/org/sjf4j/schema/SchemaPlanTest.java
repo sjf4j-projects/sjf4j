@@ -19,10 +19,10 @@ class SchemaPlanTest {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
         SchemaResource resource = new SchemaResource(URI.create("file:///schemas/root.json"), schema);
 
-        SchemaPlan plan = resource.createPlan();
+        SchemaPlan plan = SchemaPlanner.buildPlan(resource, null);
 
-        assertEquals("file:///schemas/root.json", resource.retrievalUri().toString());
-        assertEquals(URI.create("file:///schemas/defs/user.json"), resource.canonicalUri());
+        assertEquals("file:///schemas/root.json", resource.retrievalUri.toString());
+        assertEquals(URI.create("file:///schemas/defs/user.json"), resource.canonicalUri);
         assertTrue(plan.validate("hello").isValid());
         assertFalse(plan.validate(123).isValid());
     }
@@ -212,7 +212,7 @@ class SchemaPlanTest {
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(leafSchema);
 
-        SchemaPlan plan = resource.createPlan(registry);
+        SchemaPlan plan = SchemaPlanner.buildPlan(resource, registry);
 
         assertTrue(plan.isValid("x"));
         assertFalse(plan.isValid(""));
