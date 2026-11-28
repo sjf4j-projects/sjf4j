@@ -32,7 +32,8 @@ public interface RegexGuard {
      *
      * <p>Recognized syntax:
      * <ul>
-     *   <li>Escaped characters, including control escapes ({@code \cX}).</li>
+     *   <li>Escaped characters, including control, hex, Unicode and numeric
+     *       escapes, and braced Unicode property/name escapes.</li>
      *   <li>Quoted literals ({@code \Q...\E}).</li>
      *   <li>Character classes, including negation, initial literal
      *       {@code ]}, and nested classes/intersections.</li>
@@ -92,7 +93,18 @@ public interface RegexGuard {
                     char escaped = expression.charAt(++i);
                     if (escaped == 'Q') quoted = true;
                     else if (escaped == 'c' && i + 1 < length) i++;
-                    else if (classDepth == 0 && "dDsSwWhHvV".indexOf(escaped) >= 0) {
+                    else if ("xpPN".indexOf(escaped) >= 0 && i + 1 < length
+                            && expression.charAt(i + 1) == '{') {
+                        // Braced escape payloads are not repetition counts.
+                        int end = expression.indexOf('}', i + 2);
+                        if (end >= 0) i = end;
+                    } else if (escaped == 'x' || escaped == 'u') {
+                        // Do not interpret hex escape digits as independent atoms.
+                        i = Math.min(length - 1, i + (escaped == 'x' ? 2 : 4));
+                    } else if (escaped >= '0' && escaped <= '9') {
+                        while (i + 1 < length && expression.charAt(i + 1) >= '0'
+                                && expression.charAt(i + 1) <= '9') i++;
+                    } else if (classDepth == 0 && "dDsSwWhHvV".indexOf(escaped) >= 0) {
                         atom = 128 + escaped;
                     }
                 }
