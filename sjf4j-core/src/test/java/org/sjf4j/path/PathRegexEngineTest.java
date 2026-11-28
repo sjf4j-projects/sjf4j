@@ -57,13 +57,13 @@ class PathRegexEngineTest {
         assertEquals("/abc/i", expr.toString());
         assertEquals("abc", expr.expression());
         assertEquals(Pattern.CASE_INSENSITIVE, expr.flags());
-        assertInstanceOf(Regex.class, expr.compiled());
-        assertSame(expr.compiled(), expr.eval(null, null, new NodeWalker.Access()));
-        assertTrue(FilterExpr.match(JsonArray.of(null, 1, "xABCx"), expr.compiled()));
-        assertFalse(FilterExpr.match(JsonArray.of(null, 1, "xyz"), expr.compiled()));
-        assertFalse(FilterExpr.match(null, expr.compiled()));
-        assertFalse(FilterExpr.match(JsonObject.of("name", "abc"), expr.compiled()));
-        assertInstanceOf(Regex.class, ((FilterExpr.RegexExpr) PathSyntax.parseFilter("/abc/i")).compiled());
+        assertInstanceOf(Regex.class, expr.regex());
+        assertSame(expr.regex(), expr.eval(null, null, new NodeWalker.Access()));
+        assertTrue(FilterExpr.match(JsonArray.of(null, 1, "xABCx"), expr.regex()));
+        assertFalse(FilterExpr.match(JsonArray.of(null, 1, "xyz"), expr.regex()));
+        assertFalse(FilterExpr.match(null, expr.regex()));
+        assertFalse(FilterExpr.match(JsonObject.of("name", "abc"), expr.regex()));
+        assertInstanceOf(Regex.class, ((FilterExpr.RegexExpr) PathSyntax.parseFilter("/abc/i")).regex());
     }
 
     @Test
