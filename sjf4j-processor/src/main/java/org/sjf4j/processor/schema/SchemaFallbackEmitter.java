@@ -65,7 +65,7 @@ final class SchemaFallbackEmitter {
                 }
                 if (needsLoader) {
                     out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
-                            + "org.sjf4j.schema.SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR, "
+                            + "org.sjf4j.schema.SchemaLoader.DEFAULT_JSON_SCHEMA_DIR, "
                             + plan.name + ".class.getClassLoader());");
                 }
                 // Restore this binding's scoped external retrieval URI mappings.
