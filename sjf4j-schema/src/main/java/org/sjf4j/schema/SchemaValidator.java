@@ -7,9 +7,9 @@ import org.sjf4j.util.Strings;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -145,7 +145,7 @@ public final class SchemaValidator {
         // The ordinary annotation path must not construct a local loader:
         // caller-supplied SchemaLoader implementations may use memory: or other
         // custom URI schemes with no directory base.
-        Map<URI, JsonSchema> external = java.util.Collections.emptyMap();
+        Map<URI, JsonSchema> external = Collections.emptyMap();
         if (!anno.externalSchemas().isEmpty()) {
             external = SchemaLoader.parseExternalSchemas(anno.externalSchemas());
         } else if (!anno.externalSchemasRef().trim().isEmpty()) {

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.stream.Stream;
 import java.util.HashSet;
@@ -37,6 +38,11 @@ public class SchemaRegistry {
     private final PlanningOptions planningOptions;
 
 
+    /** Creates a registry defaulting to draft 2020-12. */
+    public SchemaRegistry() {
+        this(SchemaDialect.DRAFT_2020_12);
+    }
+
     /**
      * Creates a registry with the supplied default dialect. Built-in global
      * meta-schemas remain visible as fallback resources.
@@ -60,11 +66,6 @@ public class SchemaRegistry {
 
     public PlanningOptions getPlanningOptions() {
         return planningOptions;
-    }
-
-    /** Creates a registry defaulting to draft 2020-12. */
-    public SchemaRegistry() {
-        this(SchemaDialect.DRAFT_2020_12);
     }
 
 
@@ -335,8 +336,8 @@ public class SchemaRegistry {
      */
     void indexRegistry(SchemaRegistry source) {
         if (source == null || source == this) return;
-        java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
-                new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
+        IdentityHashMap<ObjectSchema, Set<String>> groups =
+                new IdentityHashMap<ObjectSchema, Set<String>>();
         for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
             Set<String> aliases = groups.get(entry.getValue());
             if (aliases == null) {
