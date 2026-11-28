@@ -16,7 +16,6 @@ import org.sjf4j.processor.type.TypeSystem;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.value.ValueCodec;
-import org.sjf4j.regex.RegexEngine;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -746,7 +745,7 @@ public final class JdbcCompiler {
 
         try {
             segments = expression.startsWith("/")
-                    ? PathSyntax.parsePointer(expression) : PathSyntax.parsePath(expression, RegexEngine.JDK_ENGINE);
+                    ? PathSyntax.parsePointer(expression) : PathSyntax.parsePath(expression);
 
         } catch (RuntimeException e) {
 
