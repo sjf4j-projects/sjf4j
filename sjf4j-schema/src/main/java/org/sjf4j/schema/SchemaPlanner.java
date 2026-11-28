@@ -26,14 +26,17 @@ public final class SchemaPlanner {
     private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
     static SchemaPlan buildPlan(SchemaResource resource, SchemaRegistry registry) {
+        if (resource.schema instanceof BooleanSchema) {
+            return SchemaPlan.of(resource.canonicalUri, PathSegment.Root.INSTANCE, (BooleanSchema) resource.schema);
+        }
         return _buildPlan(resource, new PlanningContext(registry == null ? new SchemaRegistry() : registry));
     }
 
     private static SchemaPlan _buildPlan(SchemaResource resource, PlanningContext context) {
-        ObjectSchema schema = (ObjectSchema) resource.schema();
+        ObjectSchema schema = (ObjectSchema) resource.schema;
         SchemaRegistry registry = context.registry;
-        URI retrievalUri = resource.retrievalUri();
-        URI resourceUri = resource.canonicalUri();
+        URI retrievalUri = resource.retrievalUri;
+        URI resourceUri = resource.canonicalUri;
         if (retrievalUri == null && (resourceUri == null || !resourceUri.isAbsolute())) {
             URI base = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
             resourceUri = SchemaUtil.resolveUri(base, resourceUri);
@@ -94,7 +97,7 @@ public final class SchemaPlanner {
         if (resource == null) return null;
 
         // An indexed alias may point to an already planned canonical resource.
-        String canonical = SchemaUtil.normalizeUriKey(resource.canonicalUri());
+        String canonical = SchemaUtil.normalizeUriKey(resource.canonicalUri);
         plan = context.findPlan(canonical);
         if (plan == null) {
             plan = registry.findLocalPlan(canonical);
@@ -123,7 +126,7 @@ public final class SchemaPlanner {
                                          Map<String, SchemaPlan> byPathPlans,
                                          PlanningContext context, SchemaDialect dialect,
                                          Map<String, Boolean> vocabulary) {
-        URI resourceUri = resource.canonicalUri();
+        URI resourceUri = resource.canonicalUri;
         _checkVocabulary(schema, ps, vocabulary);
 
         // $defs / definitions
@@ -529,7 +532,7 @@ public final class SchemaPlanner {
                                                               Map<String, SchemaPlan> byPathPlans,
                                                               PlanningContext context,
                                                               SchemaDialect dialect, Map<String, Boolean> vocabulary) {
-        URI resourceUri = resource.canonicalUri();
+        URI resourceUri = resource.canonicalUri;
         Object objectNode = schema.getNode(key);
         if (objectNode == null) return null;
 
@@ -562,7 +565,7 @@ public final class SchemaPlanner {
                                                      Map<String, SchemaPlan> byPathPlans,
                                                      PlanningContext context,
                                                      SchemaDialect dialect, Map<String, Boolean> vocabulary) {
-        URI resourceUri = resource.canonicalUri();
+        URI resourceUri = resource.canonicalUri;
         Object arrayNode = schema.getNode(key);
         if (arrayNode == null) return null;
 
@@ -626,7 +629,7 @@ public final class SchemaPlanner {
                                               Map<String, SchemaPlan> byPathPlans,
                                               PlanningContext context, SchemaDialect inheritedDialect,
                                               Map<String, Boolean> inheritedVocabulary) {
-        URI resourceUri = resource.canonicalUri();
+        URI resourceUri = resource.canonicalUri;
         if (node == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                     "invalid schema node: schema is null", ps, resourceUri));
