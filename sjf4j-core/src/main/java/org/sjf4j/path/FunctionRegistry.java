@@ -142,18 +142,6 @@ public class FunctionRegistry {
         }
     }
 
-    private static boolean match(Object target, Object[] args) {
-        if (args.length != 1)
-            throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
-        return match(target, args[0], RegexEngine.JDK_ENGINE);
-    }
-
-    private static boolean search(Object target, Object[] args) {
-        if (args.length != 1)
-            throw new NodeException("search(): expected exactly 1 argument, but got " + args.length);
-        return search(target, args[0], RegexEngine.JDK_ENGINE);
-    }
-
     // RFC 9535: either non-string argument yields LogicalFalse.
     private static boolean match(Object target, Object argument, RegexEngine engine) {
         if (JsonType.of(target) != JsonType.STRING ||
@@ -232,8 +220,16 @@ public class FunctionRegistry {
             return null;
         }));
 
-        register(new FunctionDescriptor("match", FunctionRegistry::match));
-        register(new FunctionDescriptor("search", FunctionRegistry::search));
+        register(new FunctionDescriptor("match", (target, args) -> {
+            if (args.length != 1)
+                throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
+            return match(target, args[0], RegexEngine.JDK_ENGINE);
+        }));
+        register(new FunctionDescriptor("search", (target, args) -> {
+            if (args.length != 1)
+                throw new NodeException("search(): expected exactly 1 argument, but got " + args.length);
+            return search(target, args[0], RegexEngine.JDK_ENGINE);
+        }));
 
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", (target, args) -> {
