@@ -38,8 +38,10 @@ public interface RegexGuard {
      * </ul>
      *
      * <p>Limitations: bounded repetitions, ambiguous alternation and inline
-     * flag changes are not analyzed. This is not a full regex parser or a
-     * guarantee against ReDoS; safe expressions may also be rejected.
+     * flag changes are not analyzed. Quantifier suffixes are not distinguished
+     * from quantifiers, so possessive repetitions may be flagged conservatively.
+     * This is not a full regex parser or a guarantee against ReDoS; safe
+     * expressions may also be rejected.
      * Syntax validation remains the engine's responsibility.
      */
     RegexGuard BASIC = (expression, flags) -> {
