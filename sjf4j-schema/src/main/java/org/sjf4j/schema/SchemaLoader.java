@@ -29,6 +29,9 @@ import java.util.stream.Stream;
 @FunctionalInterface
 public interface SchemaLoader {
 
+    /** Default classpath directory for annotation-based schema discovery. */
+    URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
+
     /**
      * Returns the parsed document, or null if it is missing.
      * Any URI fragment is ignored for retrieval; fragment resolution belongs to SchemaRegistry.
@@ -98,9 +101,6 @@ public interface SchemaLoader {
      * Network schemes are not supported.
      */
     final class Local implements SchemaLoader {
-        /** Default classpath directory for annotation-based schema discovery. */
-        public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
-
         private final URI baseUri;
         private final ClassLoader classLoader;
 
@@ -136,14 +136,6 @@ public interface SchemaLoader {
 
         public URI baseUri() {
             return baseUri;
-        }
-
-        /**
-         * Recursively loads .json schema documents from this loader's file-system
-         * base directory, keyed by their file retrieval URIs.
-         */
-        public Map<URI, JsonSchema> loadDir() {
-            return loadDir(null);
         }
 
         /**
