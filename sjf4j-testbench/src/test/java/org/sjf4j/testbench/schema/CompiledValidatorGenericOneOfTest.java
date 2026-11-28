@@ -89,7 +89,7 @@ class CompiledValidatorGenericOneOfTest {
     @Test
     void supportsOverlappingBranchesWithoutDiscriminator() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(OVERLAPPING).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(OVERLAPPING).formulate();
         for (int value : new int[]{-1, 0, 5, 10, 15, 20, 25, 30, 31}) {
             NumberModel model = new NumberModel(value);
             assertEquals(reference.isValid(model), compiled.overlapping(model),
@@ -104,7 +104,7 @@ class CompiledValidatorGenericOneOfTest {
     @Test
     void compilesRootObjectBranchesAndCountsAllMatchingBranches() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(ROOT_OBJECT).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(ROOT_OBJECT).formulate();
         for (Map<String, Object> map : Arrays.asList(
                 Map.<String, Object>of("x", 1), Map.<String, Object>of("y", 2), Map.<String, Object>of("x", 1, "y", 2),
                 Map.<String, Object>of(), Map.<String, Object>of("x", "wrong"), Map.<String, Object>of("y", 2, "x", "wrong")
@@ -116,7 +116,7 @@ class CompiledValidatorGenericOneOfTest {
     @Test
     void compilesNestedArrayBranchesIncludingNullLiteral() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(ARRAY_ITEMS).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(ARRAY_ITEMS).formulate();
         for (ArrayModel model : Arrays.asList(
                 new ArrayModel(List.of("ab")),
                 new ArrayModel(Arrays.asList((Object) null)),
@@ -132,8 +132,8 @@ class CompiledValidatorGenericOneOfTest {
     @Test
     void resolvesRefsAndNestedOneOfWithoutSchemaPlan() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan refs = JsonSchema.fromJson(REFS).createPlan();
-        SchemaPlan nested = JsonSchema.fromJson(NESTED).createPlan();
+        SchemaPlan refs = JsonSchema.fromJson(REFS).formulate();
+        SchemaPlan nested = JsonSchema.fromJson(NESTED).formulate();
         for (int value : new int[]{-1, 1, 3, 10, 11, 50}) {
             assertEquals(refs.isValid(value), compiled.refs(value), "ref " + value);
             assertEquals(nested.isValid(value), compiled.nested(value), "nested " + value);
@@ -146,14 +146,14 @@ class CompiledValidatorGenericOneOfTest {
     @Test
     void handlesBooleanSchemasAndStrictFormatBranches() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan booleans = JsonSchema.fromJson(BOOLEANS).createPlan();
-        SchemaPlan twoTrue = JsonSchema.fromJson(TWO_TRUE).createPlan();
+        SchemaPlan booleans = JsonSchema.fromJson(BOOLEANS).formulate();
+        SchemaPlan twoTrue = JsonSchema.fromJson(TWO_TRUE).formulate();
         for (String s : new String[]{"yes", "other"}) {
             assertEquals(booleans.isValid(s), compiled.booleans(s));
             assertEquals(twoTrue.isValid(s), compiled.twoTrue(s));
         }
 
-        SchemaPlan reference = JsonSchema.fromJson(FORMATS).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(FORMATS).formulate();
         for (String value : new String[]{"not-a-uuid", "fallback",
                 "123e4567-e89b-12d3-a456-426614174000"}) {
             TextModel model = new TextModel(value);

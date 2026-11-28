@@ -97,7 +97,7 @@ public class CompiledValidatorOneOfTest {
     @Test
     void strictFormatUsesCompiledSubtypeChecks() {
         StrictFormatValidator compiled = CompiledInstances.create(StrictFormatValidator.class);
-        SchemaPlan reference = JsonSchema.fromJson(FORMAT_SCHEMA).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(FORMAT_SCHEMA).formulate();
         Model model = new Model(List.of(new A("not-an-email"), new B(2)));
         assertTrue(reference.isValid(model, false));
         assertTrue(compiled.valid(model, false));
@@ -114,7 +114,7 @@ public class CompiledValidatorOneOfTest {
     @Test
     void unknownRuntimeSubtypeUsesCompiledGenericBranches() {
         FullyCompiledValidator compiled = CompiledInstances.create(FullyCompiledValidator.class);
-        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).formulate();
         for (Model model : Arrays.asList(
                 new Model(List.of(new A("valid"), new B(2))),
                 new Model(List.of(new Other())),
@@ -128,7 +128,7 @@ public class CompiledValidatorOneOfTest {
     @Test
     void matchesRuntimeForCompiledAndUnknownSubtypes() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).formulate();
         int caseIndex = 0;
         for (Model model : Arrays.asList(
                 new Model(List.of(new A("valid"), new B(2))),
@@ -172,7 +172,7 @@ public class CompiledValidatorOneOfTest {
     void specializedRootOneOfCountsMatchingBranchesForNull() {
         RootNullOneOfValidator compiled = CompiledInstances.create(RootNullOneOfValidator.class);
         SchemaPlan nullOrObject = JsonSchema.fromJson(
-                "{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"object\"}]}").createPlan();
+                "{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"object\"}]}").formulate();
 
         assertTrue(nullOrObject.isValid(null));
         assertEquals(nullOrObject.isValid(null), compiled.nullOrObject(null));

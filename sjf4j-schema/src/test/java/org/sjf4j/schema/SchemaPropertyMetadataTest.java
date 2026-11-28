@@ -47,7 +47,7 @@ class SchemaPropertyMetadataTest {
                 + "\"properties\":{\"city\":{\"type\":\"string\"}}}},"
                 + "\"addressMap\":{\"type\":\"object\",\"additionalProperties\":"
                 + "{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}},"
-                + "\"timestamp\":{\"type\":\"integer\"}}}").createPlan();
+                + "\"timestamp\":{\"type\":\"integer\"}}}").formulate();
 
         Holder holder = new Holder();
         holder.address = new ExtendedAddress("Shanghai", 100);
