@@ -83,7 +83,7 @@ class CompiledValidatorRemainingKeywordsTest {
     @Test
     void regexUsesSearchSemanticsAndReusesCompiledPatterns() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(PATTERN).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(PATTERN).formulate();
         for (String s : new String[]{"ab1","ab123","xxab1","a","AB2","abcd","ab0\n"}) {
             agrees(reference, compiled.pattern(s), s);
         }
@@ -92,12 +92,12 @@ class CompiledValidatorRemainingKeywordsTest {
     @Test
     void fractionalAndIntegralMultiplesAgreeWithRuntime() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan fractional = JsonSchema.fromJson(MULTIPLE).createPlan();
+        SchemaPlan fractional = JsonSchema.fromJson(MULTIPLE).formulate();
         for (String s : new String[]{"0","0.1","0.2","0.3","1.0","0.31","-0.1","10.01"}) {
             BigDecimal v = new BigDecimal(s);
             agrees(fractional, compiled.multiple(v), v);
         }
-        SchemaPlan integer = JsonSchema.fromJson(INTEGER_MULTIPLE).createPlan();
+        SchemaPlan integer = JsonSchema.fromJson(INTEGER_MULTIPLE).formulate();
         for (int n : new int[]{-6,-3,-2,0,1,2,3,6,7,100,101}) {
             agrees(integer, compiled.integerMultiple(n), n);
         }
@@ -106,7 +106,7 @@ class CompiledValidatorRemainingKeywordsTest {
     @Test
     void objectSizeWorksForMapsPojoAndTypeLessSchema() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan sized = JsonSchema.fromJson(OBJECT_COUNT).createPlan();
+        SchemaPlan sized = JsonSchema.fromJson(OBJECT_COUNT).formulate();
         for (Map<String,Object> map : Arrays.asList(
                 Map.<String,Object>of(), Map.<String,Object>of("a",1),
                 Map.<String,Object>of("a",1,"b",2),
@@ -115,7 +115,7 @@ class CompiledValidatorRemainingKeywordsTest {
         }
         CountPojo pojo = new CountPojo();
         agrees(sized, compiled.pojo(pojo), pojo);
-        SchemaPlan typeLess = JsonSchema.fromJson(TYPELESS_COUNT).createPlan();
+        SchemaPlan typeLess = JsonSchema.fromJson(TYPELESS_COUNT).formulate();
         for (Object value : Arrays.asList(
                 Map.<String,Object>of(), Map.<String,Object>of("a",1),
                 Map.<String,Object>of("a",1,"b",2),
@@ -129,7 +129,7 @@ class CompiledValidatorRemainingKeywordsTest {
     @Test
     void booleanNullAndUnionTypesAcceptOnlyTheirJsonShapes() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan members = JsonSchema.fromJson(TYPES).createPlan();
+        SchemaPlan members = JsonSchema.fromJson(TYPES).formulate();
         for (Object value : Arrays.asList(true, false, "yes", 1, 2.0, List.of(1))) {
             Map<String,Object> map = new LinkedHashMap<>();
             map.put("flag", value);
@@ -143,22 +143,22 @@ class CompiledValidatorRemainingKeywordsTest {
         valid.put("value", "yes");
         agrees(members, compiled.typedMembers(valid), valid);
         assertTrue(compiled.typedMembers(valid));
-        SchemaPlan union = JsonSchema.fromJson(UNION).createPlan();
+        SchemaPlan union = JsonSchema.fromJson(UNION).formulate();
         for (Object value : Arrays.asList("x", 1, 1.0, 2.2, true, Map.of("a", 1))) {
             agrees(union, compiled.union(value), value);
         }
-        SchemaPlan unionLiteral = JsonSchema.fromJson(UNION_LITERAL).createPlan();
+        SchemaPlan unionLiteral = JsonSchema.fromJson(UNION_LITERAL).formulate();
         for (Object value : Arrays.asList("yes","no",3,3.0,4,false)) {
             agrees(unionLiteral, compiled.unionLiteral(value), value);
         }
-        SchemaPlan bool = JsonSchema.fromJson(BOOLEAN).createPlan();
+        SchemaPlan bool = JsonSchema.fromJson(BOOLEAN).formulate();
         for (boolean b : new boolean[]{true,false}) agrees(bool, compiled.bool(b), b);
     }
 
     @Test
     void allNewKeywordsWorkInsideExistingObjectCompiler() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(COMBINED).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(COMBINED).formulate();
         for (Map<String,Object> map : Arrays.asList(
                 Map.<String,Object>of(), Map.<String,Object>of("text","abc"),
                 Map.<String,Object>of("text","abc","quantity",1.25),
