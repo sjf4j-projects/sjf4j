@@ -16,6 +16,20 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class PathSyntaxTest {
 
+    @Test
+    void testFilterNumericLiterals() {
+        assertEquals(12.0d, ((FilterExpr.LiteralExpr) PathSyntax.parseFilter("12")).value());
+        assertEquals(-10.25d, ((FilterExpr.LiteralExpr) PathSyntax.parseFilter("-10.25")).value());
+        assertEquals(7.5d, ((FilterExpr.LiteralExpr) PathSyntax.parseFilter("  7.5 ")).value());
+        assertEquals(12.0d, ((FilterExpr.LiteralExpr) PathSyntax.parseFilter("12.")).value());
+        assertEquals(-0.5d, ((FilterExpr.LiteralExpr) PathSyntax.parseFilter("-.5")).value());
+        assertEquals("(@.x in [12.0, -10.25, 7.5])",
+                PathSyntax.parseFilter("@.x in [12,-10.25,7.5]").toString());
+        assertThrows(NumberFormatException.class, () -> PathSyntax.parseFilter("-"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("1e2"));
+        assertThrows(NodeException.class, () -> PathSyntax.parseFilter("+1"));
+    }
+
     /// Pointer
 
     @Test
