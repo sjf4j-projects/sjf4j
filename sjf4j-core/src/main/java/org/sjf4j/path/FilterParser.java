@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.regex.RegexEngine;
 
 import java.util.ArrayList;
@@ -249,7 +250,29 @@ final class FilterParser {
             throw new NodeException("expected ',' or ')' in function call '" + name + "'");
         }
 
+        if (args.size() == 2 && FunctionRegistry.isRegexFunction(name)) {
+            return new RegexFunctionExpr(name, args, engine);
+        }
         return new FilterExpr.FunctionExpr(name, args);
+    }
+
+    private static final class RegexFunctionExpr extends FilterExpr.FunctionExpr {
+        private final FunctionRegistry.RegexCall call;
+
+        RegexFunctionExpr(String name, List<FilterExpr> args, RegexEngine engine) {
+            super(name, args);
+            FilterExpr pattern = args.get(1);
+            Object literal = pattern instanceof FilterExpr.LiteralExpr
+                    ? ((FilterExpr.LiteralExpr) pattern).value() : null;
+            this.call = new FunctionRegistry.RegexCall(name, engine, literal);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            Object target = args.get(0).eval(rootNode, currentNode, access);
+            Object pattern = args.get(1).eval(rootNode, currentNode, access);
+            return call.invoke(target, pattern);
+        }
     }
 
     /**
