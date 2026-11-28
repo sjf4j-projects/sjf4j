@@ -8,9 +8,9 @@ excluded from query latency and benchmarked separately. The primary workload is
 
 ## Comparison dependency versions
 
-**SJF4J version:** `v1.5.0`.
+**SJF4J version:** `v1.5.3-SNAPSHOT`.
 
-Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
+Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/857c5872ddfc56679a3cf3f635202ac2b90e7b46)):
 
 | Component | Version | Role |
 | --- | --- | --- |
@@ -57,70 +57,70 @@ for wildcard, filter, descendant, slice and other input representations.
 
 ## JVM — Temurin JDK 25
 
-### Results — v1.5.0 (2026-11-11)
-**JDK 25.0.5 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
+### Results — v1.5.3-SNAPSHOT (2026-11-28)
+**JDK 25.0.5.1 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
 
 The figures below are measured query latency on pre-parsed data and precompiled paths. Each latency cell reports one absolute value. Speedup columns are ratios of the indicated baseline to the candidate (>1× is faster).
 
 #### Map / List
 
-| Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Runtime / Compiled |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Direct | `$.store.book[1].price` | 1KB | 296.59 | 59.72 | 11.67 | 4.97× | 5.12× |
-| Direct | `$.store.book[1].price` | 10KB | 315.12 | 60.64 | 13.44 | 5.20× | 4.51× |
-| Direct | `$.store.book[1].price` | 100KB | 366.31 | 65.53 | 13.45 | 5.59× | 4.87× |
-| Wildcard | `$.store.book[*].author` | 1KB | 1,975.57 | 388.59 | 188.96 | 5.08× | 2.06× |
-| Wildcard | `$.store.book[*].author` | 10KB | 17,862.32 | 3,739.24 | 1,635.78 | 4.78× | 2.29× |
-| Wildcard | `$.store.book[*].author` | 100KB | 219,426.21 | 38,884.79 | 22,580.89 | 5.64× | 1.72× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 3,954.91 | 618.40 | 490.30 | 6.40× | 1.26× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 35,399.81 | 6,085.01 | 5,288.24 | 5.82× | 1.15× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 412,237.70 | 71,869.80 | 62,840.77 | 5.74× | 1.14× |
-| Descendant | `$..price` | 1KB | 3,169.49 | 905.67 | 447.23 | 3.50× | 2.03× |
-| Descendant | `$..price` | 10KB | 32,864.12 | 9,598.88 | 5,079.61 | 3.42× | 1.89× |
-| Descendant | `$..price` | 100KB | 416,657.58 | 130,092.61 | 90,846.61 | 3.20× | 1.43× |
-| Slice | `$.store.book[1:4].title` | 1KB | 819.46 | 140.66 | 61.32 | 5.83× | 2.29× |
-| Slice | `$.store.book[1:4].title` | 10KB | 782.04 | 140.86 | 74.21 | 5.55× | 1.90× |
-| Slice | `$.store.book[1:4].title` | 100KB | 841.49 | 146.56 | 70.72 | 5.74× | 2.07× |
+| Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Jayway / Compiled | Runtime / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Direct | `$.store.book[1].price` | 1KB | 191.46 | 39.20 | 8.10 | 4.88× | 23.64× | 4.84× |
+| Direct | `$.store.book[1].price` | 10KB | 197.71 | 39.87 | 8.85 | 4.96× | 22.33× | 4.50× |
+| Direct | `$.store.book[1].price` | 100KB | 205.48 | 41.39 | 8.87 | 4.96× | 23.17× | 4.67× |
+| Wildcard | `$.store.book[*].author` | 1KB | 1,175.63 | 249.01 | 117.52 | 4.72× | 10.00× | 2.12× |
+| Wildcard | `$.store.book[*].author` | 10KB | 12,302.10 | 2,448.00 | 1,051.13 | 5.03× | 11.70× | 2.33× |
+| Wildcard | `$.store.book[*].author` | 100KB | 127,529.18 | 22,910.99 | 14,964.74 | 5.57× | 8.52× | 1.53× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 2,300.54 | 391.46 | 175.28 | 5.88× | 13.13× | 2.23× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 22,188.07 | 4,200.12 | 2,508.56 | 5.28× | 8.84× | 1.67× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 221,703.44 | 43,095.69 | 28,660.73 | 5.14× | 7.74× | 1.50× |
+| Descendant | `$..price` | 1KB | 1,777.59 | 564.48 | 255.44 | 3.15× | 6.96× | 2.21× |
+| Descendant | `$..price` | 10KB | 18,577.76 | 5,942.79 | 3,141.63 | 3.13× | 5.91× | 1.89× |
+| Descendant | `$..price` | 100KB | 194,268.93 | 59,564.58 | 32,316.16 | 3.26× | 6.01× | 1.84× |
+| Slice | `$.store.book[1:4].title` | 1KB | 441.69 | 96.56 | 40.05 | 4.57× | 11.03× | 2.41× |
+| Slice | `$.store.book[1:4].title` | 10KB | 451.16 | 99.34 | 48.00 | 4.54× | 9.40× | 2.07× |
+| Slice | `$.store.book[1:4].title` | 100KB | 470.46 | 103.40 | 46.43 | 4.55× | 10.13× | 2.23× |
 
 #### Jackson2 JsonNode
 
-| Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Runtime / Compiled |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Direct | `$.store.book[1].price` | 1KB | 310.31 | 125.79 | 28.21 | 2.47× | 4.46× |
-| Direct | `$.store.book[1].price` | 10KB | 327.74 | 158.52 | 29.71 | 2.07× | 5.34× |
-| Direct | `$.store.book[1].price` | 100KB | 355.26 | 161.08 | 29.68 | 2.21× | 5.43× |
-| Wildcard | `$.store.book[*].author` | 1KB | 2,152.24 | 646.85 | 370.64 | 3.33× | 1.75× |
-| Wildcard | `$.store.book[*].author` | 10KB | 22,324.50 | 5,941.88 | 4,918.15 | 3.76× | 1.21× |
-| Wildcard | `$.store.book[*].author` | 100KB | 234,799.94 | 69,980.50 | 53,248.32 | 3.36× | 1.31× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 3,800.49 | 1,242.77 | 1,065.95 | 3.06× | 1.17× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 38,175.82 | 12,573.21 | 11,820.30 | 3.04× | 1.06× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 388,883.71 | 128,431.05 | 120,468.52 | 3.03× | 1.07× |
-| Descendant | `$..price` | 1KB | 3,521.44 | 1,946.49 | 1,622.74 | 1.81× | 1.20× |
-| Descendant | `$..price` | 10KB | 36,723.25 | 21,647.48 | 18,128.49 | 1.70× | 1.19× |
-| Descendant | `$..price` | 100KB | 401,328.15 | 219,489.25 | 178,817.86 | 1.83× | 1.23× |
-| Slice | `$.store.book[1:4].title` | 1KB | 781.04 | 258.09 | 157.58 | 3.03× | 1.64× |
-| Slice | `$.store.book[1:4].title` | 10KB | 785.61 | 301.40 | 232.74 | 2.61× | 1.30× |
-| Slice | `$.store.book[1:4].title` | 100KB | 833.20 | 303.61 | 221.58 | 2.74× | 1.37× |
+| Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Jayway / Compiled | Runtime / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Direct | `$.store.book[1].price` | 1KB | 238.90 | 105.49 | 25.65 | 2.26× | 9.31× | 4.11× |
+| Direct | `$.store.book[1].price` | 10KB | 247.14 | 127.36 | 28.72 | 1.94× | 8.61× | 4.43× |
+| Direct | `$.store.book[1].price` | 100KB | 266.49 | 134.68 | 29.06 | 1.98× | 9.17× | 4.63× |
+| Wildcard | `$.store.book[*].author` | 1KB | 1,709.13 | 520.31 | 289.96 | 3.28× | 5.89× | 1.79× |
+| Wildcard | `$.store.book[*].author` | 10KB | 18,402.11 | 4,739.04 | 3,699.90 | 3.88× | 4.97× | 1.28× |
+| Wildcard | `$.store.book[*].author` | 100KB | 190,322.40 | 53,467.58 | 41,766.36 | 3.56× | 4.56× | 1.28× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 2,944.95 | 1,075.47 | 667.96 | 2.74× | 4.41× | 1.61× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 31,445.18 | 10,645.11 | 8,842.48 | 2.95× | 3.56× | 1.20× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 330,910.36 | 103,481.53 | 88,930.16 | 3.20× | 3.72× | 1.16× |
+| Descendant | `$..price` | 1KB | 2,445.45 | 1,621.66 | 1,298.56 | 1.51× | 1.88× | 1.25× |
+| Descendant | `$..price` | 10KB | 28,796.47 | 17,065.37 | 13,209.54 | 1.69× | 2.18× | 1.29× |
+| Descendant | `$..price` | 100KB | 299,105.93 | 170,982.23 | 139,516.61 | 1.75× | 2.14× | 1.23× |
+| Slice | `$.store.book[1:4].title` | 1KB | 603.25 | 206.03 | 125.37 | 2.93× | 4.81× | 1.64× |
+| Slice | `$.store.book[1:4].title` | 10KB | 602.00 | 251.09 | 172.11 | 2.40× | 3.50× | 1.46× |
+| Slice | `$.store.book[1:4].title` | 100KB | 630.86 | 260.22 | 165.04 | 2.42× | 3.82× | 1.58× |
 
 #### POJO
 
 | Query | JSONPath | Size | Runtime | Compiled | Runtime / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Direct | `$.store.book[1].price` | 1KB | 147.11 | 2.74 | 53.68× |
-| Direct | `$.store.book[1].price` | 10KB | 139.96 | 2.74 | 51.14× |
-| Direct | `$.store.book[1].price` | 100KB | 151.83 | 2.75 | 55.31× |
-| Wildcard | `$.store.book[*].author` | 1KB | 842.69 | 65.29 | 12.91× |
-| Wildcard | `$.store.book[*].author` | 10KB | 7,818.70 | 470.39 | 16.62× |
-| Wildcard | `$.store.book[*].author` | 100KB | 63,425.47 | 4,687.53 | 13.53× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 1,323.10 | 815.76 | 1.62× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 11,222.86 | 8,513.69 | 1.32× |
-| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 106,384.23 | 85,613.23 | 1.24× |
-| Descendant | `$..price` | 1KB | 1,737.44 | 1,268.45 | 1.37× |
-| Descendant | `$..price` | 10KB | 16,446.54 | 11,725.14 | 1.40× |
-| Descendant | `$..price` | 100KB | 160,821.66 | 121,166.02 | 1.33× |
-| Slice | `$.store.book[1:4].title` | 1KB | 305.46 | 23.14 | 13.20× |
-| Slice | `$.store.book[1:4].title` | 10KB | 324.24 | 24.32 | 13.33× |
-| Slice | `$.store.book[1:4].title` | 100KB | 290.09 | 22.71 | 12.77× |
+| Direct | `$.store.book[1].price` | 1KB | 143.44 | 2.73 | 52.49× |
+| Direct | `$.store.book[1].price` | 10KB | 147.82 | 2.73 | 54.10× |
+| Direct | `$.store.book[1].price` | 100KB | 148.10 | 2.74 | 54.11× |
+| Wildcard | `$.store.book[*].author` | 1KB | 811.87 | 65.35 | 12.42× |
+| Wildcard | `$.store.book[*].author` | 10KB | 7,556.17 | 473.35 | 15.96× |
+| Wildcard | `$.store.book[*].author` | 100KB | 66,429.02 | 4,795.42 | 13.85× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 1KB | 1,232.77 | 89.41 | 13.79× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 10KB | 10,869.60 | 1,522.43 | 7.14× |
+| Filter | `$.store.book[?(@.price > 10)].title` | 100KB | 110,072.63 | 15,362.36 | 7.17× |
+| Descendant | `$..price` | 1KB | 1,697.72 | 1,222.15 | 1.39× |
+| Descendant | `$..price` | 10KB | 16,281.65 | 11,812.68 | 1.38× |
+| Descendant | `$..price` | 100KB | 162,909.61 | 128,770.82 | 1.27× |
+| Slice | `$.store.book[1:4].title` | 1KB | 290.81 | 23.22 | 12.52× |
+| Slice | `$.store.book[1:4].title` | 10KB | 296.45 | 24.43 | 12.13× |
+| Slice | `$.store.book[1:4].title` | 100KB | 272.99 | 23.08 | 11.83× |
 
 #### JSONPath Parsing
 
@@ -128,46 +128,46 @@ Measures parsing JSONPath expressions into reusable query objects: `JsonPath.par
 
 | JSONPath | Jayway | SJF4J | Jayway / SJF4J |
 | --- | ---: | ---: | ---: |
-| `$.store.book[1].price` | 271.37 | 101.28 | 2.68× |
-| `$.store.bicycle.color` | 185.80 | 97.59 | 1.90× |
-| `$.store.book[*].author` | 218.01 | 103.15 | 2.11× |
-| `$..price` | 84.01 | 47.79 | 1.76× |
-| `$.store.book[?(@.price > 10)].title` | 1,005.83 | 392.75 | 2.56× |
-| `$.store.book[0,2].title` | 418.11 | 143.26 | 2.92× |
-| `$.store.book[1:4].title` | 306.70 | 122.24 | 2.51× |
+| `$.store.book[1].price` | 157.95 | 67.77 | 2.33× |
+| `$.store.bicycle.color` | 112.01 | 63.39 | 1.77× |
+| `$.store.book[*].author` | 129.71 | 65.10 | 1.99× |
+| `$..price` | 49.44 | 30.06 | 1.64× |
+| `$.store.book[?(@.price > 10)].title` | 570.25 | 205.60 | 2.77× |
+| `$.store.book[0,2].title` | 227.07 | 98.35 | 2.31× |
+| `$.store.book[1:4].title` | 177.12 | 84.35 | 2.10× |
 
 #### Allocation — selected 100KB queries
 
 **B/op**, from the original, untrimmed JMH `gc.alloc.rate.norm` metric (lower is better). Each ratio is baseline allocation divided by candidate allocation (>1× means less allocation for the candidate).
 
-| Input | Query | Jayway | Runtime | Compiled | Jayway / Runtime | Runtime / Compiled |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Map / List | Wildcard | 608,962 | 15,104 | 15,072 | 40.32× | 1.00× |
-| Map / List | Filter | 1,038,699 | 6,858 | 6,808 | 151.45× | 1.01× |
-| Map / List | Descendant | 980,859 | 64,407 | 44,617 | 15.23× | 1.44× |
-| Jackson2 JsonNode | Wildcard | 1,159,602 | 15,113 | 15,072 | 76.73× | 1.00× |
-| Jackson2 JsonNode | Filter | 1,881,523 | 6,855 | 6,809 | 274.47× | 1.01× |
-| Jackson2 JsonNode | Descendant | 1,639,971 | 64,402 | 44,617 | 25.46× | 1.44× |
-| POJO | Wildcard | — | 15,112 | 15,024 | — | 1.01× |
-| POJO | Filter | — | 6,859 | 6,785 | — | 1.01× |
-| POJO | Descendant | — | 64,401 | 44,617 | — | 1.44× |
+| Input | Query | Jayway | Runtime | Compiled | Jayway / Runtime | Jayway / Compiled | Runtime / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Map / List | Wildcard | 579,465 | 15,104 | 15,072 | 38.36× | 38.45× | 1.00× |
+| Map / List | Filter | 1,000,346 | 6,848 | 6,808 | 146.07× | 146.93× | 1.01× |
+| Map / List | Descendant | 951,361 | 64,406 | 44,616 | 14.77× | 21.32× | 1.44× |
+| Jackson2 JsonNode | Wildcard | 1,189,097 | 15,107 | 15,072 | 78.71× | 78.89× | 1.00× |
+| Jackson2 JsonNode | Filter | 1,843,170 | 6,860 | 6,809 | 268.69× | 270.71× | 1.01× |
+| Jackson2 JsonNode | Descendant | 1,757,954 | 64,401 | 44,617 | 27.30× | 39.40× | 1.44× |
+| POJO | Wildcard | — | 15,112 | 15,024 | — | — | 1.01× |
+| POJO | Filter | — | 6,859 | 6,760 | — | — | 1.01× |
+| POJO | Descendant | — | 64,401 | 44,617 | — | — | 1.44× |
 
 #### Summary
 
 At the tested 1/10/100KB sizes, SJF4J Runtime was faster than Jayway in **30 of 30** comparable Map and JsonNode query cases. CompiledNavigator was faster than Runtime in **45 of 45** comparable Map, JsonNode, and POJO query cases.
 
-All **134 JMH cases** completed: 45 Map, 45 JsonNode, 30 POJO and 14 Parse. All five query types now have CompiledNavigator implementations for all three data representations. Compiled Descendant uses generated traversal rather than full-path runtime fallback; For this **v1.5.0 historical run**, Compiled Filter used a cached `FilterExpr` predicate with `fallback=true`; current versions compile supported filter predicates directly. These figures must not be treated as measurements of the newer implementation.
+All **134 JMH cases** completed: 45 Map, 45 JsonNode, 30 POJO and 14 Parse. All five query types have CompiledNavigator implementations for all three data representations. Supported Filter predicates compile directly; Descendant traversal is generated without full-path runtime fallback. The Filter workload is numeric (`@.price > 10`); this run does not measure regex function execution.
 
-These results are workload-specific; compare implementations within the same input type and runner job. Map/POJO/Parse and JsonNode used different GitHub-hosted runner CPU models.
+These are exploratory hosted-runner measurements. Map, JsonNode and Parse used Intel Xeon 6975P-C; POJO used AMD EPYC 7763. Compare implementations within the same input type and runner job. The 1KB POJO compiled Filter has unstable fork means; its 13.79× ratio should not be treated as a stable speedup.
 
-**[Full versioned report and methodology](path/2026-11-11-v1.5.0.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260)**
+**[Full versioned report and methodology](path/2026-11-28-v1.5.3-snapshot.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/46130448820)**
 
 ## Baseline policy
 
 - Deterministic Bookstore fixture; actual JSON sizes: **1,021 / 10,267 / 102,395 bytes** (12 / 123 / 1,229 books), nominal 1/10/100KB; approximately 30% of records satisfy the Filter predicate.
 - All data instances and query expressions are created outside timed query operations, with result-equivalence validation before measurement.
-- GitHub-hosted Ubuntu 24.04 x86-64 runners with Temurin OpenJDK 25.0.5+8: Map/POJO/Parse used AMD EPYC 7763, JsonNode used AMD EPYC 9V74. Shared runners are exploratory, not a hardware-independent performance guarantee.
-- Source commit: [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf).
+- GitHub-hosted Ubuntu 24.04 x86-64 runners with Temurin OpenJDK 25.0.5.1+2: Map/JsonNode/Parse used Intel Xeon 6975P-C, POJO used AMD EPYC 7763. Shared runners are exploratory, not a hardware-independent performance guarantee.
+- Source commit: [`857c5872ddfc`](https://github.com/sjf4j-projects/sjf4j/commit/857c5872ddfc56679a3cf3f635202ac2b90e7b46) (PR #480).
 
 - **Measured boundary:** query execution uses pre-parsed data and precompiled paths; the Parse group measures expression compilation only.
 - **Comparable inputs:** Jayway comparisons cover Map / List and Jackson2 JsonNode, not POJO. Runtime / Compiled comparisons also cover POJO.
@@ -204,7 +204,7 @@ Quick/Full outputs are under `build/performance/path/<group>/`, with a JMH JSON 
 
 The workflow builds the JMH jar once, runs Map / JsonNode / POJO / Parse in separate GitHub-hosted Ubuntu 24.04 jobs, and uploads raw per-group artifacts plus a combined report. Pull requests run Smoke checks, not Full JMH measurements.
 
-Historical Map/POJO/Parse results used AMD EPYC 7763, while JsonNode used AMD EPYC 9V74. Compare values only within the same group and execution environment; shared runner scheduling is not controlled.
+See the CPU baseline index for matching group/CPU results. Shared runner scheduling is not controlled.
 
 ## Maintaining history in the repository
 
@@ -213,10 +213,20 @@ Historical Map/POJO/Parse results used AMD EPYC 7763, while JsonNode used AMD EP
 3. Update the release index below. Never replace the previous performance snapshot with newer measurements.
 4. For a regression investigation, compare matching queries and input shapes on equivalent hardware, and inspect all fork means and allocation alongside Best 2 Mean.
 
+## CPU baseline index
+
+| Group | CPU | Latest accepted report |
+| --- | --- | --- |
+| Map / Parse | AMD EPYC 7763 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| POJO | AMD EPYC 7763 | [2026-11-28](path/2026-11-28-v1.5.3-snapshot.md) |
+| JsonNode | AMD EPYC 9V74 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
+| Map / JsonNode / Parse | Intel Xeon 6975P-C | [2026-11-28](path/2026-11-28-v1.5.3-snapshot.md) |
+
 ## Release index
 
 | Release | Commit | JDK | Results |
 | --- | --- | --- | --- |
+| v1.5.3-SNAPSHOT (GitHub Actions; exploratory) | [`857c5872ddfc`](https://github.com/sjf4j-projects/sjf4j/commit/857c5872ddfc56679a3cf3f635202ac2b90e7b46) | 25.0.5.1+2 | [Full 1/10/100KB report](path/2026-11-28-v1.5.3-snapshot.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/46130448820) |
 | v1.5.0 (GitHub Actions; exploratory) | [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf) | 25.0.5+8 | [Full 1/10/100KB report](path/2026-11-11-v1.5.0.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260) |
 
 ## Reporting and ranking results
