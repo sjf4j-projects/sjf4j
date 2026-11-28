@@ -81,14 +81,14 @@ class SchemaRegistryTest {
         URI uri = URI.create("https://example.test/root.json");
         String json = "{\"$defs\":{\"child\":{\"$id\":\"child.json\",\"type\":\"string\"}}}";
         SchemaResource resource = new SchemaResource(uri, JsonSchema.fromJson(json));
-        SchemaPlan first = resource.createPlan();
-        SchemaPlan second = resource.createPlan();
+        SchemaPlan first = SchemaPlanner.buildPlan(resource, null);
+        SchemaPlan second = SchemaPlanner.buildPlan(resource, null);
         SchemaPlan firstChild = first.findFragment("/$defs/child");
         SchemaPlan secondChild = second.findFragment("/$defs/child");
         assertTrue(firstChild.resource.sameResource(secondChild.resource));
 
         SchemaResource other = new SchemaResource(uri, JsonSchema.fromJson(json));
-        SchemaPlan otherChild = other.createPlan().findFragment("/$defs/child");
+        SchemaPlan otherChild = SchemaPlanner.buildPlan(other, null).findFragment("/$defs/child");
         assertFalse(firstChild.resource.sameResource(otherChild.resource));
 
         SchemaRegistry registry = new SchemaRegistry();
