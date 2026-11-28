@@ -28,6 +28,12 @@ For Binding, start with [JVM](binding.md#cpu-baseline-index) and [Native Image](
 | Path — JsonNode | AMD EPYC 9V74 | [2026-11-11](path/2026-11-11-v1.5.0.md) |
 | Schema | CPU not recorded in report | [2026-11-09](schema/2026-11-09-v1.5.0.md) — historical only |
 
+## Report retention
+
+Keep history small and curated. Commit a dated report only after explicit acceptance: the intended Full suite completed, correctness and completeness checks passed, environment and results were reviewed, and any material regression was explained or explicitly accepted. Retain reports for release milestones, new CPU baselines, or meaningful confirmed performance changes; do not archive every repeated run.
+
+Keep experimental, failed, partial and redundant runs in Actions artifacts. Record useful confirmed diagnostic conclusions briefly under Known performance characteristics with run links, rather than creating separate reports. Do not routinely commit raw JMH dumps, JIT logs or binaries. Update the baseline index only for accepted results.
+
 ## Regression review
 
 Compare absolute latency and B/op, plus within-run control ratios: Blackbird / Compiled for Jackson JVM, Native / Compiled for other supported libraries, Runtime / Compiled where no Native comparator exists. For Native Image use Native / Compiled. Follow each suite's documented aggregation; do not mix profiles or metrics.
