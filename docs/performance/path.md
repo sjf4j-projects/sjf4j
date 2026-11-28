@@ -200,7 +200,7 @@ Quick/Full outputs are under `build/performance/path/<group>/`, with a JMH JSON 
 
 ## GitHub Actions Full (exploratory)
 
-[Path Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/path-full-benchmark.yml) → **Run workflow**.
+[Path Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/path-benchmark.yml) → **Run workflow**.
 
 The workflow builds the JMH jar once, runs Map / JsonNode / POJO / Parse in separate GitHub-hosted Ubuntu 24.04 jobs, and uploads raw per-group artifacts plus a combined report. Pull requests run Smoke checks, not Full JMH measurements.
 

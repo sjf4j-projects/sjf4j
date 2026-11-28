@@ -324,7 +324,7 @@ python3 scripts/analyze-jdbc-mapping-benchmark.py \
   --output build/performance/jdbc-mapping/report.md
 ```
 
-The [GitHub Actions JDBC Mapping Benchmark](https://github.com/sjf4j-projects/sjf4j/actions/workflows/jdbc-mapping-full-benchmark.yml)
+The [GitHub Actions JDBC Mapping Benchmark](https://github.com/sjf4j-projects/sjf4j/actions/workflows/jdbc-mapping-benchmark.yml)
 runs POJO, Record and Map in parallel Ubuntu 24.04 jobs. Select only
 `profile` (`smoke`, `quick`, `full`; default `smoke`). Pull requests run
 Smoke. Each group records its own CPU and JDK; all competitors within a group

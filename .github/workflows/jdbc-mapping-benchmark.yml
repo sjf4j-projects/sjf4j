@@ -3,7 +3,7 @@ name: JDBC Mapping Benchmark (JDK 25)
 on:
   pull_request:
     paths:
-      - ".github/workflows/jdbc-mapping-full-benchmark.yml"
+      - ".github/workflows/jdbc-mapping-benchmark.yml"
       - "scripts/benchmark-jdbc-mapping.sh"
       - "scripts/analyze-jdbc-mapping-benchmark.py"
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/JdbcFullBenchmark.java"

@@ -128,7 +128,7 @@ Quick and Full save per-group JMH JSON, logs and metadata under `build/performan
 
 ## GitHub Actions Full (exploratory)
 
-[Schema Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/schema-full-benchmark.yml) → **Run workflow**.
+[Schema Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/schema-benchmark.yml) → **Run workflow**.
 
 The workflow builds a shared JMH jar, runs Validation and Roundtrip Full in independent GitHub-hosted Ubuntu 24.04 jobs, and publishes both per-group raw artifacts and a combined report. Pull requests run Smoke checks only.
 

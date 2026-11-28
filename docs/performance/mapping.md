@@ -285,7 +285,7 @@ python3 scripts/analyze-mapping-benchmark.py \
 
 The published run completed 70 original suite-3 measurements; the 11 measurements removed by suites 4 and 5 are excluded from the displayed tables. The current suite is version 5 (59 measurements); the historical run has not been re-executed as suite 5.
 
-The manual [Mapping Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
+The manual [Mapping Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-benchmark.yml)
 workflow builds one JMH jar, then runs Order, POJO, Collection and JSON in
 four parallel Ubuntu 24.04 jobs. Select only `profile` (`smoke`, `quick`,
 `full`; default `smoke`). Pull requests run Smoke. Each group records its

@@ -3,7 +3,7 @@ name: Path Benchmark (JDK 25)
 on:
   pull_request:
     paths:
-      - ".github/workflows/path-full-benchmark.yml"
+      - ".github/workflows/path-benchmark.yml"
       - "scripts/benchmark-path.sh"
       - "scripts/analyze-path-benchmark.py"
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java"

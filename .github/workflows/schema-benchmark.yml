@@ -3,7 +3,7 @@ name: Schema Benchmark (JDK 25)
 on:
   pull_request:
     paths:
-      - ".github/workflows/schema-full-benchmark.yml"
+      - ".github/workflows/schema-benchmark.yml"
       - "scripts/benchmark-schema.sh"
       - "scripts/analyze-schema-benchmark.py"
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
