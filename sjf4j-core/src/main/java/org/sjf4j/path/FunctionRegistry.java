@@ -9,6 +9,7 @@ import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.Nodes;
 import org.sjf4j.util.Asserts;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,8 +21,8 @@ import java.util.function.BiFunction;
  *
  * <p>Built-in functions are registered in the static initializer and cover
  * common JSONPath operations (length, sum, match, etc.). Custom functions
- * can be added at runtime via {@link #register(FunctionDescriptor)}. A new
- * descriptor with the same name replaces the previous implementation globally.
+ * can be added at runtime via {@link #register(FunctionDescriptor)}.
+ * Function names are unique; registered functions cannot be replaced or removed.
  */
 public class FunctionRegistry {
 
@@ -75,12 +76,15 @@ public class FunctionRegistry {
     private static final Map<String, FunctionDescriptor> FUNCTION_CACHE = new ConcurrentHashMap<>();
 
     /**
-     * Registers or replaces a function descriptor by name.
+     * Registers a function descriptor by its unique name.
      * <p>
      * Registration is global to the current JVM and is thread-safe.
+     * @throws NodeException if the name is already registered
      */
     public static void register(FunctionDescriptor descriptor) {
-        FUNCTION_CACHE.put(descriptor.getName(), descriptor);
+        String name = descriptor.getName();
+        if (FUNCTION_CACHE.putIfAbsent(name, descriptor) != null)
+            throw new NodeException("function '" + name + "' is already registered");
     }
 
     /**
@@ -115,16 +119,11 @@ public class FunctionRegistry {
     }
 
     /**
-     * Returns all registered function names.
+     * Returns an unmodifiable view of all registered function names.
      */
     public static Set<String> getFunctionNames() {
-        return FUNCTION_CACHE.keySet();
+        return Collections.unmodifiableSet(FUNCTION_CACHE.keySet());
     }
-
-    private static final FunctionDescriptor MATCH = new FunctionDescriptor("match",
-            (target, args) -> regex("match", target, args, true));
-    private static final FunctionDescriptor SEARCH = new FunctionDescriptor("search",
-            (target, args) -> regex("search", target, args, false));
 
     // RFC 9535 sections 2.4.6 and 2.4.7: invalid I-Regexp patterns yield LogicalFalse.
     // Cache that result for invalid literals without a null check on the matching path.
@@ -169,43 +168,17 @@ public class FunctionRegistry {
     /**
      * Prepares built-in regex functions, or returns null for ordinary functions.
      * Constant calls retain only the compiled regex; dynamic calls retain only
-     * the engine. Both still honor runtime registry replacement.
+     * the engine. Registered functions cannot be replaced, so no lookup is needed.
      */
     static BiFunction<Object, Object, Object> createRegexCall(String name, RegexEngine engine, Object literal) {
-        final FunctionDescriptor builtin;
-        if ("match".equals(name)) builtin = MATCH;
-        else if ("search".equals(name)) builtin = SEARCH;
-        else return null;
+        boolean match = "match".equals(name);
+        if (!match && !"search".equals(name)) return null;
 
-        boolean match = builtin == MATCH;
         if (literal instanceof String) {
             Regex compiled = compileRegex(engine, (String) literal);
-            return (target, argument) -> {
-                FunctionDescriptor descriptor = get(name);
-                if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
-                try {
-                    if (descriptor == builtin) return regex(target, compiled, match);
-                    return descriptor.invoke(target, new Object[]{argument});
-                } catch (BindingException | RegexRejectedException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new NodeException("function '" + name + "' invocation failed", e);
-                }
-            };
+            return (target, argument) -> regex(target, compiled, match);
         }
-
-        return (target, argument) -> {
-            FunctionDescriptor descriptor = get(name);
-            if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
-            try {
-                if (descriptor == builtin) return regex(target, argument, engine, match);
-                return descriptor.invoke(target, new Object[]{argument});
-            } catch (BindingException | RegexRejectedException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new NodeException("function '" + name + "' invocation failed", e);
-            }
-        };
+        return (target, argument) -> regex(target, argument, engine, match);
     }
 
     // Pre-register build-in functions
@@ -239,8 +212,8 @@ public class FunctionRegistry {
             return null;
         }));
 
-        register(MATCH);
-        register(SEARCH);
+        register(new FunctionDescriptor("match", (target, args) -> regex("match", target, args, true)));
+        register(new FunctionDescriptor("search", (target, args) -> regex("search", target, args, false)));
 
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", (target, args) -> {
