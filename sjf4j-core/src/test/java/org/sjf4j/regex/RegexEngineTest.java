@@ -17,7 +17,7 @@ class RegexEngineTest {
 
     @Test
     void jdkEngineMatchesAndFindsIndependently() {
-        Regex regex = new JdkRegexEngine().compile("[a-z]+");
+        Regex regex = RegexEngine.JDK_ENGINE.compile("[a-z]+");
         assertTrue(regex.matches("abc"));
         assertFalse(regex.matches("123abc456"));
         assertTrue(regex.find("123abc456"));
@@ -27,19 +27,19 @@ class RegexEngineTest {
     }
 
     @Test
-    void defaultEngineAndFlags() {
-        Regex regex = RegexEngine.DEFAULT.compile("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+    void jdkEngineAndFlags() {
+        Regex regex = RegexEngine.JDK_ENGINE.compile("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
         assertTrue(regex.matches("ABC"));
         assertTrue(regex.find("123\nABC\n456"));
         assertFalse(regex.find("123abc456"));
-        assertFalse(RegexEngine.DEFAULT.compile("abc").matches("ABC"));
+        assertFalse(RegexEngine.JDK_ENGINE.compile("abc").matches("ABC"));
     }
 
     @Test
     void jdkEnginePreservesSyntaxErrorsAndInvalidFlags() {
-        assertThrows(PatternSyntaxException.class, () -> new JdkRegexEngine().compile("["));
+        assertThrows(PatternSyntaxException.class, () -> RegexEngine.JDK_ENGINE.compile("["));
         assertThrows(IllegalArgumentException.class,
-                () -> new JdkRegexEngine().compile("abc", Integer.MIN_VALUE));
+                () -> RegexEngine.JDK_ENGINE.compile("abc", Integer.MIN_VALUE));
     }
 
     @Test
@@ -50,7 +50,7 @@ class RegexEngineTest {
             assertEquals("abc", expression);
             assertEquals(flags, actualFlags);
             calls.add("compile");
-            return new JdkRegexEngine().compile(expression, actualFlags);
+            return RegexEngine.JDK_ENGINE.compile(expression, actualFlags);
         };
         RegexGuard guard = (expression, actualFlags) -> {
             assertEquals("abc", expression);
@@ -70,7 +70,7 @@ class RegexEngineTest {
         AtomicInteger compilations = new AtomicInteger();
         RegexEngine engine = (expression, flags) -> {
             compilations.incrementAndGet();
-            return new JdkRegexEngine().compile(expression, flags);
+            return RegexEngine.JDK_ENGINE.compile(expression, flags);
         };
         RegexRejectedException rejection = new RegexRejectedException("Rejected");
         RegexEngine guarded = engine.guardedBy((expression, flags) -> {
@@ -112,7 +112,7 @@ class RegexEngineTest {
     @Test
     void guardsComposeWithoutChangingOriginalEngine() {
         List<String> calls = new ArrayList<>();
-        RegexEngine original = new JdkRegexEngine();
+        RegexEngine original = RegexEngine.JDK_ENGINE;
         RegexEngine inner = original.guardedBy((expression, flags) -> calls.add("inner"));
         RegexEngine outer = inner.guardedBy((expression, flags) -> calls.add("outer"));
 
