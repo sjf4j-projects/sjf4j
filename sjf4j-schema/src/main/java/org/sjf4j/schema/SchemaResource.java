@@ -1,6 +1,5 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
@@ -10,12 +9,12 @@ import java.net.URI;
  * Resource metadata is immutable; callers must not mutate indexed schema models.
  */
 final class SchemaResource {
-    private final JsonSchema schema;
-    private final URI retrievalUri;
-    private final URI canonicalUri;
+    final JsonSchema schema;
+    final URI retrievalUri;
+    final URI canonicalUri;
     // For embedded resources, identify the original document and pointer within it.
-    private final SchemaResource document;
-    private final String documentPointer;
+    final SchemaResource document;
+    final String documentPointer;
 
     SchemaResource(URI retrievalUri, JsonSchema schema) {
         this.schema = Asserts.notNull(schema, "schema");
@@ -33,29 +32,6 @@ final class SchemaResource {
         this.canonicalUri = canonicalUri;
         this.document = document;
         this.documentPointer = documentPointer;
-    }
-
-    JsonSchema schema() {
-        return schema;
-    }
-
-    URI retrievalUri() {
-        return retrievalUri;
-    }
-
-    URI canonicalUri() {
-        return canonicalUri;
-    }
-
-    SchemaPlan createPlan(SchemaRegistry registry) {
-        if (schema instanceof BooleanSchema) {
-            return SchemaPlan.of(canonicalUri, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
-        }
-        return SchemaPlanner.buildPlan(this, registry);
-    }
-
-    SchemaPlan createPlan() {
-        return createPlan(null);
     }
 
     SchemaResource withCanonicalUri(URI uri) {
