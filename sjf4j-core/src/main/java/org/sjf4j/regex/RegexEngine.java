@@ -1,5 +1,7 @@
 package org.sjf4j.regex;
 
+import org.sjf4j.exception.RegexRejectedException;
+
 import java.util.Objects;
 
 /**
@@ -17,7 +19,8 @@ public interface RegexEngine {
      * Compiles an expression with flags defined by {@link java.util.regex.Pattern}.
      * External engines must translate supported flags and reject unsupported ones.
      *
-     * @throws IllegalArgumentException if the expression or flags are unsupported
+     * @throws IllegalArgumentException if the expression or flags are invalid or unsupported
+     * @throws RegexRejectedException if the expression is rejected by a security policy
      */
     Regex compile(String expression, int flags);
 
