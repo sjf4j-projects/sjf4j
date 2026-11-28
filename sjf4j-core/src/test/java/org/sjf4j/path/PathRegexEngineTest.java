@@ -53,7 +53,7 @@ class PathRegexEngineTest {
     @Test
     void regexMetadataAndArrayMatching() {
         FilterExpr.RegexExpr expr = (FilterExpr.RegexExpr) PathSyntax.parseFilter("/abc/i",
-                (expression, flags) -> RegexEngine.JDK_ENGINE.compile(expression, flags));
+                (expression, flags) -> RegexEngine.JDK_ENGINE.create(expression, flags));
         assertEquals("/abc/i", expr.toString());
         assertEquals("abc", expr.expression());
         assertEquals(Pattern.CASE_INSENSITIVE, expr.flags());
@@ -63,7 +63,7 @@ class PathRegexEngineTest {
         assertFalse(FilterExpr.match(JsonArray.of(null, 1, "xyz"), expr.compiled()));
         assertFalse(FilterExpr.match(null, expr.compiled()));
         assertFalse(FilterExpr.match(JsonObject.of("name", "abc"), expr.compiled()));
-        assertInstanceOf(Pattern.class, ((FilterExpr.RegexExpr) PathSyntax.parseFilter("/abc/i")).compiled());
+        assertInstanceOf(Regex.class, ((FilterExpr.RegexExpr) PathSyntax.parseFilter("/abc/i")).compiled());
     }
 
     @Test
