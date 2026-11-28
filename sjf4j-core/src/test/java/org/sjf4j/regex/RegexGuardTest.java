@@ -44,7 +44,7 @@ class RegexGuardTest {
     void ordinaryPatternsAreAccepted() {
         for (String expression : Arrays.asList("", "^abc$", "(ab)+", "(a+)(b+)",
                 "(a{2})+", "(a{1,3})+", "(a+)?", "(a+){2}", "(?:ab)*",
-                "(?i:abc)+", "(?<=a+)b", "(a+)b+", "a{2,}")) {
+                "(?i:abc)+", "(?<=a+)b", "(a+)b+", "a{2,}", "a{0,2}", "a{123}", "(a+){1,3}")) {
             RegexGuard.BASIC.check(expression, 0);
         }
     }
@@ -58,8 +58,24 @@ class RegexGuardTest {
         RegexGuard.BASIC.check("(a+)+", Pattern.LITERAL);
         RegexGuard.BASIC.check("[()]" + repeat('(', 33), Pattern.LITERAL);
         RegexGuard.BASIC.check("abc # (a+)+", Pattern.COMMENTS);
+        RegexGuard.BASIC.check("abc # (a+)+\r(ab)+", Pattern.COMMENTS);
+        RegexGuard.BASIC.check("abc # (a+)+\n(ab)+", Pattern.COMMENTS);
         assertThrows(RegexRejectedException.class,
                 () -> RegexGuard.BASIC.check("(a+) # comment\n +", Pattern.COMMENTS));
+    }
+
+    @Test
+    void caretAfterNegationIsLiteral() {
+        for (String characterClass : Arrays.asList("[^^]", "[^]]", "[a&&[^^]]", "[^^^]", "[a^]")) {
+            RegexEngine.JDK_ENGINE.compile(characterClass + "(a+)+");
+            assertThrows(RegexRejectedException.class,
+                    () -> RegexGuard.BASIC.check(characterClass + "(a+)+", 0), characterClass);
+            String deep = characterClass + repeat('(', 33) + "a" + repeat(')', 33);
+            RegexEngine.JDK_ENGINE.compile(deep);
+            assertThrows(RegexRejectedException.class,
+                    () -> RegexGuard.BASIC.check(deep, 0), characterClass);
+            RegexGuard.BASIC.check(characterClass + "(ab)+", 0);
+        }
     }
 
     @Test
