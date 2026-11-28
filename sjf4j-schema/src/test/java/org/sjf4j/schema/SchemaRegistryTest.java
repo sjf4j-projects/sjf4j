@@ -3,6 +3,7 @@ package org.sjf4j.schema;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -82,13 +83,21 @@ class SchemaRegistryTest {
         SchemaResource resource = new SchemaResource(uri, JsonSchema.fromJson(json));
         SchemaPlan first = resource.createPlan();
         SchemaPlan second = resource.createPlan();
-        SchemaResource firstChild = first.findFragment("/$defs/child").resource;
-        SchemaResource secondChild = second.findFragment("/$defs/child").resource;
-        assertTrue(firstChild.sameResource(secondChild));
+        SchemaPlan firstChild = first.findFragment("/$defs/child");
+        SchemaPlan secondChild = second.findFragment("/$defs/child");
+        assertTrue(firstChild.resource.sameResource(secondChild.resource));
 
         SchemaResource other = new SchemaResource(uri, JsonSchema.fromJson(json));
-        SchemaResource otherChild = other.createPlan().findFragment("/$defs/child").resource;
-        assertFalse(firstChild.sameResource(otherChild));
+        SchemaPlan otherChild = other.createPlan().findFragment("/$defs/child");
+        assertFalse(firstChild.resource.sameResource(otherChild.resource));
+
+        SchemaRegistry registry = new SchemaRegistry();
+        String key = "https://example.test/child.json";
+        registry.registerPlans(Collections.singletonMap(key, firstChild));
+        registry.registerPlans(Collections.singletonMap(key, secondChild));
+        assertSame(firstChild, registry.resolve(key, null));
+        assertThrows(SchemaException.class,
+                () -> registry.registerPlans(Collections.singletonMap(key, otherChild)));
     }
 
     @Test
