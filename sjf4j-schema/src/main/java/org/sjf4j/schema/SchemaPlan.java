@@ -305,8 +305,7 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byPathPlans;
 
     final JsonSchema schema;
-    // Non-null only on nested resource roots; used for duplicate-ID checks.
-    final String nestedLocation;
+    final SchemaResource resource;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
     SchemaPlan(URI resourceUri, PathSegment keywordPs, Evaluator[] evaluators,
@@ -315,9 +314,9 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
                SchemaDialect dialect, Map<String, Boolean> vocabulary,
-               Annotation[] annotations, String nestedLocation) {
+               Annotation[] annotations, SchemaResource resource) {
         this.resourceUri = resourceUri;
-        this.nestedLocation = nestedLocation;
+        this.resource = resource;
         this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
@@ -343,10 +342,10 @@ public final class SchemaPlan {
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
-                         Annotation[] annotations, String nestedLocation) {
+                         Annotation[] annotations, SchemaResource resource) {
         return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                dialect, vocabulary, annotations, nestedLocation);
+                dialect, vocabulary, annotations, resource);
     }
 
 }

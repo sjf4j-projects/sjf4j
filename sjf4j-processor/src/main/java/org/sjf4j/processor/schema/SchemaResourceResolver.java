@@ -210,7 +210,7 @@ final class SchemaResourceResolver {
             if (snapshot.externalUris.contains(snapshot.uris[i])) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
-        registry.index(external);
+        external.forEach(registry::index);
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
         if (registry.resolve(URI.create(snapshot.selectedUri)) == null) {

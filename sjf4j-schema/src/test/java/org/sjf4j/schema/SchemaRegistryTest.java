@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -60,28 +58,46 @@ class SchemaRegistryTest {
     }
 
     @Test
-    void batchIndexSupportsReferencesAndBooleanResources() {
-        URI root = URI.create("https://example.test/root.json");
-        URI leaf = root.resolve("leaf.json");
-        URI denied = root.resolve("denied.json");
-        Map<URI, JsonSchema> schemas = new LinkedHashMap<>();
-        schemas.put(root, JsonSchema.fromJson("{\"$ref\":\"leaf.json\"}"));
-        schemas.put(leaf, JsonSchema.fromJson("{\"type\":\"string\"}"));
-        schemas.put(denied, BooleanSchema.FALSE);
+    void sameModelCanBeIndexedAtDifferentRetrievalUris() {
+        URI first = URI.create("https://a.example/root.json");
+        URI second = URI.create("https://b.example/root.json");
+        JsonSchema model = JsonSchema.fromJson("{\"$ref\":\"leaf.json\"}");
+        SchemaRegistry a = new SchemaRegistry();
+        SchemaRegistry b = new SchemaRegistry();
+
+        a.index(first, model);
+        a.index(first.resolve("leaf.json"), JsonSchema.fromJson("{\"type\":\"string\"}"));
+        b.index(second, model);
+        b.index(second.resolve("leaf.json"), JsonSchema.fromJson("{\"type\":\"integer\"}"));
+
+        assertTrue(a.resolve(first).isValid("text"));
+        assertFalse(a.resolve(first).isValid(42));
+        assertTrue(b.resolve(second).isValid(42));
+        assertFalse(b.resolve(second).isValid("text"));
+    }
+
+    @Test
+    void nestedResourceIdentityUsesOwningDocumentAndPointer() {
+        URI uri = URI.create("https://example.test/root.json");
+        String json = "{\"$defs\":{\"child\":{\"$id\":\"child.json\",\"type\":\"string\"}}}";
+        SchemaResource resource = new SchemaResource(uri, JsonSchema.fromJson(json));
+        SchemaPlan first = SchemaPlanner.buildPlan(resource, null);
+        SchemaPlan second = SchemaPlanner.buildPlan(resource, null);
+        SchemaPlan firstChild = first.findFragment("/$defs/child");
+        SchemaPlan secondChild = second.findFragment("/$defs/child");
+        assertTrue(firstChild.resource.sameResource(secondChild.resource));
+
+        SchemaResource other = new SchemaResource(uri, JsonSchema.fromJson(json));
+        SchemaPlan otherChild = SchemaPlanner.buildPlan(other, null).findFragment("/$defs/child");
+        assertFalse(firstChild.resource.sameResource(otherChild.resource));
 
         SchemaRegistry registry = new SchemaRegistry();
-        registry.index(schemas);
-
-        assertNull(registry.resolveBuilt(root));
-        assertNull(registry.resolveBuilt(leaf));
-        assertTrue(registry.resolve(root).isValid("text"));
-        assertFalse(registry.resolve(root).isValid(42));
-        assertFalse(registry.resolve(denied).isValid(null));
-
-        registry.index(Collections.emptyMap());
-        assertThrows(SchemaException.class, () -> registry.index(
-                Collections.singletonMap(leaf, JsonSchema.fromJson("{\"type\":\"number\"}"))));
-        assertTrue(registry.resolve(root).isValid("text"));
+        String key = "https://example.test/child.json";
+        registry.registerPlans(Collections.singletonMap(key, firstChild));
+        registry.registerPlans(Collections.singletonMap(key, secondChild));
+        assertSame(firstChild, registry.resolve(key, null));
+        assertThrows(SchemaException.class,
+                () -> registry.registerPlans(Collections.singletonMap(key, otherChild)));
     }
 
     @Test

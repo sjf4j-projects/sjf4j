@@ -50,7 +50,7 @@ runtime fallback.
 The mapping file must remain available at runtime if fallback is enabled.
 Changes to external mapping files must be tracked as build inputs.
 
-At annotation-processing time, each schema binding builds its own `SchemaRegistry` from the root schema, local references, and explicitly mapped external schemas. The processor never fetches remote URIs over HTTP. There is no directory-scanning configuration on `@CompiledValidator`; for a collection of offline schemas, supply a URI-to-schema mapping file through `externalSchemasRef`. At runtime, preloaded schema documents can be indexed using `SchemaRegistry.index(Map<URI, JsonSchema>)`.
+At annotation-processing time, each schema binding builds its own `SchemaRegistry` from the root schema, local references, and explicitly mapped external schemas. The processor never fetches remote URIs over HTTP. There is no directory-scanning configuration on `@CompiledValidator`; for a collection of offline schemas, supply a URI-to-schema mapping file through `externalSchemasRef`. At runtime, index loaded documents with `registry.index(uri, loader.load(uri))`, where `uri` is the absolute retrieval URI returned by `loader.resolve(ref)`.
 
 `externalSchemasRef` must remain accessible after deployment when runtime fallback is used. Fully compiled validators do not load these resources at runtime. Build tooling must track the mapping file and referenced schema files as inputs for incremental compilation.
 

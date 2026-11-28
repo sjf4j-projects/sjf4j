@@ -43,9 +43,8 @@ public interface JsonSchema {
     /**
      * Compiles this schema with no caller-provided external registry.
      * <p>
-     * Built-in global meta-schemas are still available through the planner and
-     * registry internals. Their schema models are indexed eagerly, while their
-     * compiled plans are still created lazily on first resolution.
+     * Shared resources in {@link GlobalSchemas} are still available through the
+     * registry. Plans are compiled lazily in the current registry.
      */
     default SchemaPlan createPlan() {
         return createPlan(null);
