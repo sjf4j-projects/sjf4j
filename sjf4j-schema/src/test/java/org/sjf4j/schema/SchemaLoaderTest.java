@@ -113,7 +113,7 @@ class SchemaLoaderTest {
         Path file = Files.createTempFile("sjf4j-loader-", ".json");
         try {
             Files.write(file, "false".getBytes(StandardCharsets.UTF_8));
-            JsonSchema parsed = new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
+            JsonSchema parsed = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
             assertTrue(parsed instanceof BooleanSchema);
             assertFalse(parsed.createPlan().isValid("anything"));
         } finally {
@@ -172,7 +172,7 @@ class SchemaLoaderTest {
         };
         assertTrue(loader.load(base.resolve("value.json")) instanceof ObjectSchema);
 
-        SchemaLoader defaultLoader = new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR);
+        SchemaLoader defaultLoader = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
         assertThrows(SchemaException.class, () -> defaultLoader.load(base.resolve("value.json")));
     }
 
