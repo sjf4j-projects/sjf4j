@@ -27,6 +27,7 @@ class CompiledOneOfWriteTest {
                     + "@OneOfCase(type=Cat.class,when=\"cat\"),"
                     + "@OneOfCase(type=Dog.class,when=\"dog\"),"
                     + "@OneOfCase(type=Hidden.class,when=\"hidden\"),"
+                    + "@OneOfCase(type=Getter.class,when=\"getter\"),"
                     + "@OneOfCase(type=Dynamic.class,when=\"dynamic\")})\n"
                     + "public interface Animal {}\n");
             sources.put("fixture/Cat.java", "package fixture;\n"
@@ -38,6 +39,14 @@ class CompiledOneOfWriteTest {
                     + "public class Hidden implements Animal {\n"
                     + " @NodeProperty(\"kind\") private final String discriminator=\"hidden\";\n"
                     + " public String name=\"secret\";\n"
+                    + "}\n");
+            sources.put("fixture/Getter.java", "package fixture;\n"
+                    + "import org.sjf4j.annotation.node.NodeProperty;\n"
+                    + "public final class Getter implements Animal {\n"
+                    + " @NodeProperty(\"kind\") private final String discriminator = \"backing\";\n"
+                    + " public String getDiscriminator() { return discriminator + \"-getter\"; }\n"
+                    + " @NodeProperty(\"label\") private final String name = new String(\"visible\");\n"
+                    + " public String getName() { return name; }\n"
                     + "}\n");
             sources.put("fixture/Dynamic.java", "package fixture;\n"
                     + "import org.sjf4j.annotation.node.NodeProperty;\n"
@@ -81,6 +90,8 @@ class CompiledOneOfWriteTest {
                             ? "_writeEnvelopeUtf16(" : "_writeEnvelope("), backend);
             assertTrue(generated.contains("_writeCat"), backend);
             assertTrue(generated.contains("_writeHidden"), backend + ": constant subtype not compiled");
+            assertTrue(generated.contains("_writeGetter"), backend + ": public getter subtype not compiled");
+            assertFalse(generated.contains("GETTER_POJO_INFO"), backend + ": unexpected getter fallback");
             assertTrue(generated.contains("requireRegisteredPojoInfo("),
                     backend + ": nonconstant subtype should use cached POJO metadata");
 
@@ -92,11 +103,13 @@ class CompiledOneOfWriteTest {
                 Object dog = loader.loadClass("fixture.Dog").getConstructor().newInstance();
                 Object hidden = loader.loadClass("fixture.Hidden").getConstructor().newInstance();
                 Object dynamic = loader.loadClass("fixture.Dynamic").getConstructor().newInstance();
-                envelope.getField("animals").set(root, List.of(cat, dog, hidden, dynamic));
+                Object getter = loader.loadClass("fixture.Getter").getConstructor().newInstance();
+                envelope.getField("animals").set(root, List.of(cat, dog, hidden, getter, dynamic));
                 Map<String, Object> named = new LinkedHashMap<>();
                 named.put("cat", cat);
                 named.put("hidden", hidden);
                 named.put("dynamic", dynamic);
+                named.put("getter", getter);
                 envelope.getField("named").set(root, named);
                 envelope.getField("direct").set(root, dog);
                 envelope.getField("shape").set(root, "hello");
@@ -120,6 +133,12 @@ class CompiledOneOfWriteTest {
                 Map<?, ?> hiddenNode = (Map<?, ?>) runtime.readNode(animalJson, Object.class);
                 assertEquals("hidden", hiddenNode.get("kind"), backend + " hidden field");
                 assertEquals("secret", hiddenNode.get("name"), backend + " hidden subtype");
+                String getterJson = (String) impl.getMethod("writeAnimal", animal).invoke(compiled, getter);
+                Map<?, ?> getterNode = (Map<?, ?>) runtime.readNode(getterJson, Object.class);
+                assertEquals("backing-getter", getterNode.get("kind"), backend + " getter takes precedence");
+                assertEquals("visible", getterNode.get("label"), backend + " renamed nonconstant field");
+                assertFalse(getterNode.containsKey("discriminator"), backend + " duplicate property");
+                assertFalse(getterNode.containsKey("name"), backend + " duplicate property");
                 String dynamicJson = (String) impl.getMethod("writeAnimal", animal).invoke(compiled, dynamic);
                 Map<?, ?> dynamicNode = (Map<?, ?>) runtime.readNode(dynamicJson, Object.class);
                 assertEquals("dynamic", dynamicNode.get("kind"), backend + " nonconstant private field");

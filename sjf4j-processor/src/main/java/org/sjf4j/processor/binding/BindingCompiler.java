@@ -574,7 +574,6 @@ final class BindingCompiler {
                     inlineOneOfSubtypes.remove(subtype.toString());
                 }
                 if (compiled == null) return false;
-                addOneOfConstantProperties(compiled, subtype);
             }
             boolean cachedPojo = visible && compiled == null
                     && context.types.nodeKind(subtype) == NodeKind.OBJECT_POJO;
@@ -653,11 +652,15 @@ final class BindingCompiler {
                         && canCompileOneOfWriteGraph(context.types.mapReadValueType(type), visited, false);
             case OBJECT_POJO:
             case OBJECT_JOJO:
-                if (element == null || !hasCompatibleOneOfWriteMembers(element,
-                        mappedSubtype && kind == NodeKind.OBJECT_POJO)) return false;
+                if (element == null || !hasCompatibleOneOfWriteMembers(element)) return false;
                 for (Property property : context.properties.resolveForBinding(type).values()) {
                     PropertyAccess access = property.read();
                     if (access == null) continue;
+                    if (!access.member().getModifiers().contains(Modifier.PUBLIC)) {
+                        if (mappedSubtype && kind == NodeKind.OBJECT_POJO
+                                && canInlineOneOfConstant(property)) continue;
+                        return false;
+                    }
                     if (memberOneOf(property.read()) != null || memberOneOf(property.write()) != null) {
                         continue; // Member OneOf has its own mapped subtype fallbacks.
                     }
@@ -670,19 +673,17 @@ final class BindingCompiler {
     }
 
     /**
-     * Runtime discovers annotated non-public members in each superclass,
-     * whereas PropertyResolver uses public members only. Ignore annotations
-     * also belong to Runtime discovery, so do not emit a direct subtype writer
-     * when either rule could change its serialized JSON.
+     * Keep the existing conservative boundaries for member-level OneOf,
+     * ignore annotations and non-default object strategies. Ordinary property
+     * accessibility is checked on the selected Binding property, not on every
+     * backing field: a private annotated field may have a public getter.
      */
-    private boolean hasCompatibleOneOfWriteMembers(TypeElement type, boolean allowConstants) {
+    private boolean hasCompatibleOneOfWriteMembers(TypeElement type) {
         NodeObject options = type.getAnnotation(NodeObject.class);
         if (options != null
                 && (options.propertyStrategy() != PropertyStrategy.BEAN_FIELD
                 || options.naming() != NamingStrategy.IDENTITY)) return false;
 
-        Set<String> constantNames = new HashSet<>();
-        Map<String, Property> publicProperties = context.properties.resolve(type.asType());
         for (TypeElement current = type; current != null; ) {
             for (Element member : current.getEnclosedElements()) {
                 if (member.getKind() != ElementKind.FIELD && member.getKind() != ElementKind.METHOD) continue;
@@ -690,30 +691,24 @@ final class BindingCompiler {
                 if (member.getAnnotation(NodeIgnore.class) != null) return false;
                 if (member.getKind() == ElementKind.FIELD
                         && isIgnoredOneOfFieldType((VariableElement) member)) return false;
-                if (member.getModifiers().contains(Modifier.PUBLIC)) continue;
-                if (member.getAnnotation(NodeProperty.class) == null
-                        && member.getAnnotation(OneOf.class) == null
-                        && context.annotations.explicitPropertyName(member) == null
-                        && context.annotations.propertyAliases(member).length == 0) continue;
-
-                if (allowConstants && member.getKind() == ElementKind.FIELD
-                        && isInlineStringConstant((VariableElement) member)) {
-                    VariableElement field = (VariableElement) member;
-                    String name = field.getAnnotation(NodeProperty.class).value();
-                    if (publicProperties.containsKey(name)
-                            || !constantNames.add(name)
-                            || hasOneOfConstantAccessor(type, field.getSimpleName().toString())) {
-                        return false;
-                    }
-                    continue;
-                }
-                return false;
+                if (!member.getModifiers().contains(Modifier.PUBLIC)
+                        && member.getAnnotation(OneOf.class) != null) return false;
             }
             TypeMirror parent = current.getSuperclass();
             current = parent.getKind() == TypeKind.NONE
                     ? null : context.types.typeElement(parent);
         }
         return true;
+    }
+
+    /** Only an inaccessible selected field may be replaced by a literal. */
+    private boolean canInlineOneOfConstant(Property property) {
+        PropertyAccess access = property.read();
+        return access != null && access.isField()
+                && !access.member().getModifiers().contains(Modifier.PUBLIC)
+                && !property.explicitCodec()
+                && memberOneOf(access) == null && memberOneOf(property.write()) == null
+                && isInlineStringConstant((VariableElement) access.member());
     }
 
     /** A private annotated String constant can be serialized without accessing the instance. */
@@ -726,56 +721,6 @@ final class BindingCompiler {
                 && !field.getModifiers().contains(Modifier.TRANSIENT)
                 && context.types.isSameErasure(field.asType(), stringType)
                 && field.getConstantValue() instanceof String;
-    }
-
-    /** An accessor for the same Java field changes Runtime's property family selection. */
-    private boolean hasOneOfConstantAccessor(TypeElement type, String fieldName) {
-        if (fieldName.isEmpty()) return false;
-        String suffix = Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
-        for (Element member : context.elements.getAllMembers(type)) {
-            if (member.getKind() != ElementKind.METHOD) continue;
-            String name = member.getSimpleName().toString();
-            if (name.equals("get" + suffix) || name.equals("is" + suffix)) return true;
-        }
-        return false;
-    }
-
-    /** Only mapped OneOf subtypes may inline these fields; other POJO plans are unchanged. */
-    private void addOneOfConstantProperties(BindingValue value, TypeMirror subtype) {
-        if (value.kind() != BindingValue.Kind.POJO) return;
-        TypeElement type = context.types.typeElement(subtype);
-        if (type == null) return;
-
-        List<BindingProperty> constants = new ArrayList<>();
-        for (TypeElement current = type; current != null; ) {
-            for (Element member : current.getEnclosedElements()) {
-                if (member.getKind() != ElementKind.FIELD
-                        || member.getModifiers().contains(Modifier.PUBLIC)
-                        || member.getModifiers().contains(Modifier.STATIC)) continue;
-                VariableElement field = (VariableElement) member;
-                if (!isInlineStringConstant(field)) continue;
-                String name = field.getAnnotation(NodeProperty.class).value();
-                boolean included = false;
-                for (BindingProperty property : value.properties()) {
-                    if (property.name().equals(name)) {
-                        included = true;
-                        break;
-                    }
-                }
-                if (!included) {
-                    BindingValue stringValue = new BindingValue(BindingPlan.Direction.WRITE_TO,
-                            stringType, BindingValue.Kind.STRING, false);
-                    constants.add(new BindingProperty(name, (String) field.getConstantValue(),
-                            stringValue));
-                }
-            }
-            TypeMirror parent = current.getSuperclass();
-            current = parent.getKind() == TypeKind.NONE
-                    ? null : context.types.typeElement(parent);
-        }
-        if (constants.isEmpty()) return;
-        constants.addAll(value.properties());
-        value.properties(constants);
     }
 
     private boolean isIgnoredOneOfFieldType(VariableElement field) {
@@ -846,6 +791,7 @@ final class BindingCompiler {
 
         Map<String, Property> properties = context.properties.resolveForBinding(value.type());
         List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
+        List<BindingProperty> constants = new ArrayList<>();
 
         Map<String, String> claimedNames = new LinkedHashMap<>();
         List<String> ignored = new ArrayList<>();
@@ -869,10 +815,14 @@ final class BindingCompiler {
 
             if (value.direction() == BindingPlan.Direction.WRITE_TO
                     && inlineOneOfSubtypes.contains(value.type().toString())
-                    && access.isField()
-                    && isInlineStringConstant((VariableElement) access.member())) {
-                // addOneOfConstantProperties emits this literal after compiling
-                // the public properties; never generate private field access.
+                    && value.kind() == BindingValue.Kind.POJO
+                    && canInlineOneOfConstant(property)) {
+                // Use the resolved property name and selected field. A public
+                // getter takes precedence over an annotated backing constant.
+                BindingValue stringValue = new BindingValue(BindingPlan.Direction.WRITE_TO,
+                        stringType, BindingValue.Kind.STRING, false);
+                constants.add(new BindingProperty(property.name(),
+                        (String) ((VariableElement) access.member()).getConstantValue(), stringValue));
                 continue;
             }
             if (!checkBindingAccess(property, access, value.type(), value.direction(),
@@ -925,6 +875,11 @@ final class BindingCompiler {
             compiled.add(new BindingProperty(property.name(), aliases, access, propertyValue));
         }
 
+        // Retain the discriminator-first ordering of inlined constants.
+        if (!constants.isEmpty()) {
+            constants.addAll(compiled);
+            compiled = constants;
+        }
         value.properties(compiled);
         value.ignoredNames(ignored);
         return true;
