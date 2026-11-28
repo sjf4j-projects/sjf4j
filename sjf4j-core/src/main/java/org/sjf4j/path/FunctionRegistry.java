@@ -13,6 +13,7 @@ import org.sjf4j.util.Asserts;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 
 /**
@@ -132,10 +133,6 @@ public class FunctionRegistry {
         @Override public boolean find(String input) { return false; }
     };
 
-    static boolean isRegexFunction(String name) {
-        return "match".equals(name) || "search".equals(name);
-    }
-
     private static Regex compileRegex(RegexEngine engine, String expression) {
         try {
             return engine.create(expression);
@@ -148,57 +145,73 @@ public class FunctionRegistry {
     private static boolean regex(String name, Object target, Object[] args, boolean match) {
         if (args.length != 1)
             throw new NodeException(name + "(): expected exactly 1 argument, but got " + args.length);
-        return regex(name, target, args[0], RegexEngine.JDK_ENGINE, null, match);
+        return regex(name, target, args[0], RegexEngine.JDK_ENGINE, match);
     }
 
     private static boolean regex(String name, Object target, Object argument,
-                                 RegexEngine engine, Regex compiled, boolean match) {
-        String pattern = null;
-        if (compiled == null) {
-            try {
-                pattern = Nodes.toString(argument);
-            } catch (Exception e) {
-                throw new NodeException(name + "(): expected a string pattern argument, but was " +
-                        Types.name(argument), e);
-            }
-            if (pattern == null)
-                throw new NodeException(name + "(): expected a string pattern argument, but was null");
+                                 RegexEngine engine, boolean match) {
+        String pattern;
+        try {
+            pattern = Nodes.toString(argument);
+        } catch (Exception e) {
+            throw new NodeException(name + "(): expected a string pattern argument, but was " +
+                    Types.name(argument), e);
         }
+        if (pattern == null)
+            throw new NodeException(name + "(): expected a string pattern argument, but was null");
         if (JsonType.of(target) != JsonType.STRING) return false;
         String text = Nodes.toString(target);
         if (text == null) return false;
-        Regex regex = compiled == null ? compileRegex(engine, pattern) : compiled;
+        Regex regex = compileRegex(engine, pattern);
         return match ? regex.matches(text) : regex.find(text);
     }
 
-    /**
-     * A parsed regex call owns its engine and optional precompiled string literal.
-     * Keep the registry lookup so replacing a built-in still works for existing paths.
-     */
-    static final class RegexCall {
-        private final FunctionDescriptor builtin;
-        private final RegexEngine engine;
-        private final Regex compiled;
+    private static boolean regex(Object target, Regex compiled, boolean match) {
+        if (JsonType.of(target) != JsonType.STRING) return false;
+        String text = Nodes.toString(target);
+        return text != null && (match ? compiled.matches(text) : compiled.find(text));
+    }
 
-        RegexCall(String name, RegexEngine engine, Object literal) {
-            this.builtin = "match".equals(name) ? MATCH : SEARCH;
-            this.engine = engine;
-            this.compiled = literal instanceof String ? compileRegex(engine, (String) literal) : null;
+    /**
+     * Prepares built-in regex functions, or returns null for ordinary functions.
+     * Constant calls retain only the compiled regex; dynamic calls retain only
+     * the engine. Both still honor runtime registry replacement.
+     */
+    static BiFunction<Object, Object, Object> createRegexCall(String name, RegexEngine engine, Object literal) {
+        final FunctionDescriptor builtin;
+        if ("match".equals(name)) builtin = MATCH;
+        else if ("search".equals(name)) builtin = SEARCH;
+        else return null;
+
+        boolean match = builtin == MATCH;
+        if (literal instanceof String) {
+            Regex compiled = compileRegex(engine, (String) literal);
+            return (target, argument) -> {
+                FunctionDescriptor descriptor = get(name);
+                if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
+                try {
+                    if (descriptor == builtin) return regex(target, compiled, match);
+                    return descriptor.invoke(target, new Object[]{argument});
+                } catch (BindingException | RegexRejectedException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new NodeException("function '" + name + "' invocation failed", e);
+                }
+            };
         }
 
-        Object invoke(Object target, Object argument) {
-            String name = builtin.getName();
+        return (target, argument) -> {
             FunctionDescriptor descriptor = get(name);
             if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
             try {
-                if (descriptor != builtin) return descriptor.invoke(target, new Object[]{argument});
-                return regex(name, target, argument, engine, compiled, builtin == MATCH);
+                if (descriptor == builtin) return regex(name, target, argument, engine, match);
+                return descriptor.invoke(target, new Object[]{argument});
             } catch (BindingException | RegexRejectedException e) {
                 throw e;
             } catch (Exception e) {
                 throw new NodeException("function '" + name + "' invocation failed", e);
             }
-        }
+        };
     }
 
     // Pre-register build-in functions
