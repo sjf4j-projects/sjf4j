@@ -1,6 +1,8 @@
 package org.sjf4j.regex;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.RegexRejectedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +17,7 @@ class RegexEngineTest {
 
     @Test
     void jdkEngineMatchesAndFindsIndependently() {
-        Regex regex = new JdkRegexEngine().compile("[a-z]+");
+        Regex regex = RegexEngine.JDK_ENGINE.compile("[a-z]+");
         assertTrue(regex.matches("abc"));
         assertFalse(regex.matches("123abc456"));
         assertTrue(regex.find("123abc456"));
@@ -25,19 +27,19 @@ class RegexEngineTest {
     }
 
     @Test
-    void defaultEngineAndFlags() {
-        Regex regex = RegexEngine.DEFAULT.compile("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+    void jdkEngineAndFlags() {
+        Regex regex = RegexEngine.JDK_ENGINE.compile("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
         assertTrue(regex.matches("ABC"));
         assertTrue(regex.find("123\nABC\n456"));
         assertFalse(regex.find("123abc456"));
-        assertFalse(RegexEngine.DEFAULT.compile("abc").matches("ABC"));
+        assertFalse(RegexEngine.JDK_ENGINE.compile("abc").matches("ABC"));
     }
 
     @Test
     void jdkEnginePreservesSyntaxErrorsAndInvalidFlags() {
-        assertThrows(PatternSyntaxException.class, () -> new JdkRegexEngine().compile("["));
+        assertThrows(PatternSyntaxException.class, () -> RegexEngine.JDK_ENGINE.compile("["));
         assertThrows(IllegalArgumentException.class,
-                () -> new JdkRegexEngine().compile("abc", Integer.MIN_VALUE));
+                () -> RegexEngine.JDK_ENGINE.compile("abc", Integer.MIN_VALUE));
     }
 
     @Test
@@ -48,7 +50,7 @@ class RegexEngineTest {
             assertEquals("abc", expression);
             assertEquals(flags, actualFlags);
             calls.add("compile");
-            return new JdkRegexEngine().compile(expression, actualFlags);
+            return RegexEngine.JDK_ENGINE.compile(expression, actualFlags);
         };
         RegexGuard guard = (expression, actualFlags) -> {
             assertEquals("abc", expression);
@@ -68,15 +70,16 @@ class RegexEngineTest {
         AtomicInteger compilations = new AtomicInteger();
         RegexEngine engine = (expression, flags) -> {
             compilations.incrementAndGet();
-            return new JdkRegexEngine().compile(expression, flags);
+            return RegexEngine.JDK_ENGINE.compile(expression, flags);
         };
-        IllegalArgumentException rejection = new IllegalArgumentException("Rejected");
+        RegexRejectedException rejection = new RegexRejectedException("Rejected");
         RegexEngine guarded = engine.guardedBy((expression, flags) -> {
             throw rejection;
         });
 
-        assertSame(rejection, assertThrows(IllegalArgumentException.class,
+        assertSame(rejection, assertThrows(NodeException.class,
                 () -> guarded.compile("abc")));
+        assertEquals("Rejected", rejection.getMessage());
         assertEquals(0, compilations.get());
 
         assertTrue(engine.compile("abc").matches("abc"));
@@ -84,9 +87,32 @@ class RegexEngineTest {
     }
 
     @Test
+    void matchingRejectionIsDistinctFromMismatch() {
+        IllegalStateException cause = new IllegalStateException("Budget exhausted");
+        RegexRejectedException rejection = new RegexRejectedException("Matching limit exceeded", cause);
+        RegexEngine engine = (expression, flags) -> new Regex() {
+            @Override
+            public boolean matches(String input) {
+                throw rejection;
+            }
+
+            @Override
+            public boolean find(String input) {
+                throw rejection;
+            }
+        };
+
+        Regex regex = engine.guardedBy(RegexGuard.NONE).compile("abc");
+        assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.matches("abc")));
+        assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.find("abc")));
+        assertEquals("Matching limit exceeded", rejection.getMessage());
+        assertSame(cause, rejection.getCause());
+    }
+
+    @Test
     void guardsComposeWithoutChangingOriginalEngine() {
         List<String> calls = new ArrayList<>();
-        RegexEngine original = new JdkRegexEngine();
+        RegexEngine original = RegexEngine.JDK_ENGINE;
         RegexEngine inner = original.guardedBy((expression, flags) -> calls.add("inner"));
         RegexEngine outer = inner.guardedBy((expression, flags) -> calls.add("outer"));
 

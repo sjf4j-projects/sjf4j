@@ -1,6 +1,9 @@
 package org.sjf4j.regex;
 
+import org.sjf4j.exception.RegexRejectedException;
+
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * A pluggable regular expression compiler.
@@ -10,14 +13,28 @@ import java.util.Objects;
 @FunctionalInterface
 public interface RegexEngine {
 
-    /** The default engine, currently using JDK regex without a guard. */
-    RegexEngine DEFAULT = new JdkRegexEngine();
+    /** JDK regex engine without a guard. */
+    RegexEngine JDK_ENGINE = (expression, flags) -> {
+        Pattern pattern = Pattern.compile(expression, flags);
+        return new Regex() {
+            @Override
+            public boolean matches(String input) {
+                return pattern.matcher(input).matches();
+            }
+
+            @Override
+            public boolean find(String input) {
+                return pattern.matcher(input).find();
+            }
+        };
+    };
 
     /**
      * Compiles an expression with flags defined by {@link java.util.regex.Pattern}.
      * External engines must translate supported flags and reject unsupported ones.
      *
-     * @throws IllegalArgumentException if the expression or flags are unsupported
+     * @throws IllegalArgumentException if the expression or flags are invalid or unsupported
+     * @throws RegexRejectedException if the expression is rejected by a security policy
      */
     Regex compile(String expression, int flags);
 
