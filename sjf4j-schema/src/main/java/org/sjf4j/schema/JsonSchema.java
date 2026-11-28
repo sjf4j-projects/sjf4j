@@ -6,6 +6,8 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.node.NodeMapper;
 
+import java.io.Reader;
+
 
 /**
  * Parsed JSON Schema document represented as an OBNT object node or value node.
@@ -79,6 +81,14 @@ public interface JsonSchema {
      */
     static JsonSchema fromJson(String json) {
         return SchemaSupport.readSchema(json);
+    }
+
+    /**
+     * Reads a schema model directly from a reader using exact generic numeric reads.
+     * The returned value is not compiled yet.
+     */
+    static JsonSchema fromJson(Reader reader) {
+        return SchemaSupport.readSchema(reader);
     }
 
     /**

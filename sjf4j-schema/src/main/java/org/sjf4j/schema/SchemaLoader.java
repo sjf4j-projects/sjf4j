@@ -47,14 +47,6 @@ public interface SchemaLoader {
         return Asserts.notNull(uri, "uri");
     }
 
-    /** Parses an already opened schema document. */
-    static JsonSchema parse(Reader reader) throws IOException {
-        char[] chars = new char[4096];
-        StringBuilder json = new StringBuilder();
-        for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
-        return JsonSchema.fromJson(json.toString());
-    }
-
     /**
      * Parses a JSON object mapping absolute retrieval URIs to JSON Schema
      * documents, using the official JSON Schema Test Suite representation.
@@ -175,7 +167,7 @@ public interface SchemaLoader {
             URI document = SchemaUtil.documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
-                return reader == null ? null : SchemaLoader.parse(reader);
+                return reader == null ? null : JsonSchema.fromJson(reader);
             } catch (IOException e) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                         "failed to read schema resource", PathSegment.Root.INSTANCE, document), e);

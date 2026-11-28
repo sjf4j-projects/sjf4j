@@ -16,6 +16,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class SchemaLoaderTest {
 
     @Test
+    void readsBooleanSchemaFromReader() {
+        assertSame(BooleanSchema.TRUE, JsonSchema.fromJson(new StringReader("true")));
+        assertSame(BooleanSchema.FALSE, JsonSchema.fromJson(new StringReader("false")));
+    }
+
+    @Test
     void documentUriPreservesEncodedPathAndQueryWhileRemovingFragments() {
         URI reference = URI.create("https://example.test/schema/a%20b.json?version=2#/$defs/word");
         assertEquals(URI.create("https://example.test/schema/a%20b.json?version=2"),
@@ -31,7 +37,7 @@ class SchemaLoaderTest {
         URI base = URI.create("memory:/schemas/");
         String json = "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}";
         SchemaLoader loader = uri -> SchemaUtil.documentUri(uri).equals(base.resolve("user.json"))
-                ? parseUnchecked(json) : null;
+                ? JsonSchema.fromJson(new StringReader(json)) : null;
 
         assertEquals(base.resolve("user.json"),
                 SchemaUtil.documentUri(base.resolve("user.json#/$defs/name")));
@@ -49,8 +55,7 @@ class SchemaLoaderTest {
     @Test
     void registryRegistersLoadedSchemaAndResolvesFragment() {
         URI base = URI.create("memory:/schemas/");
-        SchemaLoader loader = uri -> parseUnchecked(
-                "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}");
+        SchemaLoader loader = uri -> JsonSchema.fromJson(new StringReader("{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}"));
         SchemaRegistry registry = new SchemaRegistry();
         URI reference = base.resolve("user.json#/$defs/name");
 
@@ -166,7 +171,7 @@ class SchemaLoaderTest {
         URI base = URI.create("https://example.invalid/schemas/");
         SchemaLoader loader = uri -> {
             assertEquals(base.resolve("value.json"), uri);
-            return parseUnchecked("{\"type\":\"integer\"}");
+            return JsonSchema.fromJson(new StringReader("{\"type\":\"integer\"}"));
         };
         assertTrue(loader.load(base.resolve("value.json")) instanceof ObjectSchema);
 
@@ -186,7 +191,7 @@ class SchemaLoaderTest {
             @Override
             public JsonSchema load(URI uri) {
                 assertEquals(base.resolve("sample.json"), uri);
-                return parseUnchecked("{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}");
+                return JsonSchema.fromJson(new StringReader("{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}"));
             }
         };
         SchemaValidator validator = new SchemaValidator(loader, null, true);
@@ -195,14 +200,6 @@ class SchemaLoaderTest {
         assertFalse(validator.validate(new Sample("x")).isValid());
         assertNotNull(validator.load("sample.json"));
         assertEquals(base.resolve("sample.json"), validator.load("sample.json").schemaUri());
-    }
-
-    private static JsonSchema parseUnchecked(String text) {
-        try {
-            return SchemaLoader.parse(new StringReader(text));
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     @ValidJsonSchema(ref = "sample.json")
