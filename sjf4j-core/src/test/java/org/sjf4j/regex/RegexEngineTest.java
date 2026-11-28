@@ -17,7 +17,7 @@ class RegexEngineTest {
 
     @Test
     void jdkEngineMatchesAndFindsIndependently() {
-        Regex regex = RegexEngine.JDK_ENGINE.compile("[a-z]+");
+        Regex regex = RegexEngine.JDK_ENGINE.create("[a-z]+");
         assertTrue(regex.matches("abc"));
         assertFalse(regex.matches("123abc456"));
         assertTrue(regex.find("123abc456"));
@@ -28,18 +28,18 @@ class RegexEngineTest {
 
     @Test
     void jdkEngineAndFlags() {
-        Regex regex = RegexEngine.JDK_ENGINE.compile("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+        Regex regex = RegexEngine.JDK_ENGINE.create("^abc$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
         assertTrue(regex.matches("ABC"));
         assertTrue(regex.find("123\nABC\n456"));
         assertFalse(regex.find("123abc456"));
-        assertFalse(RegexEngine.JDK_ENGINE.compile("abc").matches("ABC"));
+        assertFalse(RegexEngine.JDK_ENGINE.create("abc").matches("ABC"));
     }
 
     @Test
     void jdkEnginePreservesSyntaxErrorsAndInvalidFlags() {
-        assertThrows(PatternSyntaxException.class, () -> RegexEngine.JDK_ENGINE.compile("["));
+        assertThrows(PatternSyntaxException.class, () -> RegexEngine.JDK_ENGINE.create("["));
         assertThrows(IllegalArgumentException.class,
-                () -> RegexEngine.JDK_ENGINE.compile("abc", Integer.MIN_VALUE));
+                () -> RegexEngine.JDK_ENGINE.create("abc", Integer.MIN_VALUE));
     }
 
     @Test
@@ -50,7 +50,7 @@ class RegexEngineTest {
             assertEquals("abc", expression);
             assertEquals(flags, actualFlags);
             calls.add("compile");
-            return RegexEngine.JDK_ENGINE.compile(expression, actualFlags);
+            return RegexEngine.JDK_ENGINE.create(expression, actualFlags);
         };
         RegexGuard guard = (expression, actualFlags) -> {
             assertEquals("abc", expression);
@@ -58,7 +58,7 @@ class RegexEngineTest {
             calls.add("guard");
         };
 
-        Regex regex = engine.guardedBy(guard).compile("abc", flags);
+        Regex regex = engine.guardedBy(guard).create("abc", flags);
         assertEquals(Arrays.asList("guard", "compile"), calls);
         assertTrue(regex.matches("ABC"));
         assertTrue(regex.find("123ABC"));
@@ -70,7 +70,7 @@ class RegexEngineTest {
         AtomicInteger compilations = new AtomicInteger();
         RegexEngine engine = (expression, flags) -> {
             compilations.incrementAndGet();
-            return RegexEngine.JDK_ENGINE.compile(expression, flags);
+            return RegexEngine.JDK_ENGINE.create(expression, flags);
         };
         RegexRejectedException rejection = new RegexRejectedException("Rejected");
         RegexEngine guarded = engine.guardedBy((expression, flags) -> {
@@ -78,11 +78,11 @@ class RegexEngineTest {
         });
 
         assertSame(rejection, assertThrows(NodeException.class,
-                () -> guarded.compile("abc")));
+                () -> guarded.create("abc")));
         assertEquals("Rejected", rejection.getMessage());
         assertEquals(0, compilations.get());
 
-        assertTrue(engine.compile("abc").matches("abc"));
+        assertTrue(engine.create("abc").matches("abc"));
         assertEquals(1, compilations.get());
     }
 
@@ -102,7 +102,7 @@ class RegexEngineTest {
             }
         };
 
-        Regex regex = engine.guardedBy(RegexGuard.BASIC).compile("abc");
+        Regex regex = engine.guardedBy(RegexGuard.BASIC).create("abc");
         assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.matches("abc")));
         assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.find("abc")));
         assertEquals("Matching limit exceeded", rejection.getMessage());
@@ -116,13 +116,13 @@ class RegexEngineTest {
         RegexEngine inner = original.guardedBy((expression, flags) -> calls.add("inner"));
         RegexEngine outer = inner.guardedBy((expression, flags) -> calls.add("outer"));
 
-        assertTrue(outer.compile("abc").matches("abc"));
+        assertTrue(outer.create("abc").matches("abc"));
         assertEquals(Arrays.asList("outer", "inner"), calls);
         calls.clear();
-        assertTrue(inner.compile("abc").matches("abc"));
+        assertTrue(inner.create("abc").matches("abc"));
         assertEquals(Arrays.asList("inner"), calls);
         calls.clear();
-        assertTrue(original.compile("abc").matches("abc"));
+        assertTrue(original.create("abc").matches("abc"));
         assertTrue(calls.isEmpty());
         assertThrows(NullPointerException.class, () -> original.guardedBy(null));
     }
@@ -134,6 +134,6 @@ class RegexEngineTest {
             throw unsupported;
         };
         assertSame(unsupported, assertThrows(IllegalArgumentException.class,
-                () -> engine.guardedBy(RegexGuard.BASIC).compile("abc")));
+                () -> engine.guardedBy(RegexGuard.BASIC).create("abc")));
     }
 }
