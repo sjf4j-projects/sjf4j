@@ -102,7 +102,7 @@ class RegexEngineTest {
             }
         };
 
-        Regex regex = engine.guardedBy(RegexGuard.NONE).compile("abc");
+        Regex regex = engine.guardedBy(RegexGuard.BASIC).compile("abc");
         assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.matches("abc")));
         assertSame(rejection, assertThrows(RegexRejectedException.class, () -> regex.find("abc")));
         assertEquals("Matching limit exceeded", rejection.getMessage());
@@ -122,7 +122,7 @@ class RegexEngineTest {
         assertTrue(inner.compile("abc").matches("abc"));
         assertEquals(Arrays.asList("inner"), calls);
         calls.clear();
-        assertTrue(original.guardedBy(RegexGuard.NONE).compile("abc").matches("abc"));
+        assertTrue(original.compile("abc").matches("abc"));
         assertTrue(calls.isEmpty());
         assertThrows(NullPointerException.class, () -> original.guardedBy(null));
     }
@@ -134,6 +134,6 @@ class RegexEngineTest {
             throw unsupported;
         };
         assertSame(unsupported, assertThrows(IllegalArgumentException.class,
-                () -> engine.guardedBy(RegexGuard.NONE).compile("abc")));
+                () -> engine.guardedBy(RegexGuard.BASIC).compile("abc")));
     }
 }
