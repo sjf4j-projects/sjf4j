@@ -269,7 +269,6 @@ public final class SchemaPlan {
             this.annotation = annotation;
             this.keywordPs = keywordPs;
             this.resourceUri = resourceUri;
-        this.nestedLocation = nestedLocation;
             this.stringOnly = stringOnly;
         }
     }
@@ -318,6 +317,7 @@ public final class SchemaPlan {
                SchemaDialect dialect, Map<String, Boolean> vocabulary,
                Annotation[] annotations, String nestedLocation) {
         this.resourceUri = resourceUri;
+        this.nestedLocation = nestedLocation;
         this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
