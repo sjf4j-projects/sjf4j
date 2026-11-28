@@ -1,5 +1,6 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
@@ -17,12 +18,12 @@ public final class SchemaResource {
     private final String documentPointer;
 
     public SchemaResource(URI retrievalUri, JsonSchema schema) {
-        this(Asserts.notNull(schema, "schema"),
-                retrievalUri == null ? null : SchemaUtil.documentUri(retrievalUri),
-                SchemaUtil.resolveUri(retrievalUri == null ? null : SchemaUtil.documentUri(retrievalUri),
-                        schema instanceof ObjectSchema && ((ObjectSchema) schema).getId() != null
-                                ? URI.create(((ObjectSchema) schema).getId()) : null),
-                null, null);
+        this.schema = Asserts.notNull(schema, "schema");
+        this.retrievalUri = retrievalUri == null ? null : SchemaUtil.documentUri(retrievalUri);
+        String id = schema instanceof ObjectSchema ? ((ObjectSchema) schema).getId() : null;
+        this.canonicalUri = SchemaUtil.resolveUri(this.retrievalUri, id == null ? null : URI.create(id));
+        this.document = null;
+        this.documentPointer = null;
     }
 
     private SchemaResource(JsonSchema schema, URI retrievalUri, URI canonicalUri,
@@ -48,7 +49,7 @@ public final class SchemaResource {
 
     public SchemaPlan createPlan(SchemaRegistry registry) {
         if (schema instanceof BooleanSchema) {
-            return SchemaPlan.of(canonicalUri, org.sjf4j.path.PathSegment.Root.INSTANCE, (BooleanSchema) schema);
+            return SchemaPlan.of(canonicalUri, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
         return SchemaPlanner.buildPlan(this, registry);
     }
