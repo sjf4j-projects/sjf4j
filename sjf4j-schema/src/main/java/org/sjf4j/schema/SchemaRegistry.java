@@ -464,7 +464,7 @@ public class SchemaRegistry {
 
     /** Fixed local resource loader for the built-in meta-schema catalog. */
     private static final SchemaLoader.Local BUILTIN_SCHEMA_LOADER =
-            new SchemaLoader.Local(SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR);
+            new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
 
     /**
      * Resolves a schema from the global built-in registry.
@@ -504,7 +504,7 @@ public class SchemaRegistry {
     }
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
-        URI uri = SchemaLoader.Local.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
+        URI uri = SchemaLoader.DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
         JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
         if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
