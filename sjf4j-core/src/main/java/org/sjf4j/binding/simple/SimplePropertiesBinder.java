@@ -10,7 +10,6 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
-import org.sjf4j.regex.RegexEngine;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,7 +80,7 @@ public final class SimplePropertiesBinder implements PropertiesBinder {
 
     private static PathSegment[] _parsePath(String key) {
         try {
-            PathSegment[] path = PathSyntax.parsePath(_propKey2JsonPath(key), RegexEngine.JDK_ENGINE);
+            PathSegment[] path = PathSyntax.parsePath(_propKey2JsonPath(key));
             for (PathSegment segment : path) {
                 if (!(segment instanceof PathSegment.Root) && !(segment instanceof PathSegment.Name)
                         && !(segment instanceof PathSegment.Index)) {
