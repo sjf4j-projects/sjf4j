@@ -11,9 +11,6 @@ import java.util.regex.Pattern;
 @FunctionalInterface
 public interface RegexGuard {
 
-    /** A policy that performs no checks. */
-    RegexGuard NONE = (expression, flags) -> {};
-
     /**
      * A conservative, best-effort policy for JDK-style regular expressions.
      *
@@ -24,6 +21,13 @@ public interface RegexGuard {
      *   <li>Nested unbounded quantifiers: reject a group containing {@code *},
      *       {@code +} or {@code {n,}} when the group itself has an unbounded
      *       quantifier (e.g. {@code (a+)+}, {@code (a*)*}, {@code (a+){2,}}).</li>
+     *   <li>Repetition counts: reject a numeric bound above 10000 in
+     *       {@code {n}}, {@code {n,m}} or {@code {n,}}.</li>
+     *   <li>Adjacent unbounded repetitions of the same simple atom:
+     *       ASCII letters/digits, dot, or the same predefined character
+     *       class escape (e.g. {@code a*a+}, {@code .*.*}, {@code \d+\d+}).
+     *       Lazy repetitions are included; a possessive first repetition
+     *       is excluded.</li>
      * </ul>
      *
      * <p>Recognized syntax:
@@ -37,9 +41,10 @@ public interface RegexGuard {
      *       unescaped comments ending at CR or LF.</li>
      * </ul>
      *
-     * <p>Limitations: bounded repetitions, ambiguous alternation and inline
-     * flag changes are not analyzed. Quantifier suffixes are not distinguished
-     * from quantifiers, so possessive repetitions may be flagged conservatively.
+     * <p>Limitations: overlapping but different atoms, repetitions across
+     * groups, bounded repetition complexity, ambiguous alternation and inline
+     * flag changes are not analyzed. Nested possessive repetitions may still
+     * be rejected conservatively.
      * This is not a full regex parser or a guarantee against ReDoS; safe
      * expressions may also be rejected.
      * Syntax validation remains the engine's responsibility.
@@ -59,6 +64,9 @@ public interface RegexGuard {
         boolean quoted = false;
         boolean closedRepeatedGroup = false;
         boolean comments = (flags & Pattern.COMMENTS) != 0;
+        int atom = -1;
+        int lastUnboundedAtom = -1;
+        boolean quantified = false;
         for (int i = 0; i < length; i++) {
             char c = expression.charAt(i);
             if (quoted) {
@@ -77,17 +85,26 @@ public interface RegexGuard {
                 }
             }
             if (c == '\\') {
+                if (!quantified) lastUnboundedAtom = -1;
+                atom = -1;
+                quantified = false;
                 if (i + 1 < length) {
                     char escaped = expression.charAt(++i);
                     if (escaped == 'Q') quoted = true;
                     else if (escaped == 'c' && i + 1 < length) i++;
+                    else if (classDepth == 0 && "dDsSwWhHvV".indexOf(escaped) >= 0) {
+                        atom = 128 + escaped;
+                    }
                 }
+                if (atom == -1) lastUnboundedAtom = -1;
                 classFirst = false;
                 classNegationAllowed = false;
                 closedRepeatedGroup = false;
                 continue;
             }
             if (c == '[') {
+                atom = lastUnboundedAtom = -1;
+                quantified = false;
                 classDepth++;
                 classFirst = true;
                 classNegationAllowed = true;
@@ -105,31 +122,80 @@ public interface RegexGuard {
                 continue;
             }
             if (c == '(') {
+                atom = lastUnboundedAtom = -1;
+                quantified = false;
                 if (++depth > 32) {
                     throw new RegexRejectedException("Regex group nesting exceeds 32");
                 }
                 repeated[depth] = false;
             } else if (c == ')' && depth > 0) {
+                atom = lastUnboundedAtom = -1;
+                quantified = false;
                 closedRepeatedGroup = repeated[depth--];
                 repeated[depth] |= closedRepeatedGroup;
                 continue;
             } else {
+                if (quantified && (c == '?' || c == '+')) {
+                    // A possessive first repetition cannot backtrack into the next atom.
+                    if (c == '+') lastUnboundedAtom = -1;
+                    continue;
+                }
                 boolean unbounded = c == '*' || c == '+';
+                boolean quantifier = unbounded || c == '?';
                 if (c == '{') {
                     int end = i + 1;
-                    while (end < length && expression.charAt(end) >= '0'
-                            && expression.charAt(end) <= '9') end++;
-                    if (end > i + 1 && end + 1 < length
-                            && expression.charAt(end) == ',' && expression.charAt(end + 1) == '}') {
-                        unbounded = true;
-                        i = end + 1;
+                    int count = 0;
+                    boolean digits = false;
+                    boolean comma = false;
+                    boolean exceeds = false;
+                    for (; end < length; end++) {
+                        char q = expression.charAt(end);
+                        if (q >= '0' && q <= '9') {
+                            digits = true;
+                            // Saturate to avoid integer overflow on large counts.
+                            count = Math.min(10001, count * 10 + q - '0');
+                            exceeds |= count > 10000;
+                        } else if (q == ',' && digits && !comma) {
+                            comma = true;
+                            digits = false;
+                            count = 0;
+                        } else if (comments && " \t\n\r\f\u000B".indexOf(q) >= 0) {
+                            continue;
+                        } else if (comments && q == '#') {
+                            while (end + 1 < length && expression.charAt(end + 1) != '\n'
+                                    && expression.charAt(end + 1) != '\r') end++;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (end < length && expression.charAt(end) == '}' && (digits || comma)) {
+                        if (exceeds) {
+                            throw new RegexRejectedException("Regex repetition count exceeds 10000");
+                        }
+                        quantifier = true;
+                        unbounded = comma && !digits;
+                        i = end;
                     }
                 }
-                if (unbounded) {
-                    if (closedRepeatedGroup) {
-                        throw new RegexRejectedException("Regex contains nested unbounded quantifiers");
+                if (quantifier) {
+                    if (unbounded) {
+                        if (closedRepeatedGroup) {
+                            throw new RegexRejectedException("Regex contains nested unbounded quantifiers");
+                        }
+                        if (atom != -1 && atom == lastUnboundedAtom) {
+                            throw new RegexRejectedException("Regex contains adjacent unbounded repetitions of the same atom");
+                        }
+                        repeated[depth] = true;
                     }
-                    repeated[depth] = true;
+                    lastUnboundedAtom = unbounded ? atom : -1;
+                    quantified = true;
+                } else {
+                    if (!quantified) lastUnboundedAtom = -1;
+                    // Only compare identical, simple atoms; no character-set analysis.
+                    atom = c == '.' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+                            || c >= '0' && c <= '9' ? c : -1;
+                    if (atom == -1) lastUnboundedAtom = -1;
+                    quantified = false;
                 }
             }
             closedRepeatedGroup = false;
