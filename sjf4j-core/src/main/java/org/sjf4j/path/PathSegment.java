@@ -3,6 +3,7 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.util.Numbers;
 
 import java.util.List;
@@ -344,7 +345,7 @@ public abstract class PathSegment {
     /**
      * JSONPath function call segment, e.g. ".length()".
      */
-    public static final class Function extends PathSegment {
+    public static class Function extends PathSegment {
         public final String name;
         public final List<String> args;
         public final Object[] resolvedArgs;
@@ -358,9 +359,35 @@ public abstract class PathSegment {
             this.args = args;
             this.resolvedArgs = _resolveFunctionArgs(args);
         }
+
+        static Function create(PathSegment parent, String name, List<String> args, RegexEngine engine) {
+            if (args.size() == 1 && FunctionRegistry.isRegexFunction(name)) {
+                return new RegexFunction(parent, name, args, engine);
+            }
+            return new Function(parent, name, args);
+        }
+
+        Object invoke(Object target) {
+            return FunctionRegistry.invoke(name, target, resolvedArgs);
+        }
+
         @Override public String toString() {
             if (args == null || args.isEmpty()) return "." + name + "()";
             return "." + name + "(" + String.join(", ", args) + ")";
+        }
+    }
+
+    private static final class RegexFunction extends Function {
+        private final FunctionRegistry.RegexCall call;
+
+        RegexFunction(PathSegment parent, String name, List<String> args, RegexEngine engine) {
+            super(parent, name, args);
+            this.call = new FunctionRegistry.RegexCall(name, engine, resolvedArgs[0]);
+        }
+
+        @Override
+        Object invoke(Object target) {
+            return call.invoke(target, resolvedArgs[0]);
         }
     }
 
