@@ -9,7 +9,6 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
-import org.sjf4j.regex.RegexEngine;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,22 +28,22 @@ public class PathSyntaxBenchmark {
 
     @Benchmark
     public PathSegment[] parseSimplePath() {
-        return PathSyntax.parsePath(SIMPLE_PATH, RegexEngine.JDK_ENGINE);
+        return PathSyntax.parsePath(SIMPLE_PATH);
     }
 
     @Benchmark
     public PathSegment[] parseQuotedPath() {
-        return PathSyntax.parsePath(QUOTED_PATH, RegexEngine.JDK_ENGINE);
+        return PathSyntax.parsePath(QUOTED_PATH);
     }
 
     @Benchmark
     public PathSegment[] parseUnionPath() {
-        return PathSyntax.parsePath(UNION_PATH, RegexEngine.JDK_ENGINE);
+        return PathSyntax.parsePath(UNION_PATH);
     }
 
     @Benchmark
     public PathSegment[] parseComplexSlicePath() {
-        return PathSyntax.parsePath(COMPLEX_SLICE_PATH, RegexEngine.JDK_ENGINE);
+        return PathSyntax.parsePath(COMPLEX_SLICE_PATH);
     }
 
     @Benchmark
