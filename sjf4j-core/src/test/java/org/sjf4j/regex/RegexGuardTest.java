@@ -61,6 +61,9 @@ class RegexGuardTest {
         RegexGuard.BASIC.check("\\Q{10001}\\E", 0);
         RegexGuard.BASIC.check("\\{10001\\}", 0);
         RegexGuard.BASIC.check("[{10001}]", 0);
+        RegexGuard.BASIC.check("\\x{10001}", 0);
+        assertThrows(RegexRejectedException.class,
+                () -> RegexGuard.BASIC.check("\\x{10001}{10001}", 0));
     }
 
     @Test
@@ -79,8 +82,8 @@ class RegexGuardTest {
     void adjacentCheckDoesNotAnalyzeDifferentOrSeparatedAtoms() {
         for (String expression : Arrays.asList("a*b+", "\\d+\\w+", "a+ba+", "a+aa+",
                 "a+|a+", "(a+)(a+)", "a{2}a+", "a{1,3}a+", "a?a+", "a*+a+",
-                "a++a+", "a{2,}+a+", "a+a?","a+\\.a+", "\\d+\\D+",
-                "[a]+[a]+", "\\Q(a*a+)\\E")) {
+                "a++a+", "a{2,}+a+", "a+a?", "a+\\.a+", "\\d+\\D+",
+                "[a]+[a]+", "\\Q(a*a+)\\E", "\\x41+1+", "\\u0041+1+")) {
             RegexGuard.BASIC.check(expression, 0);
         }
         RegexGuard.BASIC.check("a*a+", Pattern.LITERAL);
