@@ -3,6 +3,9 @@ package org.sjf4j.schema;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -54,6 +57,31 @@ class SchemaRegistryTest {
         SchemaPlan plan = registry.resolve(uri);
         org.junit.jupiter.api.Assertions.assertSame(BooleanSchema.FALSE, plan.schema());
         org.junit.jupiter.api.Assertions.assertEquals(uri, plan.schemaUri());
+    }
+
+    @Test
+    void batchIndexSupportsReferencesAndBooleanResources() {
+        URI root = URI.create("https://example.test/root.json");
+        URI leaf = root.resolve("leaf.json");
+        URI denied = root.resolve("denied.json");
+        Map<URI, JsonSchema> schemas = new LinkedHashMap<>();
+        schemas.put(root, JsonSchema.fromJson("{\"$ref\":\"leaf.json\"}"));
+        schemas.put(leaf, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        schemas.put(denied, BooleanSchema.FALSE);
+
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(schemas);
+
+        assertNull(registry.resolveBuilt(root));
+        assertNull(registry.resolveBuilt(leaf));
+        assertTrue(registry.resolve(root).isValid("text"));
+        assertFalse(registry.resolve(root).isValid(42));
+        assertFalse(registry.resolve(denied).isValid(null));
+
+        registry.index(Collections.emptyMap());
+        assertThrows(SchemaException.class, () -> registry.index(
+                Collections.singletonMap(leaf, JsonSchema.fromJson("{\"type\":\"number\"}"))));
+        assertTrue(registry.resolve(root).isValid("text"));
     }
 
     @Test
