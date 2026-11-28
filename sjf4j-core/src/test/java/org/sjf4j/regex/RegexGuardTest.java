@@ -41,6 +41,52 @@ class RegexGuardTest {
     }
 
     @Test
+    void repetitionCountLimit() {
+        for (String expression : Arrays.asList("a{10000}", "a{1,10000}", "a{10000,}",
+                "a{00010000}", "a{10000,10000}")) {
+            RegexGuard.BASIC.check(expression, 0);
+        }
+        for (String expression : Arrays.asList("a{10001}", "a{1,10001}", "a{10001,}",
+                "a{10001,10002}", "a{00010001}", "a{999999999999999999999999}")) {
+            RegexRejectedException error = assertThrows(RegexRejectedException.class,
+                    () -> RegexGuard.BASIC.check(expression, 0), expression);
+            assertTrue(error.getMessage().contains("10000"));
+        }
+        assertThrows(RegexRejectedException.class,
+                () -> RegexGuard.BASIC.check("a{1, 10001}", Pattern.COMMENTS));
+        assertThrows(RegexRejectedException.class,
+                () -> RegexGuard.BASIC.check("a{1,# comment\n10001}", Pattern.COMMENTS));
+        RegexGuard.BASIC.check("a{1, 10000}", Pattern.COMMENTS);
+        RegexGuard.BASIC.check("a{10001}", Pattern.LITERAL);
+        RegexGuard.BASIC.check("\\Q{10001}\\E", 0);
+        RegexGuard.BASIC.check("\\{10001\\}", 0);
+        RegexGuard.BASIC.check("[{10001}]", 0);
+    }
+
+    @Test
+    void adjacentUnboundedSimpleAtoms() {
+        for (String expression : Arrays.asList("a*a+", ".*.*", "\\d+\\d+",
+                "\\w*\\w+", "a{2,}a+", "a+a{0,}", "a*?a+", "1+1*")) {
+            RegexRejectedException error = assertThrows(RegexRejectedException.class,
+                    () -> RegexGuard.BASIC.check(expression, 0), expression);
+            assertTrue(error.getMessage().contains("adjacent unbounded"));
+        }
+        assertThrows(RegexRejectedException.class,
+                () -> RegexGuard.BASIC.check("a+ # comment\n a+", Pattern.COMMENTS));
+    }
+
+    @Test
+    void adjacentCheckDoesNotAnalyzeDifferentOrSeparatedAtoms() {
+        for (String expression : Arrays.asList("a*b+", "\\d+\\w+", "a+ba+", "a+aa+",
+                "a+|a+", "(a+)(a+)", "a{2}a+", "a{1,3}a+", "a?a+", "a*+a+",
+                "a++a+", "a{2,}+a+", "a+a?","a+\\.a+", "\\d+\\D+",
+                "[a]+[a]+", "\\Q(a*a+)\\E")) {
+            RegexGuard.BASIC.check(expression, 0);
+        }
+        RegexGuard.BASIC.check("a*a+", Pattern.LITERAL);
+    }
+
+    @Test
     void ordinaryPatternsAreAccepted() {
         for (String expression : Arrays.asList("", "^abc$", "(ab)+", "(a+)(b+)",
                 "(a{2})+", "(a{1,3})+", "(a+)?", "(a+){2}", "(?:ab)*",
