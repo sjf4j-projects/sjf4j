@@ -11,7 +11,7 @@ import org.sjf4j.node.NodeMapper;
  * Parsed JSON Schema document represented as an OBNT object node or value node.
  * <p>
  * Implementations are lightweight schema models. Runtime validation uses the
- * compiled {@link SchemaPlan} returned by {@link #createPlan(SchemaRegistry)}.
+ * compiled {@link SchemaPlan} returned by {@link #formulate(SchemaRegistry)}.
  * A schema may be boolean ({@link BooleanSchema}) or object-shaped
  * ({@link ObjectSchema}); invalid schema content fails during parsing or
  * compilation rather than yielding a validation result for an instance.
@@ -49,6 +49,18 @@ public interface JsonSchema {
      */
     default SchemaPlan createPlan() {
         return createPlan(null);
+    }
+
+    /** Formulates a runtime schema plan in the supplied registry context.
+     * Equivalent to {@link #createPlan(SchemaRegistry)}.
+     */
+    default SchemaPlan formulate(SchemaRegistry registry) {
+        return createPlan(registry);
+    }
+
+    /** Formulates a runtime schema plan without a caller-provided registry. */
+    default SchemaPlan formulate() {
+        return createPlan();
     }
 
     /*
