@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared schema resources, including the official meta-schemas.
- * Register custom resources during application initialization. Indexed
- * definitions must not be modified or replaced. Plans are compiled and
+ * Register custom resources during application initialization, not concurrently.
+ * Indexed definitions must not be modified or replaced. Plans are compiled and
  * cached only in the registry that resolves them.
  */
 public final class GlobalSchemas {
@@ -24,7 +24,7 @@ public final class GlobalSchemas {
     }
 
     /** Indexes a schema with its retrieval URI, without compiling it. */
-    public static synchronized void index(URI retrievalUri, JsonSchema schema) {
+    public static void index(URI retrievalUri, JsonSchema schema) {
         SchemaResource resource = new SchemaResource(retrievalUri, schema);
         URI canonicalUri = resource.canonicalUri;
         if (canonicalUri == null) {
