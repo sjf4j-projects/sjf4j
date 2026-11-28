@@ -9,7 +9,7 @@ import java.net.URI;
  * A schema document with its retrieval and canonical resource URIs.
  * Resource metadata is immutable; callers must not mutate indexed schema models.
  */
-public final class SchemaResource {
+final class SchemaResource {
     private final JsonSchema schema;
     private final URI retrievalUri;
     private final URI canonicalUri;
@@ -17,7 +17,7 @@ public final class SchemaResource {
     private final SchemaResource document;
     private final String documentPointer;
 
-    public SchemaResource(URI retrievalUri, JsonSchema schema) {
+    SchemaResource(URI retrievalUri, JsonSchema schema) {
         this.schema = Asserts.notNull(schema, "schema");
         this.retrievalUri = retrievalUri == null ? null : SchemaUtil.documentUri(retrievalUri);
         String id = schema instanceof ObjectSchema ? ((ObjectSchema) schema).getId() : null;
@@ -35,26 +35,26 @@ public final class SchemaResource {
         this.documentPointer = documentPointer;
     }
 
-    public JsonSchema schema() {
+    JsonSchema schema() {
         return schema;
     }
 
-    public URI retrievalUri() {
+    URI retrievalUri() {
         return retrievalUri;
     }
 
-    public URI canonicalUri() {
+    URI canonicalUri() {
         return canonicalUri;
     }
 
-    public SchemaPlan createPlan(SchemaRegistry registry) {
+    SchemaPlan createPlan(SchemaRegistry registry) {
         if (schema instanceof BooleanSchema) {
             return SchemaPlan.of(canonicalUri, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
         }
         return SchemaPlanner.buildPlan(this, registry);
     }
 
-    public SchemaPlan createPlan() {
+    SchemaPlan createPlan() {
         return createPlan(null);
     }
 
