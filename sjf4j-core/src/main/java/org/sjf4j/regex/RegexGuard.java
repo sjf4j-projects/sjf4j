@@ -15,9 +15,30 @@ public interface RegexGuard {
     RegexGuard NONE = (expression, flags) -> {};
 
     /**
-     * A conservative, best-effort policy limiting expression length to 4096
-     * UTF-16 code units, group nesting to 32 levels and rejecting obvious
-     * nested unbounded quantifiers. This is not a full regex parser or a
+     * A conservative, best-effort policy for JDK-style regular expressions.
+     *
+     * <p>Checks:
+     * <ul>
+     *   <li>Expression length: at most 4096 UTF-16 code units.</li>
+     *   <li>Group nesting: at most 32 levels.</li>
+     *   <li>Nested unbounded quantifiers: reject a group containing {@code *},
+     *       {@code +} or {@code {n,}} when the group itself has an unbounded
+     *       quantifier (e.g. {@code (a+)+}, {@code (a*)*}, {@code (a+){2,}}).</li>
+     * </ul>
+     *
+     * <p>Recognized syntax:
+     * <ul>
+     *   <li>Escaped characters, including control escapes ({@code \cX}).</li>
+     *   <li>Quoted literals ({@code \Q...\E}).</li>
+     *   <li>Character classes, including negation, initial literal
+     *       {@code ]}, and nested classes/intersections.</li>
+     *   <li>{@link Pattern#LITERAL}: apply only the length limit.</li>
+     *   <li>{@link Pattern#COMMENTS}: ignore ASCII whitespace and
+     *       unescaped comments ending at CR or LF.</li>
+     * </ul>
+     *
+     * <p>Limitations: bounded repetitions, ambiguous alternation and inline
+     * flag changes are not analyzed. This is not a full regex parser or a
      * guarantee against ReDoS; safe expressions may also be rejected.
      * Syntax validation remains the engine's responsibility.
      */
@@ -32,6 +53,7 @@ public interface RegexGuard {
         int depth = 0;
         int classDepth = 0;
         boolean classFirst = false;
+        boolean classNegationAllowed = false;
         boolean quoted = false;
         boolean closedRepeatedGroup = false;
         boolean comments = (flags & Pattern.COMMENTS) != 0;
@@ -59,18 +81,25 @@ public interface RegexGuard {
                     else if (escaped == 'c' && i + 1 < length) i++;
                 }
                 classFirst = false;
+                classNegationAllowed = false;
                 closedRepeatedGroup = false;
                 continue;
             }
             if (c == '[') {
                 classDepth++;
                 classFirst = true;
+                classNegationAllowed = true;
                 closedRepeatedGroup = false;
                 continue;
             }
             if (classDepth > 0) {
+                if (c == '^' && classNegationAllowed) {
+                    classNegationAllowed = false;
+                    continue;
+                }
                 if (c == ']' && !classFirst) classDepth--;
-                if (c != '^' || !classFirst) classFirst = false;
+                classFirst = false;
+                classNegationAllowed = false;
                 continue;
             }
             if (c == '(') {
