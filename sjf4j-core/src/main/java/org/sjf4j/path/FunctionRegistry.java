@@ -3,6 +3,9 @@ package org.sjf4j.path;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.exception.RegexRejectedException;
+import org.sjf4j.regex.Regex;
+import org.sjf4j.regex.RegexEngine;
 import org.sjf4j.Nodes;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
@@ -10,8 +13,6 @@ import org.sjf4j.util.Asserts;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 
 /**
@@ -106,7 +107,7 @@ public class FunctionRegistry {
         if (fd == null) throw new NodeException("function '" + name + "' does not exist");
         try {
             return fd.invoke(target, args);
-        } catch (BindingException e) {
+        } catch (BindingException | RegexRejectedException e) {
             throw e;
         } catch (Exception e) {
             throw new NodeException("function '" + name + "' invocation failed", e);
@@ -118,6 +119,86 @@ public class FunctionRegistry {
      */
     public static Set<String> getFunctionNames() {
         return FUNCTION_CACHE.keySet();
+    }
+
+    private static final FunctionDescriptor MATCH = new FunctionDescriptor("match",
+            (target, args) -> regex("match", target, args, true));
+    private static final FunctionDescriptor SEARCH = new FunctionDescriptor("search",
+            (target, args) -> regex("search", target, args, false));
+
+    // Invalid constant expressions are compiled only once as well.
+    private static final Regex NEVER_MATCH = new Regex() {
+        @Override public boolean matches(String input) { return false; }
+        @Override public boolean find(String input) { return false; }
+    };
+
+    static boolean isRegexFunction(String name) {
+        return "match".equals(name) || "search".equals(name);
+    }
+
+    private static Regex compileRegex(RegexEngine engine, String expression) {
+        try {
+            return engine.create(expression);
+        } catch (IllegalArgumentException invalidPattern) {
+            // Invalid or unsupported expressions do not match; security rejections propagate.
+            return NEVER_MATCH;
+        }
+    }
+
+    private static boolean regex(String name, Object target, Object[] args, boolean match) {
+        if (args.length != 1)
+            throw new NodeException(name + "(): expected exactly 1 argument, but got " + args.length);
+        return regex(name, target, args[0], RegexEngine.JDK_ENGINE, null, match);
+    }
+
+    private static boolean regex(String name, Object target, Object argument,
+                                 RegexEngine engine, Regex compiled, boolean match) {
+        String pattern = null;
+        if (compiled == null) {
+            try {
+                pattern = Nodes.toString(argument);
+            } catch (Exception e) {
+                throw new NodeException(name + "(): expected a string pattern argument, but was " +
+                        Types.name(argument), e);
+            }
+            if (pattern == null)
+                throw new NodeException(name + "(): expected a string pattern argument, but was null");
+        }
+        if (JsonType.of(target) != JsonType.STRING) return false;
+        String text = Nodes.toString(target);
+        if (text == null) return false;
+        Regex regex = compiled == null ? compileRegex(engine, pattern) : compiled;
+        return match ? regex.matches(text) : regex.find(text);
+    }
+
+    /**
+     * A parsed regex call owns its engine and optional precompiled string literal.
+     * Keep the registry lookup so replacing a built-in still works for existing paths.
+     */
+    static final class RegexCall {
+        private final FunctionDescriptor builtin;
+        private final RegexEngine engine;
+        private final Regex compiled;
+
+        RegexCall(String name, RegexEngine engine, Object literal) {
+            this.builtin = "match".equals(name) ? MATCH : SEARCH;
+            this.engine = engine;
+            this.compiled = literal instanceof String ? compileRegex(engine, (String) literal) : null;
+        }
+
+        Object invoke(Object target, Object argument) {
+            String name = builtin.getName();
+            FunctionDescriptor descriptor = get(name);
+            if (descriptor == null) throw new NodeException("function '" + name + "' does not exist");
+            try {
+                if (descriptor != builtin) return descriptor.invoke(target, new Object[]{argument});
+                return regex(name, target, argument, engine, compiled, builtin == MATCH);
+            } catch (BindingException | RegexRejectedException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new NodeException("function '" + name + "' invocation failed", e);
+            }
+        }
     }
 
     // Pre-register build-in functions
@@ -151,64 +232,8 @@ public class FunctionRegistry {
             return null;
         }));
 
-        // match
-        // Java Pattern semantics for JSONPath match().
-        FunctionRegistry.register(new FunctionDescriptor("match", (target, args) -> {
-            if (args.length != 1)
-                throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
-            Object node = target;
-            String pattern;
-            try {
-                pattern = Nodes.toString(args[0]);
-            } catch (Exception e) {
-                throw new NodeException("match(): expected a string pattern argument, but was " +
-                        Types.name(args[0]), e);
-            }
-            if (pattern == null) {
-                throw new NodeException("match(): expected a string pattern argument, but was null");
-            }
-            switch (JsonType.of(node)) {
-                case STRING:
-                    String text = Nodes.toString(node);
-                    if (text == null) return false;
-                    try {
-                        return Pattern.compile(pattern).matcher(text).matches();
-                    } catch (PatternSyntaxException invalidPattern) {
-                        // Invalid regular expressions do not match.
-                        return false;
-                    }
-            }
-            return false;
-        }));
-
-        // search
-        FunctionRegistry.register(new FunctionDescriptor("search", (target, args) -> {
-            if (args.length != 1)
-                throw new NodeException("search(): expected exactly 1 argument, but got " + args.length);
-            Object node = target;
-            String pattern;
-            try {
-                pattern = Nodes.toString(args[0]);
-            } catch (Exception e) {
-                throw new NodeException("search(): expected a string pattern argument, but was " +
-                        Types.name(args[0]), e);
-            }
-            if (pattern == null) {
-                throw new NodeException("search(): expected a string pattern argument, but was null");
-            }
-            switch (JsonType.of(node)) {
-                case STRING:
-                    String text = Nodes.toString(node);
-                    if (text == null) return false;
-                    try {
-                        return Pattern.compile(pattern).matcher(text).find();
-                    } catch (PatternSyntaxException invalidPattern) {
-                        // Invalid regular expressions do not match.
-                        return false;
-                    }
-            }
-            return false;
-        }));
+        register(MATCH);
+        register(SEARCH);
 
         // value
         FunctionRegistry.register(new FunctionDescriptor("value", (target, args) -> {
