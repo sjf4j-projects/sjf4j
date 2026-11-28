@@ -229,7 +229,7 @@ public final class OfficialRuntimeTest {
                 Nodes.forEachObject(external, (uri, schema) ->
                         registry.index(URI.create(uri), JsonSchema.fromNode(schema)));
             }
-            plan = JsonSchema.fromNode(group.getNode("schema")).createPlan(registry);
+            plan = JsonSchema.fromNode(group.getNode("schema")).formulate(registry);
         } catch (Exception e) {
             report.error += count;
             report.addFailure(label + " compile error", e);

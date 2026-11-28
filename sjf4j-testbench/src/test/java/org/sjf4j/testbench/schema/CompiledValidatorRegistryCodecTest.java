@@ -59,7 +59,7 @@ class CompiledValidatorRegistryCodecTest {
     @Test
     void directAndRuntimeValidatorsAgreeOnNamedCodecAndNull() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).formulate();
 
         for (Bean instance : new Bean[]{
                 new Bean(new Tag("abc")),

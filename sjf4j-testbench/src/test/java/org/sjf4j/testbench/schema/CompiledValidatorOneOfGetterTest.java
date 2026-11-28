@@ -87,7 +87,7 @@ public class CompiledValidatorOneOfGetterTest {
     @Test
     void bothBranchesAreCheckedForEachSubtype() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(SCHEMA).formulate();
 
         for (Variant value : new Variant[]{
                 new A("a", "good"), new A("b", "good"),
@@ -128,7 +128,7 @@ public class CompiledValidatorOneOfGetterTest {
     @Test
     void overlappingOneOfBranchesStillRejectTwoMatches() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        SchemaPlan runtime = JsonSchema.fromJson(OVERLAPPING_SCHEMA).createPlan();
+        SchemaPlan runtime = JsonSchema.fromJson(OVERLAPPING_SCHEMA).formulate();
         for (Variant value : new Variant[]{new A("a", "good"), new A("b", "good"),
                 new B("a", "good"), new B("b", "good")}) {
             Model input = new Model(value);

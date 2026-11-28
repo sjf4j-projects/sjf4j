@@ -450,7 +450,7 @@ class CompiledValidatorKeywordTest {
     void nestedIdReferenceIsDelegatedToScopeAwareSchemaPlan() {
         ScopedRefs compiled = CompiledInstances.create(ScopedRefs.class);
         org.sjf4j.schema.SchemaPlan reference =
-                org.sjf4j.schema.JsonSchema.fromJson(SCOPED_REF).createPlan();
+                org.sjf4j.schema.JsonSchema.fromJson(SCOPED_REF).formulate();
         for (String text : new String[]{"a", "ab", "abcd"}) {
             Values model = value(text, BigDecimal.ONE, 2, List.of());
             assertEquals(reference.isValid(model), compiled.valid(model), text);
