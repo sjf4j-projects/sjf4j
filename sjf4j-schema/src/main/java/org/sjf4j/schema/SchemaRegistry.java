@@ -366,8 +366,9 @@ public class SchemaRegistry {
     ObjectSchema resolveSchema(URI uri) {
         Asserts.notNull(uri, "uri");
         String id = SchemaUtil.normalizeUriKey(uri);
-        SchemaResource resource = byIdResources.get(id);
-        if (resource == null && !byIdPlans.containsKey(id)) resource = GlobalSchemas.find(id);
+        SchemaPlan plan = byIdPlans.get(id);
+        if (plan != null && plan.booleanSchema) return null;
+        SchemaResource resource = findResource(id);
         return resource != null && resource.schema instanceof ObjectSchema
                 ? (ObjectSchema) resource.schema : null;
     }
