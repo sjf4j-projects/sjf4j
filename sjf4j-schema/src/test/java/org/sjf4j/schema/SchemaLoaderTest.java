@@ -31,17 +31,15 @@ class SchemaLoaderTest {
         URI base = URI.create("memory:/schemas/");
         String json = "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}";
         SchemaLoader loader = uri -> SchemaUtil.documentUri(uri).equals(base.resolve("user.json"))
-                ? parseUnchecked(uri, json) : null;
+                ? parseUnchecked(json) : null;
 
         assertEquals(base.resolve("user.json"),
                 SchemaUtil.documentUri(base.resolve("user.json#/$defs/name")));
-        SchemaResource parsed = loader.load(base.resolve("user.json#/$defs/name"));
-        assertTrue(parsed.schema() instanceof ObjectSchema);
-        assertEquals(base.resolve("user.json"), parsed.retrievalUri());
-        assertEquals(base.resolve("user.json"), loader.load(base.resolve("user.json")).retrievalUri());
+        JsonSchema parsed = loader.load(base.resolve("user.json#/$defs/name"));
+        assertTrue(parsed instanceof ObjectSchema);
 
         SchemaRegistry registry = new SchemaRegistry();
-        registry.register(parsed);
+        registry.register(base.resolve("user.json"), parsed);
         SchemaPlan fragment = registry.resolve(base.resolve("user.json#/$defs/name"));
         assertTrue(fragment.isValid("Alice"));
         assertFalse(fragment.isValid("A"));
@@ -51,14 +49,14 @@ class SchemaLoaderTest {
     @Test
     void registryRegistersLoadedSchemaAndResolvesFragment() {
         URI base = URI.create("memory:/schemas/");
-        SchemaLoader loader = uri -> parseUnchecked(uri,
+        SchemaLoader loader = uri -> parseUnchecked(
                 "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}");
         SchemaRegistry registry = new SchemaRegistry();
         URI reference = base.resolve("user.json#/$defs/name");
 
         assertNull(registry.resolve(reference));
-        SchemaResource schema = loader.load(SchemaUtil.documentUri(reference));
-        registry.register(schema);
+        JsonSchema schema = loader.load(SchemaUtil.documentUri(reference));
+        registry.register(SchemaUtil.documentUri(reference), schema);
         SchemaPlan plan = registry.resolve(reference);
         assertNotNull(plan);
         assertTrue(plan.isValid("ok"));
@@ -74,9 +72,9 @@ class SchemaLoaderTest {
             Files.write(document, "{\"type\":\"string\"}".getBytes(StandardCharsets.UTF_8));
             SchemaLoader.Local local = new SchemaLoader.Local(directory.toUri());
             URI selected = URI.create("user.json#");
-            SchemaResource schema = local.load(selected);
-            assertTrue(schema.schema() instanceof ObjectSchema);
-            assertEquals(document.toUri(), schema.retrievalUri());
+            JsonSchema schema = local.load(selected);
+            assertTrue(schema instanceof ObjectSchema);
+            assertEquals(document.toUri(), SchemaUtil.documentUri(local.resolve(selected)));
             assertNull(local.load(URI.create("missing.json")));
             assertEquals(document.toUri(), local.resolve(URI.create("user.json")));
         } finally {
@@ -98,9 +96,9 @@ class SchemaLoaderTest {
             assertEquals(directory.toUri(), loader.baseUri());
             URI reference = URI.create("user%20schema.json#/$defs/name");
             assertEquals(URI.create(document.toUri().toString() + "#/$defs/name"), loader.resolve(reference));
-            SchemaResource schema = loader.load(reference);
-            assertTrue(schema.schema() instanceof ObjectSchema);
-            assertEquals(document.toUri(), schema.retrievalUri());
+            JsonSchema schema = loader.load(reference);
+            assertTrue(schema instanceof ObjectSchema);
+            assertEquals(document.toUri(), SchemaUtil.documentUri(loader.resolve(reference)));
             assertNull(loader.load(URI.create("missing.json")));
         } finally {
             Files.deleteIfExists(document);
@@ -113,8 +111,8 @@ class SchemaLoaderTest {
         Path file = Files.createTempFile("sjf4j-loader-", ".json");
         try {
             Files.write(file, "false".getBytes(StandardCharsets.UTF_8));
-            SchemaResource parsed = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
-            assertTrue(parsed.schema() instanceof BooleanSchema);
+            JsonSchema parsed = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
+            assertTrue(parsed instanceof BooleanSchema);
             assertFalse(parsed.createPlan().isValid("anything"));
         } finally {
             Files.deleteIfExists(file);
@@ -127,7 +125,7 @@ class SchemaLoaderTest {
         for (String reference : new String[]{
                 "classpath:/schema-loader-classpath-test.json",
                 "classpath:///schema-loader-classpath-test.json"}) {
-            SchemaResource schema = loader.load(URI.create(reference));
+            JsonSchema schema = loader.load(URI.create(reference));
             assertNotNull(schema, reference);
             SchemaPlan plan = schema.createPlan();
             assertTrue(plan.isValid("ok"), reference);
@@ -149,10 +147,10 @@ class SchemaLoaderTest {
                     new java.net.URL[]{directory.toUri().toURL()},
                     SchemaLoader.class.getClassLoader())) {
                 SchemaLoader.Local local = new SchemaLoader.Local(URI.create("classpath:/"), child);
-                SchemaResource schema = local.load(uri);
+                JsonSchema schema = local.load(uri);
                 assertNotNull(schema);
                 SchemaRegistry registry = new SchemaRegistry();
-                registry.index(schema);
+                registry.index(uri, schema);
                 assertTrue(registry.resolve(uri).isValid(123));
                 assertFalse(registry.resolve(uri).isValid("not an integer"));
                 assertNull(local.load(URI.create("classpath:/missing-" + name)));
@@ -168,9 +166,9 @@ class SchemaLoaderTest {
         URI base = URI.create("https://example.invalid/schemas/");
         SchemaLoader loader = uri -> {
             assertEquals(base.resolve("value.json"), uri);
-            return parseUnchecked(uri, "{\"type\":\"integer\"}");
+            return parseUnchecked("{\"type\":\"integer\"}");
         };
-        assertTrue(loader.load(base.resolve("value.json")).schema() instanceof ObjectSchema);
+        assertTrue(loader.load(base.resolve("value.json")) instanceof ObjectSchema);
 
         SchemaLoader defaultLoader = new SchemaLoader.Local(SchemaLoader.DEFAULT_JSON_SCHEMA_DIR);
         assertThrows(SchemaException.class, () -> defaultLoader.load(base.resolve("value.json")));
@@ -179,18 +177,29 @@ class SchemaLoaderTest {
     @Test
     void schemaValidatorUsesInjectedLoaderAndRegistry() {
         URI base = URI.create("memory:/schemas/");
-        SchemaLoader loader = uri -> parseUnchecked(base.resolve(uri),
-                "{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}");
+        SchemaLoader loader = new SchemaLoader() {
+            @Override
+            public URI resolve(URI uri) {
+                return base.resolve(uri);
+            }
+
+            @Override
+            public JsonSchema load(URI uri) {
+                assertEquals(base.resolve("sample.json"), uri);
+                return parseUnchecked("{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}");
+            }
+        };
         SchemaValidator validator = new SchemaValidator(loader, null, true);
         assertTrue(validator.validate(new Sample("ok")).isValid(),
                 () -> validator.validate(new Sample("ok")).toString());
         assertFalse(validator.validate(new Sample("x")).isValid());
         assertNotNull(validator.load("sample.json"));
+        assertEquals(base.resolve("sample.json"), validator.load("sample.json").schemaUri());
     }
 
-    private static SchemaResource parseUnchecked(URI uri, String text) {
+    private static JsonSchema parseUnchecked(String text) {
         try {
-            return SchemaLoader.parse(uri, new StringReader(text));
+            return SchemaLoader.parse(new StringReader(text));
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
