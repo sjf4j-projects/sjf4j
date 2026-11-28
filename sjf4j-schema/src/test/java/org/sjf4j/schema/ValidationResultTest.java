@@ -85,7 +85,7 @@ class ValidationResultTest {
     void validationPlanDoesNotInjectAnnotationsYet() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"title\":\"Metadata\",\"properties\":{\"x\":{\"description\":\"Property\"}}}"
-        ).createPlan();
+        ).formulate();
         ValidationResult result = plan.validate(Map.of("x", 1));
 
         assertSame(ValidationResult.SUCCESS, result);
@@ -148,7 +148,7 @@ class ValidationResultTest {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"$id\":\"https://example.com/root\","
                         + "\"properties\":{\"value\":{\"$id\":\"https://example.com/child\","
-                        + "\"type\":\"string\"}}}").createPlan();
+                        + "\"type\":\"string\"}}}").formulate();
         ValidationResult result = plan.validate(Map.of("value", 123));
         assertFalse(result.isValid());
         assertEquals("https://example.com/child#/type",
@@ -157,7 +157,7 @@ class ValidationResultTest {
 
     @Test
     void contextReturnsCollectedErrorsWithoutCopying() {
-        SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"x\"]}").createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"x\"]}").formulate();
         ValidationContext ctx = new ValidationContext(false, false, false);
         assertFalse(plan.evaluate(Map.of(), null, ctx));
 

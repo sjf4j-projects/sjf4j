@@ -60,7 +60,7 @@ class CompiledValidatorNumericOptimizationTest {
     @Test
     void integralPrimitiveAndWrapperBoundsMatchRuntime() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan ref = JsonSchema.fromJson(INTEGER).createPlan();
+        SchemaPlan ref = JsonSchema.fromJson(INTEGER).formulate();
         for (int n : new int[]{-128,-18,-15,-14,-12,-3,-1,0,1,3,6,12,14,15,18,127}) {
             boolean expected = ref.isValid(n);
             assertEquals(expected, direct.primitiveInt(n), "int " + n);
@@ -80,8 +80,8 @@ class CompiledValidatorNumericOptimizationTest {
     @Test
     void divisorOneAndFractionalBoundariesRemainEquivalent() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan increment = JsonSchema.fromJson(INCREMENT).createPlan();
-        SchemaPlan fractional = JsonSchema.fromJson(FRACTIONAL_BOUND).createPlan();
+        SchemaPlan increment = JsonSchema.fromJson(INCREMENT).formulate();
+        SchemaPlan fractional = JsonSchema.fromJson(FRACTIONAL_BOUND).formulate();
         for (int n = -20; n <= 20; n++) {
             assertEquals(increment.isValid(n), direct.increment(n), "increment " + n);
             assertEquals(fractional.isValid(n), direct.fractionalInteger(n), "fractional " + n);
@@ -95,8 +95,8 @@ class CompiledValidatorNumericOptimizationTest {
     @Test
     void decimalConstantsAreSharedWithoutChangingNumericSemantics() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan fractional = JsonSchema.fromJson(FRACTIONAL_NUMBER).createPlan();
-        SchemaPlan literals = JsonSchema.fromJson(DECIMAL_LITERAL).createPlan();
+        SchemaPlan fractional = JsonSchema.fromJson(FRACTIONAL_NUMBER).formulate();
+        SchemaPlan literals = JsonSchema.fromJson(DECIMAL_LITERAL).formulate();
         for (String text : new String[]{"0", "1", "1.25", "1.50", "2.75",
                 "3.25", "3.5", "5.25", "5.5", "6", "-1"}) {
             BigDecimal n = new BigDecimal(text);
@@ -110,7 +110,7 @@ class CompiledValidatorNumericOptimizationTest {
     @Test
     void floatingMultiplesMatchRuntimeAndExactDecimalRemainder() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan ref = JsonSchema.fromJson(THREE).createPlan();
+        SchemaPlan ref = JsonSchema.fromJson(THREE).formulate();
         BigDecimal divisor = BigDecimal.valueOf(3);
         for (double n : new double[]{-12, -12.5, -0.0, 0.3, 6, Math.nextDown(6.0),
                 Math.nextDown(0x1.0p53), 0x1.0p53, Math.nextUp(0x1.0p53),
@@ -137,7 +137,7 @@ class CompiledValidatorNumericOptimizationTest {
     @Test
     void outOfRangeDivisorFallsBackToExactDecimal() {
         Direct direct = CompiledInstances.create(Direct.class);
-        SchemaPlan ref = JsonSchema.fromJson(HUGE_MULTIPLE).createPlan();
+        SchemaPlan ref = JsonSchema.fromJson(HUGE_MULTIPLE).formulate();
         for (long n : new long[]{Long.MIN_VALUE, -1, 0, 1, 2, Long.MAX_VALUE}) {
             assertEquals(ref.isValid(n), direct.hugeDivisor(n), "long " + n);
         }

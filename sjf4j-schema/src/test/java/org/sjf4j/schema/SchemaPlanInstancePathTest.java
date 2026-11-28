@@ -16,7 +16,7 @@ class SchemaPlanInstancePathTest {
 
     @Test
     void falseSchemaFailurePreservesEnclosingInstancePath() {
-        SchemaPlan plan = BooleanSchema.FALSE.createPlan();
+        SchemaPlan plan = BooleanSchema.FALSE.formulate();
         ValidationException exception = assertThrows(ValidationException.class,
                 () -> SchemaSupport.requireValid(plan, Map.of("zip", 123), prefix(), false));
         assertEquals("/user/address",
@@ -28,7 +28,7 @@ class SchemaPlanInstancePathTest {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(
                 "{\"$id\":\"https://example.test/address.json\","
                 + "\"properties\":{\"zip\":{\"type\":\"string\"}}}");
-        SchemaPlan plan = schema.createPlan();
+        SchemaPlan plan = schema.formulate();
         ValidationException exception = assertThrows(ValidationException.class,
                 () -> SchemaSupport.requireValid(plan, Map.of("zip", 123), prefix(), false));
         ValidationResult.Detail error = exception.getResult().getLastError();

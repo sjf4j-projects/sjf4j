@@ -116,7 +116,7 @@ class CompiledValidatorConditionalTest {
     @Test
     void validatesTypeLessObjectConditionsAndMissingBranches() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(ADDRESS).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(ADDRESS).formulate();
         for (Map<String,Object> map : Arrays.asList(
                 Map.<String,Object>of("country","US","state","CA"),
                 Map.<String,Object>of("country","US"),
@@ -133,13 +133,13 @@ class CompiledValidatorConditionalTest {
     @Test
     void typedPojoAndDynamicObjectsAgreeWithSchemaPlan() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan typed = JsonSchema.fromJson(TYPED).createPlan();
+        SchemaPlan typed = JsonSchema.fromJson(TYPED).formulate();
         for (Person p : Arrays.asList(
                 new Person("US","CA",null), new Person("US","X",null),
                 new Person("CN",null,"10000"), new Person("CN",null,"1"))) {
             assertEquals(typed.isValid(p), compiled.typed(p), String.valueOf(p.getCountry()));
         }
-        SchemaPlan dynamic = JsonSchema.fromJson(DYNAMIC).createPlan();
+        SchemaPlan dynamic = JsonSchema.fromJson(DYNAMIC).formulate();
         for (Object value : Arrays.asList(
                 Map.<String,Object>of("x",1,"y",2),
                 Map.<String,Object>of("x",1),
@@ -152,7 +152,7 @@ class CompiledValidatorConditionalTest {
     @Test
     void combinesSiblingsAndConditionalsWithinItems() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan siblings = JsonSchema.fromJson(SIBLINGS).createPlan();
+        SchemaPlan siblings = JsonSchema.fromJson(SIBLINGS).formulate();
         for (Map<String,Object> map : Arrays.asList(
                 Map.<String,Object>of("code","ok","country","US","state","CA"),
                 Map.<String,Object>of("code","x","country","US","state","CA"),
@@ -161,7 +161,7 @@ class CompiledValidatorConditionalTest {
                 Map.<String,Object>of("code","ok","country","US","state","CA","forbidden",1))) {
             assertEquals(siblings.isValid(map), compiled.siblings(map), map.toString());
         }
-        SchemaPlan array = JsonSchema.fromJson(IN_ARRAY).createPlan();
+        SchemaPlan array = JsonSchema.fromJson(IN_ARRAY).formulate();
         for (List<Object> list : Arrays.asList(
                 List.<Object>of(0,10), List.<Object>of(11), List.<Object>of(-1),
                 List.<Object>of("bad"), List.<Object>of("fine", -1),
@@ -173,14 +173,14 @@ class CompiledValidatorConditionalTest {
     @Test
     void constantAndAbsentConditionsIgnoreUnselectedUnsupportedSchemas() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan trueIf = JsonSchema.fromJson(TRUE_IF).createPlan();
-        SchemaPlan falseIf = JsonSchema.fromJson(FALSE_IF).createPlan();
+        SchemaPlan trueIf = JsonSchema.fromJson(TRUE_IF).formulate();
+        SchemaPlan falseIf = JsonSchema.fromJson(FALSE_IF).formulate();
         for (int n : new int[]{1,2,3,4}) {
             assertEquals(trueIf.isValid(n), compiled.trueIf(n), "true if: " + n);
             assertEquals(falseIf.isValid(n), compiled.falseIf(n), "false if: " + n);
         }
-        SchemaPlan lone = JsonSchema.fromJson(IF_ONLY).createPlan();
-        SchemaPlan absent = JsonSchema.fromJson(NO_IF).createPlan();
+        SchemaPlan lone = JsonSchema.fromJson(IF_ONLY).formulate();
+        SchemaPlan absent = JsonSchema.fromJson(NO_IF).formulate();
         for (String s : new String[]{"a", "blocked", "other"}) {
             assertEquals(lone.isValid(s), compiled.ifOnly(s));
             assertEquals(absent.isValid(s), compiled.noIf(s));
@@ -190,7 +190,7 @@ class CompiledValidatorConditionalTest {
     @Test
     void strictFormatPropagatesToCondition() {
         Direct compiled = CompiledInstances.create(Direct.class);
-        SchemaPlan reference = JsonSchema.fromJson(FORMAT).createPlan();
+        SchemaPlan reference = JsonSchema.fromJson(FORMAT).formulate();
         for (String s : new String[]{"blocked","other","not-a-uuid",
                 "123e4567-e89b-12d3-a456-426614174000"}) {
             for (boolean strict : new boolean[]{false,true}) {
@@ -205,7 +205,7 @@ class CompiledValidatorConditionalTest {
         NullableMember compiled = CompiledInstances.create(NullableMember.class);
         Map<String,Object> map = new LinkedHashMap<>();
         map.put("country","US");
-        SchemaPlan address = JsonSchema.fromJson(ADDRESS).createPlan();
+        SchemaPlan address = JsonSchema.fromJson(ADDRESS).formulate();
         assertFalse(compiled.address(map)); // Missing state fails required.
         map.put("state",null);
         assertTrue(compiled.address(map)); // Present null satisfies required.
@@ -213,13 +213,13 @@ class CompiledValidatorConditionalTest {
         map.put("state","CA");
         assertTrue(compiled.address(map));
         Runtime fallback = CompiledInstances.create(Runtime.class);
-        SchemaPlan evaluated = JsonSchema.fromJson(UNEVALUATED).createPlan();
+        SchemaPlan evaluated = JsonSchema.fromJson(UNEVALUATED).formulate();
         for (Map<String,Object> item : Arrays.asList(
                 Map.<String,Object>of("x",1), Map.<String,Object>of("y",1),
                 Map.<String,Object>of("x",1,"other",2), Map.<String,Object>of())) {
             assertEquals(evaluated.isValid(item), fallback.unevaluated(item), item.toString());
         }
-        SchemaPlan unsupported = JsonSchema.fromJson(UNSUPPORTED).createPlan();
+        SchemaPlan unsupported = JsonSchema.fromJson(UNSUPPORTED).formulate();
         for (String s : new String[]{"abc","ab","z","no"}) {
             assertEquals(unsupported.isValid(s), fallback.unsupported(s), s);
         }

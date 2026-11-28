@@ -86,13 +86,13 @@ class CompiledValidatorScalarLiteralTest {
         Direct compiled = CompiledInstances.create(Direct.class);
         for (String text : new String[]{"user@example.com", "invalid", "", null}) {
             Value v = value(text, "1", null);
-            SchemaPlan email = JsonSchema.fromJson(EMAIL).createPlan();
+            SchemaPlan email = JsonSchema.fromJson(EMAIL).formulate();
             assertEquals(email.isValid(v, false), compiled.email(v, false));
             assertEquals(email.isValid(v, true), compiled.email(v, true));
         }
         for (String text : new String[]{"01234567-89ab-4def-8abc-0123456789ab", "not-uuid", null}) {
             Value v = value(text, "1", null);
-            SchemaPlan uuid = JsonSchema.fromJson(UUID).createPlan();
+            SchemaPlan uuid = JsonSchema.fromJson(UUID).formulate();
             assertEquals(uuid.isValid(v, false), compiled.uuid(v, false));
             assertEquals(uuid.isValid(v, true), compiled.uuid(v, true));
         }
